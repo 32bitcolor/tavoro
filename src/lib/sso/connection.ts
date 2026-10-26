@@ -13,6 +13,7 @@ export const CONN_SELECT = {
   manageRoles: true,
   defaultRole: true,
   scimEnabled: true,
+  domains: true,
 } as const;
 
 /** A connection by id, if it exists (enabled or not). */

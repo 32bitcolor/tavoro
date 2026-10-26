@@ -1,4 +1,8 @@
 import { LoginForm } from "@/components/login-form";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/dal";
+import { signupOpen } from "@/lib/instance";
+import { safeNextPath } from "@/lib/safe-next";
 
 export const metadata = { title: "Sign in · Tavoro" };
 
@@ -11,15 +15,17 @@ const SSO_ERRORS: Record<string, string> = {
   notprovisioned: "You don't have a Tavoro account in this workspace yet. Ask your admin to give you access.",
   noaddress: "Enter your work email, then choose “Sign in with SSO”.",
   nodomain: "Single sign-on isn't set up for that email's domain.",
+  elsewhere: "Your account is also in another Tavoro workspace, so sign in with your email and password instead.",
 };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; sso?: string; email?: string }> }) {
   const { next, sso, email } = await searchParams;
+  if (await getCurrentUser()) redirect(safeNextPath(next) ?? "/dashboard");
   return (
     <>
       <h2 className="mb-4 text-lg font-medium">Sign in</h2>
       {typeof sso === "string" && SSO_ERRORS[sso] && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{SSO_ERRORS[sso]}</p>}
-      <LoginForm next={typeof next === "string" ? next : undefined} email={typeof email === "string" ? email : undefined} />
+      <LoginForm next={typeof next === "string" ? next : undefined} email={typeof email === "string" ? email : undefined} signupOpen={await signupOpen()} />
     </>
   );
 }

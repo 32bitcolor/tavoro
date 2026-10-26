@@ -143,6 +143,7 @@ const SPECS: Spec[] = [
     model: "reviewComment",
     where: (w) => ({ round: { deliverable: { project: { workspaceId: w } } } }),
     fks: { roundId: "reviewRound", parentId: "reviewComment", authorId: USER, guestId: "reviewGuest", resolvedById: USER, cardId: "card" },
+    json: ["anchor"],
     sort: (rows) => [...rows].sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0)),
   },
   { key: "timeEntry", model: "timeEntry", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", deliverableId: "deliverable", userId: USER } },
@@ -271,7 +272,7 @@ function upgradeLegacyLabels(exp: WorkspaceExport): void {
   exp.data.cardLabel = ((exp.data.cardLabel ?? []) as any[]).flatMap((cl) => {
     const labelId = remap[cl.labelId];
     if (!labelId) return [];
-    const key = `${cl.cardId} ${labelId}`;
+    const key = `${cl.cardId}\u0000${labelId}`;
     if (seen.has(key)) return [];
     seen.add(key);
     return [{ ...cl, labelId }];
@@ -322,14 +323,30 @@ export async function importWorkspace(
   upgradeLegacyLabels(exp);
   upgradeLegacyReviews(exp);
 
-  const maps: Record<string, Record<string, string>> = {};
-  const userMap: Record<string, string> = {}; // old userId -> new userId
-  const emailToUser: Record<string, string> = {};
-
   // 1. new workspace with a unique slug
   const name = `${exp.workspace.name} (restored)`;
   const slug = `${slugify(exp.workspace.name)}-${Math.abs(hashStr(exp.exportedAt + name)) % 100000}`;
   const ws = await prisma.workspace.create({ data: { name, slug } });
+  try {
+    await fillWorkspace(ws.id, exp, media, importerUserId);
+  } catch (err) {
+    // Don't leave a half-restored copy behind.
+    await prisma.workspace.delete({ where: { id: ws.id } }).catch(() => {});
+    throw err;
+  }
+  return { workspaceId: ws.id, name };
+}
+
+async function fillWorkspace(
+  wsId: string,
+  exp: WorkspaceExport,
+  media: Record<string, Uint8Array>,
+  importerUserId: string,
+): Promise<void> {
+  const ws = { id: wsId };
+  const maps: Record<string, Record<string, string>> = {};
+  const userMap: Record<string, string> = {}; // old userId -> new userId
+  const emailToUser: Record<string, string> = {};
 
   // 2. users (find-or-create by email) + memberships
   for (const u of exp.users) {
@@ -372,9 +389,7 @@ export async function importWorkspace(
     if (spec.key) maps[spec.key] = {};
     const rows = spec.sort ? spec.sort(exp.data[spec.model] ?? []) : (exp.data[spec.model] ?? []);
     for (const row of rows) {
-      const d: any = { ...row };
-      delete d.id;
-      delete d.updatedAt; // let @updatedAt default
+      const d = safeRow(row, spec);
       for (const col of Object.keys(spec.fks)) d[col] = remap(spec.fks[col], row[col] ?? null);
       for (const col of spec.json ?? []) if (d[col] == null) d[col] = Prisma.DbNull;
       if (spec.fill) Object.assign(d, spec.fill());
@@ -412,8 +427,26 @@ export async function importWorkspace(
     });
     maps.attachment[a.id] = created.id;
   }
+}
 
-  return { workspaceId: ws.id, name };
+const isPrimitive = (v: unknown) => v === null || v instanceof Date || ["string", "number", "boolean"].includes(typeof v);
+
+/** A backup row reduced to plain column values. The file is uploaded, so it is not
+ *  trusted: an object value would be a Prisma nested write (e.g. "create a user with
+ *  this password and make them admin of some other workspace"), and a foreign key the
+ *  spec doesn't remap would point at another workspace's rows. Only declared Json
+ *  columns may hold objects; every other "…Id" column is dropped unless remapped
+ *  (in these tables every column ending in Id is a foreign key — Card.sprintId, say,
+ *  as sprints aren't part of a backup). */
+function safeRow(row: Record<string, unknown>, spec: Spec): Record<string, any> {
+  const d: Record<string, any> = {};
+  for (const [col, v] of Object.entries(row)) {
+    if (col === "id" || col === "updatedAt") continue; // fresh id; let @updatedAt default
+    if (col.endsWith("Id") && !(col in spec.fks)) continue;
+    const plain = isPrimitive(v) || (Array.isArray(v) && v.every(isPrimitive));
+    if (plain || spec.json?.includes(col)) d[col] = v;
+  }
+  return d;
 }
 
 function hashStr(s: string): number {

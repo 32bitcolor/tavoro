@@ -1,6 +1,7 @@
 import "server-only";
 import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import https from "node:https";
+import { isIP, type LookupFunction } from "node:net";
 import { prisma } from "@/lib/db";
 import { isAllowedRedirectUri } from "@/lib/oauth";
 
@@ -24,7 +25,7 @@ function isPrivateAddress(ip: string): boolean {
   if (isIP(ip) === 6) {
     const v = ip.toLowerCase();
     if (v === "::1" || v === "::") return true;
-    if (v.startsWith("fc") || v.startsWith("fd") || v.startsWith("fe80")) return true;
+    if (v.startsWith("fc") || v.startsWith("fd") || /^fe[89ab]/.test(v) || v.startsWith("ff") || v.startsWith("64:ff9b:")) return true;
     const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(v);
     return mapped ? isPrivateAddress(mapped[1]) : false;
   }
@@ -47,26 +48,54 @@ type Doc = {
   token_endpoint_auth_methods_supported?: unknown;
 };
 
-async function fetchDocument(url: URL): Promise<Doc> {
-  const addrs = await lookup(url.hostname, { all: true });
-  if (!addrs.length || addrs.some((a) => isPrivateAddress(a.address))) throw new Error("client_id host is not a public address");
-  const res = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(5000), headers: { accept: "application/json" } });
-  if (res.status !== 200) throw new Error(`client metadata answered ${res.status}`);
-  const reader = res.body?.getReader();
-  if (!reader) throw new Error("empty client metadata");
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > MAX_BYTES) {
-      await reader.cancel();
-      throw new Error("client metadata is too large");
-    }
-    chunks.push(value);
-  }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Doc;
+/** DNS lookup for the request's own connection, refusing private addresses. Checking
+ *  in a separate lookup first would leave a gap: a rebinding DNS server could answer
+ *  with a public address for the check and a private one for the connection. */
+const publicOnlyLookup: LookupFunction = (hostname, options, callback) => {
+  lookup(hostname, { all: true }).then(
+    (addrs) => {
+      if (!addrs.length || addrs.some((a) => isPrivateAddress(a.address))) {
+        callback(new Error("client_id host is not a public address"), "", 0);
+      } else if (options.all) {
+        callback(null, addrs);
+      } else {
+        callback(null, addrs[0].address, addrs[0].family);
+      }
+    },
+    (err) => callback(err, "", 0),
+  );
+};
+
+function fetchDocument(url: URL): Promise<Doc> {
+  return new Promise((resolve, reject) => {
+    // No redirects followed (https.get never does): a 3xx is just "not 200".
+    const req = https.get(url, { lookup: publicOnlyLookup, timeout: 5000, headers: { accept: "application/json" } }, (res) => {
+      if (res.statusCode !== 200) {
+        res.resume();
+        return reject(new Error(`client metadata answered ${res.statusCode}`));
+      }
+      const chunks: Buffer[] = [];
+      let size = 0;
+      res.on("data", (chunk: Buffer) => {
+        size += chunk.byteLength;
+        if (size > MAX_BYTES) {
+          req.destroy();
+          return reject(new Error("client metadata is too large"));
+        }
+        chunks.push(chunk);
+      });
+      res.on("end", () => {
+        try {
+          resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")) as Doc);
+        } catch {
+          reject(new Error("client metadata isn't JSON"));
+        }
+      });
+      res.on("error", reject);
+    });
+    req.on("timeout", () => req.destroy(new Error("client metadata timed out")));
+    req.on("error", reject);
+  });
 }
 
 /** The OAuthClient for a CIMD client_id, fetching (or refreshing) its document. */

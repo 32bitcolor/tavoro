@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/dal";
 import { getCardForUser } from "@/lib/authz";
 import { getObjectBytes } from "@/lib/storage";
+import { contentDisposition } from "@/lib/content-disposition";
 
 // Streams the file back through the app (same HTTPS origin) instead of handing
 // out a presigned MinIO URL the browser may not be able to reach. Access is
@@ -25,7 +26,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   return new Response(bytes as unknown as BodyInit, {
     headers: {
       "Content-Type": att.mimeType || "application/octet-stream",
-      "Content-Disposition": `attachment; filename="${att.fileName.replace(/["\\\r\n]/g, "")}"`,
+      "Content-Disposition": contentDisposition(att.fileName),
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "sandbox; default-src 'none'",
       "Content-Length": String(bytes.byteLength),
     },
   });

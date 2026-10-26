@@ -56,7 +56,12 @@ export default function MembersAccess() {
         People lock themselves out. On any member&rsquo;s row, click <UI>Reset password</UI>, type a
         new one into the <UI>New password (min 8 chars)</UI> field, and click <UI>Set password</UI>.
         The member can then sign in with it and set their own from Account. Admin resets don&rsquo;t
-        require the member&rsquo;s current password — that&rsquo;s the point of a reset.
+        require the member&rsquo;s current password — that&rsquo;s the point of a reset. A reset
+        also signs the member out everywhere and disconnects their AI assistants.
+      </P>
+      <P>
+        You can&rsquo;t reset the password of someone who also belongs to another workspace: that
+        would hand you their access there too. They change it themselves from Account.
       </P>
 
       <H3>Change a role</H3>

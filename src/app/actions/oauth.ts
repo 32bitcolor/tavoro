@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/dal";
+import { getCurrentUser, usableMembershipWhere } from "@/lib/dal";
 import { newSecret, normaliseScope, sha256 } from "@/lib/api-tokens";
 import { baseUrl, CODE_TTL_MS, redirectAllowed, resourceAllowed } from "@/lib/oauth";
 import { findClient } from "@/lib/oauth-cimd";
@@ -33,7 +33,7 @@ export async function decideAuthorization(formData: FormData) {
   }
 
   const workspaceId = get("workspace_id");
-  const member = await prisma.membership.findFirst({ where: { userId: me.id, workspaceId, suspendedAt: null }, select: { id: true } });
+  const member = await prisma.membership.findFirst({ where: { userId: me.id, workspaceId, ...(await usableMembershipWhere()) }, select: { id: true } });
   const challenge = get("code_challenge");
   if (!member || !/^[A-Za-z0-9_-]{43}$/.test(challenge) || !resourceAllowed(get("resource"))) {
     back.searchParams.set("error", "invalid_request");

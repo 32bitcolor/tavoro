@@ -9,7 +9,7 @@ const inputClass =
   "w-full rounded-md border border-border-strong bg-transparent px-3 py-2 text-sm outline-none focus:border-foreground/60";
 
 /** `next`: a same-site path to return to after signing in (e.g. an OAuth consent page). */
-export function LoginForm({ next, email }: { next?: string; email?: string }) {
+export function LoginForm({ next, email, signupOpen = false }: { next?: string; email?: string; signupOpen?: boolean }) {
   const [state, action, pending] = useActionState<AuthState, FormData>(login, undefined);
 
   return (
@@ -57,12 +57,14 @@ export function LoginForm({ next, email }: { next?: string; email?: string }) {
         Sign in with SSO
       </button>
 
-      <p className="text-center text-sm text-muted-foreground">
-        Need an account?{" "}
-        <Link href="/signup" className="underline">
-          Create one
-        </Link>
-      </p>
+      {signupOpen && (
+        <p className="text-center text-sm text-muted-foreground">
+          Need an account?{" "}
+          <Link href="/signup" className="underline">
+            Create one
+          </Link>
+        </p>
+      )}
     </form>
   );
 }

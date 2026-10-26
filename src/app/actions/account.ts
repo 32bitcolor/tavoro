@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/dal";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { ChangePasswordSchema } from "@/lib/validation";
+import { createSession, getSession, sessionsCutoff } from "@/lib/session";
 import type { FormState } from "@/lib/form-state";
 
 // Self-service: any signed-in user can change their own password.
@@ -33,10 +34,13 @@ export async function changePassword(_prev: FormState, formData: FormData): Prom
     return { fieldErrors: { currentPassword: ["Current password is incorrect."] } };
   }
 
+  // Sign out every other session, then keep this one.
   await prisma.user.update({
     where: { id: user.id },
-    data: { passwordHash: await hashPassword(parsed.data.newPassword) },
+    data: { passwordHash: await hashPassword(parsed.data.newPassword), sessionsValidAfter: sessionsCutoff() },
   });
+  const session = await getSession();
+  await createSession(user.id, session?.activeWorkspaceId);
 
   return { success: "Your password has been updated." };
 }

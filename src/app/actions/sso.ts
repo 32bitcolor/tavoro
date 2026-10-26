@@ -3,21 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getActiveMembership } from "@/lib/dal";
-import { currentPrincipal } from "@/lib/principal";
+import { getWorkspaceAdmin } from "@/lib/dal";
 import { newSecret, sha256 } from "@/lib/api-tokens";
 import { parseIdpMetadata, splitPem } from "@/lib/sso/metadata";
 import { recomputeAll } from "@/lib/sso/provision";
-import { Role } from "@/generated/prisma/client";
 
 // Settings → Single sign-on (docs/SSO.md). Admins only, and only from the browser:
 // an MCP connection can't change how people sign in.
 
-async function admin() {
-  if (currentPrincipal()) return null;
-  const m = await getActiveMembership();
-  return m && m.role === Role.ADMIN ? m : null;
-}
 
 function done() {
   revalidatePath("/settings/sso");
@@ -25,7 +18,7 @@ function done() {
 }
 
 export async function saveIdentityProvider(input: { metadataXml?: string; entityId?: string; ssoUrl?: string; cert?: string }) {
-  const m = await admin();
+  const m = await getWorkspaceAdmin();
   if (!m) return { error: "Only admins can change single sign-on." };
   let idp: { entityId: string; ssoUrl: string; certs: string[] };
   if (input.metadataXml?.trim()) {
@@ -56,7 +49,7 @@ const Options = z.object({
 });
 
 export async function saveSsoOptions(input: z.input<typeof Options>) {
-  const m = await admin();
+  const m = await getWorkspaceAdmin();
   if (!m) return { error: "Only admins can change single sign-on." };
   const parsed = Options.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the settings." };
@@ -80,7 +73,7 @@ export async function saveSsoOptions(input: z.input<typeof Options>) {
 
 /** A new SCIM token, shown once. Replaces any earlier one immediately. */
 export async function createScimToken() {
-  const m = await admin();
+  const m = await getWorkspaceAdmin();
   if (!m) return { error: "Only admins can change provisioning." };
   const token = newSecret("tavscim_");
   await prisma.ssoConnection.upsert({
@@ -93,7 +86,7 @@ export async function createScimToken() {
 }
 
 export async function setScimEnabled(enabled: boolean) {
-  const m = await admin();
+  const m = await getWorkspaceAdmin();
   if (!m) return { error: "Only admins can change provisioning." };
   const conn = await prisma.ssoConnection.findUnique({ where: { workspaceId: m.workspaceId }, select: { id: true, scimTokenHash: true } });
   if (!conn?.scimTokenHash && enabled) return { error: "Create a SCIM token first." };
@@ -108,7 +101,7 @@ const Roles = z.object({
 });
 
 export async function saveRoleMappings(input: z.input<typeof Roles>) {
-  const m = await admin();
+  const m = await getWorkspaceAdmin();
   if (!m) return { error: "Only admins can change role mapping." };
   const parsed = Roles.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the mappings." };

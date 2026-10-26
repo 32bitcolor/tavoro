@@ -2,7 +2,7 @@
 // a standalone Node/tsx process, not a Next.js server context.
 import nodemailer from "nodemailer";
 
-let transport: nodemailer.Transporter | null | undefined;
+let transport: ReturnType<typeof nodemailer.createTransport> | null | undefined;
 
 function getTransport() {
   if (transport !== undefined) return transport;

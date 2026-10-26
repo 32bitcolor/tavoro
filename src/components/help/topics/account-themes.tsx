@@ -33,7 +33,8 @@ export default function AccountThemes() {
       <Callout tone="note">
         Locked out and can&rsquo;t sign in to reach this page? A workspace admin can set a new
         password for you from <UI>Settings → Members</UI> — an admin reset doesn&rsquo;t need your
-        current one. Once you&rsquo;re back in, change it to something only you know.
+        current one. Once you&rsquo;re back in, change it to something only you know. Changing your
+        password signs you out on every other device.
       </Callout>
 
       <Callout tone="note">

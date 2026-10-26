@@ -3,14 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getActiveMembership } from "@/lib/dal";
-import { Role } from "@/generated/prisma/client";
+import { getWorkspaceAdmin } from "@/lib/dal";
 
-async function adminGuard() {
-  const m = await getActiveMembership();
-  if (!m || m.role !== Role.ADMIN) return null;
-  return m;
-}
 
 const Kind = z.enum(["board", "storyboard", "project", "whiteboard"]);
 
@@ -25,7 +19,7 @@ export async function setGroupResourceAccess(
   resourceId: string,
   granted: boolean,
 ) {
-  const admin = await adminGuard();
+  const admin = await getWorkspaceAdmin();
   if (!admin) return { error: "You must be a workspace admin." };
   const parsedKind = Kind.safeParse(kind);
   if (!parsedKind.success) return { error: "Invalid resource type." };

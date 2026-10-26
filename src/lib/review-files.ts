@@ -1,5 +1,6 @@
 import "server-only";
 import { getObjectStream } from "@/lib/storage";
+import { contentDisposition } from "@/lib/content-disposition";
 
 // Files under review (docs/REVIEW-LINKS.md, phase 3). Tavoro reviews what it can
 // render WITHOUT executing it: PDFs (rendered by pdf.js into a canvas) and raster
@@ -76,10 +77,9 @@ export async function serveReviewFile(
   const range = req.headers.get("range");
   const wantsRange = range && /^bytes=\d*-\d*$/.test(range) ? range : null;
   const download = new URL(req.url).searchParams.has("download");
-  const name = file.fileName.replace(/["\\\r\n]/g, "");
   const headers: Record<string, string> = {
     "Content-Type": (REVIEW_FILE_TYPES as readonly string[]).includes(file.mimeType) ? file.mimeType : "application/octet-stream",
-    "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${name}"; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
+    "Content-Disposition": contentDisposition(file.fileName, download ? "attachment" : "inline"),
     "Accept-Ranges": "bytes",
     "X-Content-Type-Options": "nosniff",
     "Content-Security-Policy": "sandbox; default-src 'none'",

@@ -38,6 +38,15 @@ async function activeAdmins(workspaceId: string, exceptUserId?: string) {
   });
 }
 
+/** One workspace's identity provider may only speak for accounts that belong to no
+ *  other workspace. Otherwise any workspace admin could point SSO (or SCIM) at an IdP
+ *  they control, assert someone else's email, and sign in as them. */
+export async function belongsElsewhere(conn: Conn, userId: string): Promise<boolean> {
+  return (await prisma.membership.count({ where: { userId, workspaceId: { not: conn.workspaceId } } })) > 0;
+}
+
+const ELSEWHERE = "That email belongs to a Tavoro account in another workspace, so this workspace's identity provider can't sign it in or manage it.";
+
 /** Link (or create) the member for an identity the provider sent. */
 export async function upsertMember(
   conn: Conn,
@@ -57,6 +66,8 @@ export async function upsertMember(
       select: { id: true, name: true },
     });
     created = true;
+  } else if (await belongsElsewhere(conn, user.id)) {
+    throw new ProvisionError(ELSEWHERE, 409, "uniqueness");
   } else if (input.name && input.name !== user.name) {
     await prisma.user.update({ where: { id: user.id }, data: { name: input.name } });
   }
@@ -88,6 +99,7 @@ export async function changeEmail(conn: Conn, userId: string, email: string) {
   const next = normEmail(email);
   const me = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
   if (!me || me.email === next) return;
+  if (await belongsElsewhere(conn, userId)) throw new ProvisionError(ELSEWHERE, 409, "uniqueness");
   const taken = await prisma.user.findUnique({ where: { email: next }, select: { id: true } });
   if (taken) throw new ProvisionError("Another Tavoro user already has that email.", 409, "uniqueness");
   await prisma.user.update({ where: { id: userId }, data: { email: next } });

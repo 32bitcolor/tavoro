@@ -202,10 +202,4 @@ export function renderDocx(doc: ExportDoc): Uint8Array {
   });
 }
 
-/** Content-Disposition for a download, ASCII-safe with the real name alongside. */
-export function attachment(fileName: string): string {
-  const ascii = fileName.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "");
-  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
-}
-
 export const DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";

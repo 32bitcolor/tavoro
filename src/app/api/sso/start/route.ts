@@ -1,5 +1,6 @@
 import { baseUrl } from "@/lib/oauth";
 import { connectionForEmail } from "@/lib/sso/connection";
+import { safeNextPath } from "@/lib/safe-next";
 
 // "Sign in with SSO" on the sign-in page: a plain GET form posts here, and a real page
 // navigation carries the browser on to the identity provider. (A server action can't:
@@ -13,7 +14,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const email = (url.searchParams.get("email") ?? "").trim();
   const next = url.searchParams.get("next") ?? "";
-  const safeNext = next.startsWith("/") && !next.startsWith("//") && next.length <= 1000 ? next : "";
+  const safeNext = safeNextPath(next, 1000) ?? "";
   const back = (code: string) => {
     const u = new URL("/login", base);
     u.searchParams.set("sso", code);

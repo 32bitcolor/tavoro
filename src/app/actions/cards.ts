@@ -14,7 +14,7 @@ import { subtaskAssigned, cardAssigned, smeAssigned, commentPosted, mentioned, w
 import { appUrl } from "@/lib/app-url";
 import { extractMentionIds, extractText } from "@/lib/mentions";
 import { notificationsEnabled, notifySubtaskStatusChange } from "@/lib/notify";
-import { nextCardKeySeq } from "@/app/actions/boards";
+import { nextCardKeySeq } from "@/lib/card-keys";
 
 const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid color");
 const LabelName = z.string().trim().min(1).max(60);

@@ -31,11 +31,11 @@
     "@node-saml/node-saml": "5.1.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
-    "@tiptap/extension-mention": "^3.27.1",
-    "@tiptap/pm": "^3.27.1",
-    "@tiptap/react": "^3.27.1",
-    "@tiptap/starter-kit": "^3.27.1",
-    "@tiptap/suggestion": "^3.27.1",
+    "@tiptap/extension-mention": "^3.32.0",
+    "@tiptap/pm": "^3.32.0",
+    "@tiptap/react": "^3.32.0",
+    "@tiptap/starter-kit": "^3.32.0",
+    "@tiptap/suggestion": "^3.32.0",
     "@xmldom/xmldom": "0.9.12",
     "bullmq": "^5.79.1",
     "class-variance-authority": "^0.7.1",
@@ -46,7 +46,7 @@
     "jose": "^6.2.3",
     "lucide-react": "^1.22.0",
     "next": "16.4.2",
-    "nodemailer": "^9.0.3",
+    "nodemailer": "^10.2.1",
     "pdfjs-dist": "6.4.299",
     "radix-ui": "^1.6.1",
     "react": "19.2.4",
@@ -70,5 +70,11 @@
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "lodash-es": "^4.18.1",
+    "@excalidraw/excalidraw": {
+      "nanoid": "^3.3.20"
+    }
   }
 }

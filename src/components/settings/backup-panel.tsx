@@ -37,6 +37,9 @@ export function BackupPanel({ workspaceName }: { workspaceName: string }) {
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.ok) {
         setStatus({ tone: "ok", text: "Restored — opening the new workspace…" });
+        // A full load on purpose: the session now points at another workspace, and every
+        // cached server component belongs to the old one.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = "/dashboard";
       } else {
         setStatus({ tone: "error", text: data.error || "Restore failed." });

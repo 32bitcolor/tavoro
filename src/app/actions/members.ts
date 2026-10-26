@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getActiveMembership, getCurrentUser } from "@/lib/dal";
+import { getCurrentUser, getWorkspaceAdmin } from "@/lib/dal";
 import { hashPassword } from "@/lib/password";
+import { createSession, sessionsCutoff } from "@/lib/session";
 import { enqueueEmail } from "@/lib/queues";
 import { memberWelcome, passwordReset, withLink } from "@/lib/email-templates";
 import { appUrl } from "@/lib/app-url";
@@ -13,16 +14,10 @@ import { CreateUserSchema, ResetPasswordSchema } from "@/lib/validation";
 import { Role } from "@/generated/prisma/client";
 import type { FormState } from "@/lib/form-state";
 
-// Resolve the caller's admin membership, or null if they aren't an admin here.
-async function adminGuard() {
-  const m = await getActiveMembership();
-  if (!m || m.role !== Role.ADMIN) return null;
-  return m;
-}
 
 /** Admin: create a workspace member with an admin-set initial password. */
 export async function createUser(_prev: FormState, formData: FormData): Promise<FormState> {
-  const admin = await adminGuard();
+  const admin = await getWorkspaceAdmin();
   if (!admin) return { error: "You must be a workspace admin." };
 
   const parsed = CreateUserSchema.safeParse({
@@ -78,7 +73,7 @@ export async function createUser(_prev: FormState, formData: FormData): Promise<
 
 /** Admin: change a member's role, protecting the last admin. */
 export async function setUserRole(userId: string, role: string) {
-  const admin = await adminGuard();
+  const admin = await getWorkspaceAdmin();
   if (!admin) return { error: "You must be a workspace admin." };
   const parsed = z.enum(["ADMIN", "MANAGER", "MEMBER"]).safeParse(role);
   if (!parsed.success) return { error: "Invalid role." };
@@ -105,7 +100,7 @@ export async function setUserRole(userId: string, role: string) {
 
 /** Admin: set a new password for a member (shared out-of-band). */
 export async function resetUserPassword(userId: string, password: string): Promise<FormState> {
-  const admin = await adminGuard();
+  const admin = await getWorkspaceAdmin();
   if (!admin) return { error: "You must be a workspace admin." };
   const parsed = ResetPasswordSchema.safeParse({ password });
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
@@ -115,13 +110,22 @@ export async function resetUserPassword(userId: string, password: string): Promi
     select: { userId: true },
   });
   if (!membership) return { error: "User not found in this workspace." };
+  // An account in other workspaces too isn't this admin's to take over: setting its
+  // password would open those workspaces to whoever knows it.
+  const elsewhere = await prisma.membership.count({ where: { userId, workspaceId: { not: admin.workspaceId } } });
+  if (elsewhere) return { error: "This person also belongs to another workspace, so only they can change their password." };
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { passwordHash: await hashPassword(parsed.data.password) },
-  });
-
+  // The old password's sessions and tokens stop working.
   const me = await getCurrentUser();
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: await hashPassword(parsed.data.password), sessionsValidAfter: sessionsCutoff() },
+    }),
+    prisma.apiToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } }),
+  ]);
+  if (userId === me?.id) await createSession(userId, admin.workspaceId);
+
   if (userId !== me?.id && (await notificationsEnabled(admin.workspaceId, "member"))) {
     const target = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } });
     if (target?.email) {
@@ -146,7 +150,7 @@ export async function resetUserPassword(userId: string, password: string): Promi
  * they belong to no other workspace. Protects self-removal and the last admin.
  */
 export async function removeUser(userId: string) {
-  const admin = await adminGuard();
+  const admin = await getWorkspaceAdmin();
   if (!admin) return { error: "You must be a workspace admin." };
   if (userId === admin.userId) return { error: "You can't remove yourself." };
 
@@ -174,7 +178,7 @@ export async function removeUser(userId: string) {
 
 /** Admin: lift a suspension (one set by the identity provider, typically). */
 export async function restoreUser(userId: string) {
-  const admin = await adminGuard();
+  const admin = await getWorkspaceAdmin();
   if (!admin) return { error: "You must be a workspace admin." };
   const updated = await prisma.membership.updateMany({ where: { userId, workspaceId: admin.workspaceId }, data: { suspendedAt: null } });
   if (!updated.count) return { error: "User not found in this workspace." };

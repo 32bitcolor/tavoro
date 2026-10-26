@@ -17,15 +17,15 @@ export const SETTINGS_TABS = [
   { href: "/settings/sharing", label: "Sharing", group: "Workspace", adminOnly: true },
   { href: "/settings/notifications", label: "Notifications", group: "Workspace", adminOnly: true },
   { href: "/settings/backup", label: "Backup", group: "Workspace", adminOnly: true },
-  { href: "/settings/updates", label: "Updates", group: "Workspace", adminOnly: true },
+  { href: "/settings/updates", label: "Updates", group: "Workspace", adminOnly: true, instanceOnly: true },
 ] as const;
 
 /** Grouped links down the side on wider screens; a single picker on phones, where
  *  eleven tabs don't fit across. */
-export function SettingsNav({ isAdmin }: { isAdmin: boolean }) {
+export function SettingsNav({ isAdmin, isInstanceAdmin }: { isAdmin: boolean; isInstanceAdmin: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
-  const tabs = SETTINGS_TABS.filter((t) => !t.adminOnly || isAdmin);
+  const tabs = SETTINGS_TABS.filter((t) => (!t.adminOnly || isAdmin) && (!("instanceOnly" in t) || isInstanceAdmin));
   const active = tabs.find((t) => pathname === t.href || pathname.startsWith(`${t.href}/`));
   const groups = [...new Set(tabs.map((t) => t.group))];
 

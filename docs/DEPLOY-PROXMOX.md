@@ -106,8 +106,10 @@ docker compose logs -f app
 docker compose logs migrate     # confirm "created admin ..." or "already exists"
 ```
 
-Open `https://<DOMAIN>` and sign in with your seeded admin. **Change the admin password
-strategy / create your real accounts, then consider disabling open signup later.**
+Open `https://<DOMAIN>` and sign in with your seeded admin, then change its password and add
+your real accounts in Settings → Members. Self-service signup is closed once the first account
+exists (set `ALLOW_SIGNUP=true` to keep it open), and only the admins of the oldest workspace
+(or `INSTANCE_ADMIN_EMAILS`) can use Settings → Updates.
 
 ## 7. Updating
 

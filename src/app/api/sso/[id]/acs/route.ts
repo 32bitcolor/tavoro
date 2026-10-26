@@ -3,7 +3,8 @@ import { createSession } from "@/lib/session";
 import { baseUrl } from "@/lib/oauth";
 import { getConnection, isReady } from "@/lib/sso/connection";
 import { firstUse, readProfile, samlFor } from "@/lib/sso/saml";
-import { fullName, ProvisionError, recomputeRoles, replaceGroupsFromAssertion, upsertMember } from "@/lib/sso/provision";
+import { belongsElsewhere, fullName, ProvisionError, recomputeRoles, replaceGroupsFromAssertion, upsertMember } from "@/lib/sso/provision";
+import { safeNextPath } from "@/lib/safe-next";
 
 // The Assertion Consumer Service: the identity provider POSTs the signed response
 // here, for both SP-initiated and IdP-initiated sign-in (docs/SSO.md).
@@ -44,12 +45,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const groups = asserted ?? (conn.manageRoles && !conn.scimEnabled ? [] : null);
   if (!email) return fail("noemail", `NameID ${profile.nameID ?? "(none)"}, attributes ${Object.keys(profile).filter((k) => !k.startsWith("get")).join(", ")}`);
 
+  // The connection's email domains, when it has any, bound what its IdP may assert.
+  const domain = email.toLowerCase().split("@")[1] ?? "";
+  if (conn.domains.length && !conn.domains.includes(domain)) return fail("nodomain", `${email} is outside ${conn.domains.join(", ")}`);
+
   // Known here already, or allowed to be created on first sign-in?
   const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() }, select: { id: true } });
   const member = user
     ? await prisma.membership.findUnique({ where: { userId_workspaceId: { userId: user.id, workspaceId: conn.workspaceId } }, select: { suspendedAt: true } })
     : null;
   if (member?.suspendedAt) return fail("suspended", email);
+  if (user && (await belongsElsewhere(conn, user.id))) return fail("elsewhere", email);
   if (!member && !conn.jitProvisioning) return fail("notprovisioned", email);
 
   let userId: string;
@@ -65,6 +71,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   await prisma.ssoConnection.update({ where: { id: conn.id }, data: { lastLoginAt: new Date() } });
   await createSession(userId, conn.workspaceId, { sso: true });
   console.info(`[sso] ${conn.id}: signed in ${email}${groups ? ` (groups: ${groups.join(", ") || "none"})` : ""}`);
-  const next = typeof relay === "string" && relay.startsWith("/") && !relay.startsWith("//") ? relay : "/dashboard";
+  const next = safeNextPath(relay) ?? "/dashboard";
   return Response.redirect(`${base}${next}`, 303);
 }

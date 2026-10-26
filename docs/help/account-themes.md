@@ -12,7 +12,7 @@ Anyone signed in can update their own password — you don’t need an admin to 
 2. Type your **New password**, then repeat it in **Confirm new password**. The two must match.
 3. Click **Update password**. On success the fields clear and you’ll see a confirmation. Your new password takes effect immediately.
 
-> **Note.** Locked out and can’t sign in to reach this page? A workspace admin can set a new password for you from **Settings → Members** — an admin reset doesn’t need your current one. Once you’re back in, change it to something only you know.
+> **Note.** Locked out and can’t sign in to reach this page? A workspace admin can set a new password for you from **Settings → Members** — an admin reset doesn’t need your current one. Once you’re back in, change it to something only you know. Changing your password signs you out on every other device.
 
 > **Note.** Sign in with **Sign in with SSO**? Then your password lives with your company’s identity provider — change it there. A Tavoro password only matters if your workspace still allows password sign-in.
 

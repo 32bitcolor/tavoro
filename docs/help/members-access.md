@@ -23,7 +23,9 @@ If the email already belongs to a user in another workspace, adding them here si
 
 ### Reset a password
 
-People lock themselves out. On any member’s row, click **Reset password**, type a new one into the **New password (min 8 chars)** field, and click **Set password**. The member can then sign in with it and set their own from Account. Admin resets don’t require the member’s current password — that’s the point of a reset.
+People lock themselves out. On any member’s row, click **Reset password**, type a new one into the **New password (min 8 chars)** field, and click **Set password**. The member can then sign in with it and set their own from Account. Admin resets don’t require the member’s current password — that’s the point of a reset. A reset also signs the member out everywhere and disconnects their AI assistants.
+
+You can’t reset the password of someone who also belongs to another workspace: that would hand you their access there too. They change it themselves from Account.
 
 ### Change a role
 

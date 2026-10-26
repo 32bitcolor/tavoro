@@ -5,7 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/dal";
 import { boardVisibilityWhere, getColumnForUser, getDeliverableForUser, getReviewCommentForUser } from "@/lib/authz";
-import { nextCardKeySeq } from "@/app/actions/boards";
+import { nextCardKeySeq } from "@/lib/card-keys";
 import { positionBetween } from "@/lib/ordering";
 import { parseAnchor } from "@/lib/review-anchor";
 import { parseSnapshot } from "@/lib/review-snapshot";

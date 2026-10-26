@@ -38,11 +38,10 @@ export default async function proxy(req: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  // Only bounce a logged-in session away from /login and /signup — a Member
-  // should still be able to load the public intake form like anyone else.
-  if (session && isAuthPage) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
+  // A signed-in visitor to /login or /signup is sent on by those pages themselves, not
+  // here: only the DAL knows whether a validly signed cookie still counts (the password
+  // may have changed, or the account gone), and bouncing on the signature alone would
+  // loop between /login and /dashboard.
 
   const res = NextResponse.next();
   // Guest review pages and public boards: keep the page URL out of Referer headers and

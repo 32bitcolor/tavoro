@@ -3,16 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getActiveMembership } from "@/lib/dal";
+import { getWorkspaceAdmin } from "@/lib/dal";
 import { GroupSchema } from "@/lib/validation";
-import { Role } from "@/generated/prisma/client";
 import type { FormState } from "@/lib/form-state";
 
-async function adminGuard() {
-  const m = await getActiveMembership();
-  if (!m || m.role !== Role.ADMIN) return null;
-  return m;
-}
 
 // Confirm a group belongs to the caller's workspace before mutating it.
 async function groupInWorkspace(groupId: string, workspaceId: string) {
@@ -20,7 +14,7 @@ async function groupInWorkspace(groupId: string, workspaceId: string) {
 }
 
 export async function createGroup(_prev: FormState, formData: FormData): Promise<FormState> {
-  const admin = await adminGuard();
+  const admin = await getWorkspaceAdmin();
   if (!admin) return { error: "You must be a workspace admin." };
 
   const parsed = GroupSchema.safeParse({
@@ -43,7 +37,7 @@ export async function createGroup(_prev: FormState, formData: FormData): Promise
 }
 
 export async function renameGroup(groupId: string, name: string, description: string | null) {
-  const admin = await adminGuard();
+  const admin = await getWorkspaceAdmin();
   if (!admin) return { error: "You must be a workspace admin." };
   if (!(await groupInWorkspace(groupId, admin.workspaceId))) return { error: "Group not found." };
   const parsed = GroupSchema.safeParse({ name, description: description || undefined });
@@ -64,7 +58,7 @@ export async function renameGroup(groupId: string, name: string, description: st
 }
 
 export async function deleteGroup(groupId: string) {
-  const admin = await adminGuard();
+  const admin = await getWorkspaceAdmin();
   if (!admin) return { error: "You must be a workspace admin." };
   if (!(await groupInWorkspace(groupId, admin.workspaceId))) return { error: "Group not found." };
   // Cascades remove GroupMembership and the resource access grants for this group.
@@ -73,7 +67,7 @@ export async function deleteGroup(groupId: string) {
 }
 
 export async function addGroupMember(groupId: string, userId: string) {
-  const admin = await adminGuard();
+  const admin = await getWorkspaceAdmin();
   if (!admin) return { error: "You must be a workspace admin." };
   if (!(await groupInWorkspace(groupId, admin.workspaceId))) return { error: "Group not found." };
 
@@ -93,7 +87,7 @@ export async function addGroupMember(groupId: string, userId: string) {
 }
 
 export async function removeGroupMember(groupId: string, userId: string) {
-  const admin = await adminGuard();
+  const admin = await getWorkspaceAdmin();
   if (!admin) return { error: "You must be a workspace admin." };
   if (!(await groupInWorkspace(groupId, admin.workspaceId))) return { error: "Group not found." };
   await prisma.groupMembership

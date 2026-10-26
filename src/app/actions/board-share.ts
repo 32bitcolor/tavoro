@@ -2,11 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { getActiveMembership, getCurrentUser } from "@/lib/dal";
+import { getCurrentUser, getWorkspaceAdmin } from "@/lib/dal";
 import { getBoardForUser, getCardForUser } from "@/lib/authz";
 import { currentPrincipal } from "@/lib/principal";
 import { newShareNonce, shareUrl } from "@/lib/board-share";
-import { Role } from "@/generated/prisma/client";
 
 // Public, read-only board links (lib/board-share.ts). Anyone who can work on a board
 // can share it, but only from the browser: an AI assistant connected over MCP can't
@@ -105,14 +104,9 @@ export async function setCardPrivate(cardId: string, isPrivate: boolean) {
 
 // ── Settings → Sharing (admins) ──────────────────────────────────────────────
 
-async function admin() {
-  if (currentPrincipal()) return null;
-  const m = await getActiveMembership();
-  return m && m.role === Role.ADMIN ? m : null;
-}
 
 export async function setPublicBoardsEnabled(enabled: boolean) {
-  const m = await admin();
+  const m = await getWorkspaceAdmin();
   if (!m) return { error: "Only admins can change this." };
   await prisma.workspace.update({ where: { id: m.workspaceId }, data: { publicBoardsEnabled: enabled } });
   revalidatePath("/settings/sharing");
@@ -120,7 +114,7 @@ export async function setPublicBoardsEnabled(enabled: boolean) {
 }
 
 export async function adminUnshareBoard(boardId: string) {
-  const m = await admin();
+  const m = await getWorkspaceAdmin();
   if (!m) return { error: "Only admins can change this." };
   await prisma.board.updateMany({
     where: { id: boardId, workspaceId: m.workspaceId },

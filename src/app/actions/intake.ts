@@ -4,21 +4,14 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { Prisma, Role } from "@/generated/prisma/client";
-import { getCurrentUser, getActiveMembership } from "@/lib/dal";
+import { getCurrentUser, getWorkspaceAdmin } from "@/lib/dal";
 import { getIntakeRequestForUser } from "@/lib/authz";
 import { createProjectForWorkspace } from "@/lib/projects";
 import { checkIntakeThrottle } from "@/lib/intake-throttle";
+import { checkThrottle } from "@/lib/throttle";
 import { canDecideIntake, canWorkIntake, isResolved, projectDescriptionFrom, ticketLabel, triageStatusFor } from "@/lib/intake";
 import { enqueueEmail } from "@/lib/queues";
-import {
-  intakeSubmittedConfirmation,
-  newIntakeRequestForAdmin,
-  intakeApprovedNotification,
-  intakeRejectedNotification,
-  intakeAssigned,
-  intakeMessageToRequester,
-  withLink,
-} from "@/lib/email-templates";
+import { intakeSubmittedConfirmation, newIntakeRequestForAdmin, intakeApprovedNotification, intakeRejectedNotification, intakeAssigned, intakeMessageToRequester, withLink } from "@/lib/email-templates";
 import { appUrl } from "@/lib/app-url";
 import { newStatusNonce, statusPath, statusUrl } from "@/lib/intake-status";
 import { notificationsEnabled } from "@/lib/notify";
@@ -40,11 +33,6 @@ function revalidateIntake() {
   revalidatePath("/", "layout");
 }
 
-async function adminGuard() {
-  const m = await getActiveMembership();
-  if (!m || m.role !== Role.ADMIN) return null;
-  return m;
-}
 
 // ── Public submission — intentionally the one action in this app with no auth ──
 
@@ -122,15 +110,19 @@ export async function submitIntakeRequest(
         select: { user: { select: { email: true } } },
       })
     : [];
+  // The form is public and the address is whatever was typed, so cap confirmations
+  // per address: the form can't be used to flood someone's inbox.
+  const confirm = await checkThrottle(`intake-to:${requester.data.email.toLowerCase()}`, 5, 86_400);
   await Promise.all([
-    enqueueEmail({
-      to: requester.data.email,
-      ...withLink(
-        intakeSubmittedConfirmation({ ticket, title: input.data.title, workspaceName: workspace.name }),
-        statusUrl(request),
-        "Track your request",
-      ),
-    }),
+    confirm &&
+      enqueueEmail({
+        to: requester.data.email,
+        ...withLink(
+          intakeSubmittedConfirmation({ ticket, title: input.data.title, workspaceName: workspace.name }),
+          statusUrl(request),
+          "Track your request",
+        ),
+      }),
     ...admins.map((m) =>
       enqueueEmail({
         to: m.user.email,
@@ -415,7 +407,7 @@ const IntakeSlug = z
 /** Change the intake link (/request/<slug>). The old address keeps working: the public
  *  page forwards any former slug to the current one. */
 export async function setIntakeSlug(raw: string): Promise<{ error: string } | { slug: string }> {
-  const admin = await adminGuard();
+  const admin = await getWorkspaceAdmin();
   if (!admin) return { error: "You must be a workspace admin." };
   const parsed = IntakeSlug.safeParse(raw);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid link." };
@@ -437,7 +429,7 @@ export async function setIntakeSlug(raw: string): Promise<{ error: string } | { 
 }
 
 export async function setIntakeEnabled(enabled: boolean): Promise<{ error: string } | undefined> {
-  const admin = await adminGuard();
+  const admin = await getWorkspaceAdmin();
   if (!admin) return { error: "You must be a workspace admin." };
   await prisma.workspace.update({ where: { id: admin.workspaceId }, data: { intakeEnabled: enabled } });
   revalidatePath("/settings/intake");

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { nextCardKeySeq } from "@/lib/card-keys";
 import { getActiveMembership, getCurrentUser } from "@/lib/dal";
 import { boardVisibilityWhere, getBoardForUser, getColumnForUser, getCardForUser, getProjectForUser } from "@/lib/authz";
 import { positionBetween, positionsAfter, positionForIndex } from "@/lib/ordering";
@@ -254,22 +255,6 @@ export async function backfillWorkspaceCardKeys() {
   }
   revalidatePath("/boards");
   return { results };
-}
-
-/** Claim the next card key number for a board, or null if it has no prefix
- * set (checked first so boards without a prefix never burn through the
- * sequence — otherwise adding a prefix later would start mid-way instead of
- * at 1). The increment itself is a single atomic UPDATE, safe under
- * concurrent card creation. Shared by top-level cards and subtasks alike. */
-export async function nextCardKeySeq(boardId: string): Promise<number | null> {
-  const board = await prisma.board.findUnique({ where: { id: boardId }, select: { cardKeyPrefix: true } });
-  if (!board?.cardKeyPrefix) return null;
-  const updated = await prisma.board.update({
-    where: { id: boardId },
-    data: { cardKeySeq: { increment: 1 } },
-    select: { cardKeySeq: true },
-  });
-  return updated.cardKeySeq;
 }
 
 export async function renameBoard(boardId: string, name: string) {

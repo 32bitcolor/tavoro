@@ -423,7 +423,8 @@ npm run dev                   # http://localhost:3000
 npm run worker                # second terminal: email, reminders, file sweep
 ```
 
-Sign in with the seeded admin, or create a new workspace via **Sign up**. Email needs SMTP
+Sign in with the seeded admin, or, on an empty database, create the first workspace via
+**Sign up** (later signups need `ALLOW_SIGNUP=true`). Email needs SMTP
 (`SMTP_*`) configured and the worker running; without them everything works, it just doesn't send
 mail. Guest review links also need `APP_URL` set, so the emailed links point at your server.
 

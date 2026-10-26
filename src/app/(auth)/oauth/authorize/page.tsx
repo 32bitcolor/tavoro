@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/dal";
+import { requireUser, usableMembershipWhere } from "@/lib/dal";
 import { decideAuthorization } from "@/app/actions/oauth";
 import { normaliseScope } from "@/lib/api-tokens";
 import { findClient } from "@/lib/oauth-cimd";
@@ -48,7 +48,8 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
   if (!resourceAllowed(one(sp.resource))) fail("invalid_target", "resource must be this server's MCP endpoint");
 
   const memberships = await prisma.membership.findMany({
-    where: { userId: me.id, suspendedAt: null },
+    // A token skips the SSO check later, so only workspaces this session passes it for.
+    where: { userId: me.id, ...(await usableMembershipWhere()) },
     orderBy: { createdAt: "asc" },
     select: { role: true, workspace: { select: { id: true, name: true } } },
   });

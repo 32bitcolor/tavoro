@@ -16,9 +16,9 @@ services:
       timeout: 5s
       retries: 12
     ports:
-      # Published so you can run `npm run dev` against this DB during development.
-      # Remove this mapping on a production host if you don't need external access.
-      - "5432:5432"
+      # Published on localhost only, so `npm run dev` on the same machine can use it
+      # but nothing else on the network can reach the database.
+      - "127.0.0.1:5432:5432"
 
   redis:
     image: redis:7-alpine
@@ -45,11 +45,11 @@ services:
     volumes:
       - miniodata:/data
     ports:
-      # Published for local development (`npm run dev` talks to MinIO on localhost:9000).
-      # Browsers never use it — all file traffic streams through the app — so a
-      # production host can drop these mappings.
-      - "9000:9000" # S3 API
-      - "9001:9001" # web console
+      # Localhost only, for local development (`npm run dev` talks to MinIO on
+      # localhost:9000). Browsers never use it — all file traffic streams through the
+      # app — so it isn't reachable from the network.
+      - "127.0.0.1:9000:9000" # S3 API
+      - "127.0.0.1:9001:9001" # web console
 
   # One-shot: apply migrations then seed the first admin, then exit.
   migrate:
@@ -92,6 +92,10 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: "${SMTP_FROM:-Tavoro <no-reply@haggabasin.com>}"
+      # Self-service signup (new workspaces) is off once the first account exists, unless "true".
+      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-}
+      # Who may update the server (Settings → Updates); default: admins of the oldest workspace.
+      INSTANCE_ADMIN_EMAILS: ${INSTANCE_ADMIN_EMAILS:-}
       APP_URL: ${APP_URL:-}
       # Old hostnames whose page visits redirect to APP_URL (comma-separated, optional).
       LEGACY_HOSTS: ${LEGACY_HOSTS:-}

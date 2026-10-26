@@ -45,6 +45,7 @@ export async function POST(req: Request) {
     await createSession(user.id, result.workspaceId);
     return NextResponse.json({ ok: true, workspaceId: result.workspaceId, name: result.name });
   } catch (err) {
-    return NextResponse.json({ error: `Restore failed: ${(err as Error).message}` }, { status: 500 });
+    console.error("[restore]", err);
+    return NextResponse.json({ error: "Restore failed: the backup couldn't be imported. Nothing was changed." }, { status: 500 });
   }
 }

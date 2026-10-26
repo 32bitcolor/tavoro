@@ -16,3 +16,10 @@ export function hashPassword(password: string): Promise<string> {
 export function verifyPassword(passwordHash: string, password: string): Promise<boolean> {
   return verify(passwordHash, password, options);
 }
+
+let dummy: Promise<string> | undefined;
+/** A real hash of a random secret, for checking a password when there's no account. */
+export function dummyHash(): Promise<string> {
+  dummy ??= hash(crypto.randomUUID(), options);
+  return dummy;
+}

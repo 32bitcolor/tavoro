@@ -1,6 +1,7 @@
 import { getStoryboardForUser } from "@/lib/authz";
 import { storyboardExport } from "@/lib/review-export";
-import { attachment, DOCX_TYPE, renderDocx } from "@/lib/docx";
+import { DOCX_TYPE, renderDocx } from "@/lib/docx";
+import { contentDisposition } from "@/lib/content-disposition";
 
 /** A storyboard as a Word document, screen by screen. */
 export async function GET(_req: Request, { params }: { params: Promise<{ storyboardId: string }> }) {
@@ -11,7 +12,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ storybo
   return new Response(renderDocx(doc) as BodyInit, {
     headers: {
       "Content-Type": DOCX_TYPE,
-      "Content-Disposition": attachment(`${doc.fileName}.docx`),
+      "Content-Disposition": contentDisposition(`${doc.fileName}.docx`),
       "Cache-Control": "private, no-store",
     },
   });

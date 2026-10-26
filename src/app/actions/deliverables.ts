@@ -95,10 +95,10 @@ export async function linkDeliverableCard(id: string, cardId: string | null) {
     if (!(await getCardForUser(cardId))) return { error: "Card not found." };
     const card = await prisma.card.findUnique({
       where: { id: cardId },
-      select: { id: true, title: true, column: { select: { board: { select: { id: true, name: true } } } } },
+      select: { id: true, title: true, column: { select: { board: { select: { id: true, name: true, workspaceId: true } } } } },
     });
-    // Deliverables only ever link to top-level cards, never subtasks.
-    if (!card || !card.column) return { error: "Card not found." };
+    // Deliverables only ever link to top-level cards, never subtasks, in their own workspace.
+    if (!card || !card.column || card.column.board.workspaceId !== workspaceId) return { error: "Card not found." };
     await prisma.deliverable.update({ where: { id }, data: { cardId } });
     revalidatePath(projectPath(d.projectId));
     return { card: { id: card.id, title: card.title, boardId: card.column.board.id, boardName: card.column.board.name } };

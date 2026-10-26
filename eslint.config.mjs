@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Third-party and generated code: PDF.js copied in by scripts/copy-pdf-worker.mjs,
+    // and the Prisma client.
+    "public/vendor/**",
+    "src/generated/**",
   ]),
 ]);
 

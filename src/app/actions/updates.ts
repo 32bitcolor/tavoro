@@ -1,34 +1,36 @@
 "use server";
 
-import { getActiveMembership } from "@/lib/dal";
-import { Role } from "@/generated/prisma/client";
+import { getCurrentUser } from "@/lib/dal";
+import { isInstanceAdmin } from "@/lib/instance";
+import { currentPrincipal } from "@/lib/principal";
 import { readUpdateStatus, writeUpdateRequest, type UpdateStatus } from "@/lib/updater";
 
-async function requireWorkspaceAdmin() {
-  const membership = await getActiveMembership();
-  if (!membership || membership.role !== Role.ADMIN) throw new Error("Forbidden");
-  return membership;
+// Updating or rolling back the server affects every workspace on it, so only the
+// instance owner may, and never through an MCP token.
+async function requireInstanceAdmin() {
+  const me = await getCurrentUser();
+  if (currentPrincipal() || !me || !(await isInstanceAdmin(me.id))) throw new Error("Forbidden");
 }
 
 export async function getUpdateStatus(): Promise<UpdateStatus | null> {
-  await requireWorkspaceAdmin();
+  await requireInstanceAdmin();
   return readUpdateStatus();
 }
 
 export async function checkForUpdates() {
-  await requireWorkspaceAdmin();
+  await requireInstanceAdmin();
   await writeUpdateRequest("check");
   return { ok: true };
 }
 
 export async function applyUpdate() {
-  await requireWorkspaceAdmin();
+  await requireInstanceAdmin();
   await writeUpdateRequest("update");
   return { ok: true };
 }
 
 export async function rollbackUpdate() {
-  await requireWorkspaceAdmin();
+  await requireInstanceAdmin();
   await writeUpdateRequest("rollback");
   return { ok: true };
 }

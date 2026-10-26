@@ -3,13 +3,16 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { hashPassword, verifyPassword } from "@/lib/password";
+import { dummyHash, hashPassword, verifyPassword } from "@/lib/password";
+import { checkThrottle, clientIp } from "@/lib/throttle";
 import { createSession, deleteSession } from "@/lib/session";
 import { SignupSchema, LoginSchema } from "@/lib/validation";
 import { slugify } from "@/lib/slug";
 import { workspaceStatusSeedData } from "@/lib/status";
+import { signupOpen } from "@/lib/instance";
 import { Role } from "@/generated/prisma/client";
 import type { AuthState } from "@/lib/form-state";
+import { safeNextPath } from "@/lib/safe-next";
 
 async function uniqueWorkspaceSlug(name: string): Promise<string> {
   const base = slugify(name);
@@ -23,6 +26,7 @@ async function uniqueWorkspaceSlug(name: string): Promise<string> {
 }
 
 export async function signup(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  if (!(await signupOpen())) return { error: "New accounts are created by a workspace admin. Ask yours to add you." };
   const parsed = SignupSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -82,13 +86,21 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
   }
 
   const email = parsed.data.email.toLowerCase();
+  // Slow down password guessing, from one network or against one account.
+  const ip = await clientIp();
+  const ipOk = await checkThrottle(`login-ip:${ip}`, 30, 900);
+  const emailOk = await checkThrottle(`login-email:${email}`, 10, 900);
+  if (!ipOk || !emailOk) return { error: "Too many sign-in attempts. Wait a few minutes and try again." };
+
   const user = await prisma.user.findUnique({
     where: { email },
     select: { id: true, passwordHash: true },
   });
 
-  // Same message whether the email is unknown or the password is wrong.
-  if (!user || !(await verifyPassword(user.passwordHash, parsed.data.password))) {
+  // Same message — and the same hashing work — whether the email is unknown or the
+  // password is wrong, so neither reveals which accounts exist.
+  const ok = await verifyPassword(user?.passwordHash ?? (await dummyHash()), parsed.data.password);
+  if (!user || !ok) {
     return { error: "Invalid email or password." };
   }
 
@@ -104,14 +116,7 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
   if (active.length && !open.length) return { error: "Your workspace signs in with single sign-on. Choose “Sign in with SSO”." };
 
   await createSession(user.id, open[0]?.workspaceId, { sso: false });
-  redirect(safeNext(formData.get("next")) ?? "/dashboard");
-}
-
-/** A same-site path to go to after signing in; anything else is ignored, so the
- *  parameter can't send someone to another site. */
-function safeNext(raw: FormDataEntryValue | null): string | null {
-  if (typeof raw !== "string" || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return null;
-  return raw.length <= 2000 ? raw : null;
+  redirect(safeNextPath(formData.get("next")) ?? "/dashboard");
 }
 
 export async function logout(): Promise<void> {

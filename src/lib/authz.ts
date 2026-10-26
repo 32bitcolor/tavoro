@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/dal";
+import { getCurrentUser, usableMembershipWhere } from "@/lib/dal";
 import { currentPrincipal } from "@/lib/principal";
 import { Prisma, Role } from "@/generated/prisma/client";
 
@@ -10,30 +10,28 @@ import { Prisma, Role } from "@/generated/prisma/client";
 // pass the group-access check below. Each helper returns the resource (with the ids
 // needed for revalidation) or null if absent/forbidden.
 
-// An MCP token is issued for one workspace: through it, only that workspace counts as
-// the user's, even if they belong to others.
-const ownedByUser = (ctx: { userId: string; workspaceId: string | null }) => ({
-  members: { some: { userId: ctx.userId } },
-  ...(ctx.workspaceId ? { id: ctx.workspaceId } : {}),
-});
+// The workspaces the user may act in right now (see getAccessContext). An MCP token is
+// issued for one workspace: through it, only that workspace counts as the user's.
+const ownedByUser = (ctx: { workspaceIds: string[] }) => ({ id: { in: ctx.workspaceIds } });
 
-// Per-request access context, memoized for the render pass: which workspaces the
-// user has blanket ("see everything") visibility into — ADMIN and MANAGER alike —
-// and which groups they belong to.
+// Per-request access context, memoized for the render pass: which workspaces the user
+// may act in (active memberships that meet any SSO requirement — a suspended member's
+// leftover session opens nothing), which of those they have blanket ("see everything")
+// visibility into — ADMIN and MANAGER alike — and which groups they belong to.
 const getAccessContext = cache(async () => {
   const user = await getCurrentUser();
   if (!user) return null;
   const workspaceId = currentPrincipal()?.workspaceId ?? null;
   const [memberships, groups] = await Promise.all([
     prisma.membership.findMany({
-      where: { userId: user.id, suspendedAt: null, ...(workspaceId ? { workspaceId } : {}) },
+      where: { userId: user.id, ...(await usableMembershipWhere()), ...(workspaceId ? { workspaceId } : {}) },
       select: { workspaceId: true, role: true },
     }),
     prisma.groupMembership.findMany({ where: { userId: user.id }, select: { groupId: true } }),
   ]);
   return {
     userId: user.id,
-    workspaceId,
+    workspaceIds: memberships.map((m) => m.workspaceId),
     elevatedWorkspaceIds: memberships
       .filter((m) => m.role === Role.ADMIN || m.role === Role.MANAGER)
       .map((m) => m.workspaceId),
