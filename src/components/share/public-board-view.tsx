@@ -7,6 +7,7 @@ import type { Block, Run } from "@/lib/rich-text";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { DueChip, LabelPill, StatusDot } from "@/components/shared/work-item";
+import { SAFE_HREF } from "@/lib/linkify";
 import { cn } from "@/lib/utils";
 import { LocalTime } from "@/components/shared/local-time";
 
@@ -122,8 +123,6 @@ function Meta({ card }: { card: PublicCard }) {
     </div>
   );
 }
-
-const SAFE_HREF = /^(https?:|mailto:)/i;
 
 function Runs({ runs }: { runs: Run[] }) {
   return (

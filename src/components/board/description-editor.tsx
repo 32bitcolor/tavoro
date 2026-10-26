@@ -6,10 +6,11 @@ import StarterKit from "@tiptap/starter-kit";
 
 import { createMention } from "./mention";
 import type { MentionMember } from "./mention-list";
+import { linkifyDoc } from "@/lib/linkify";
 
 function safeParse(s: string): object | string {
   try {
-    return JSON.parse(s);
+    return linkifyDoc(JSON.parse(s));
   } catch {
     return s;
   }

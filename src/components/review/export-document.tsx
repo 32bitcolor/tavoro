@@ -1,5 +1,6 @@
 import type { ExportComment, ExportDoc } from "@/lib/review-export";
 import { textBlocks, type Block } from "@/lib/rich-text";
+import { SAFE_HREF } from "@/lib/linkify";
 import { cn } from "@/lib/utils";
 
 // The print view of a lib/review-export.ts document — the browser's "Save as PDF" is
@@ -24,7 +25,13 @@ function Blocks({ blocks }: { blocks: Block[] }) {
                 r.code && "font-mono text-[0.92em]",
               )}
             >
-              {r.text}
+              {r.href && SAFE_HREF.test(r.href) ? (
+                <a href={r.href} className="text-[#1f6f6a] underline underline-offset-2">
+                  {r.text}
+                </a>
+              ) : (
+                r.text
+              )}
             </span>
           ),
         );

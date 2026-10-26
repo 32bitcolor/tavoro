@@ -33,6 +33,7 @@ import { StatusLink } from "@/components/intake/status-link";
 import type { Viewer } from "@/components/intake/triage-queue";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { LocalTime } from "@/components/shared/local-time";
+import { LinkifiedText } from "@/components/shared/linkified-text";
 
 type Member = { id: string; name: string | null; email: string };
 export type DetailRequest = {
@@ -125,7 +126,7 @@ export function RequestDetail({
             {due && request.targetDate && <span className={dueToneClass[due.tone]}>Needed by {fmtDay(request.targetDate)} ({due.label})</span>}
             <span>Submitted <LocalTime iso={request.createdAt} /></span>
           </div>
-          <p className="text-sm whitespace-pre-wrap">{request.description}</p>
+          <p className="text-sm whitespace-pre-wrap break-words"><LinkifiedText text={request.description} /></p>
           {request.targetAudience && (
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">Audience:</span> {request.targetAudience}

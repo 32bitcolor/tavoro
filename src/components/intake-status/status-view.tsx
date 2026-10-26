@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { LocalTime } from "@/components/shared/local-time";
+import { LinkifiedText } from "@/components/shared/linkified-text";
 
 // What the requester sees (lib/intake-status.ts decides what's in `page`).
 
@@ -89,13 +90,13 @@ export function StatusView({ page, token }: { page: StatusPage; token: string })
       {page.status === "rejected" && (
         <div className="rounded-xl border border-border bg-muted/60 p-4 text-sm">
           <p className="font-medium">Not going ahead{page.decidedAt && <> (decided <LocalTime iso={page.decidedAt} format="longDate" />)</>}</p>
-          {page.rejectionReason && <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{page.rejectionReason}</p>}
+          {page.rejectionReason && <p className="mt-1 whitespace-pre-wrap text-muted-foreground"><LinkifiedText text={page.rejectionReason} /></p>}
         </div>
       )}
 
       <section className="rounded-xl border border-border bg-surface p-5">
         <h2 className="text-sm font-semibold">What you asked for</h2>
-        <p className="mt-2 text-sm whitespace-pre-wrap">{page.description}</p>
+        <p className="mt-2 text-sm whitespace-pre-wrap break-words"><LinkifiedText text={page.description} /></p>
         {(page.targetAudience || page.targetDate) && (
           <dl className="mt-3 grid gap-1 text-sm sm:grid-cols-2">
             {page.targetAudience && (
@@ -133,7 +134,7 @@ export function StatusView({ page, token }: { page: StatusPage; token: string })
                 <p className="text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">{m.fromRequester ? "You" : m.author}</span> · <LocalTime iso={m.at} format="dateTime" />
                 </p>
-                <p className="mt-1 whitespace-pre-wrap break-words">{m.body}</p>
+                <p className="mt-1 whitespace-pre-wrap break-words"><LinkifiedText text={m.body} /></p>
               </li>
             ))}
           </ul>

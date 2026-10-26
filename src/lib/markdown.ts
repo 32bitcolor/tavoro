@@ -1,3 +1,4 @@
+import { linkifyDoc } from "@/lib/linkify";
 import { toBlocks, type Block, type Run } from "@/lib/rich-text";
 
 // Markdown ⇄ the TipTap JSON the app stores (docs/MCP.md). AI clients read and write
@@ -17,6 +18,8 @@ function runsToMd(runs: Run[]): string {
         if (r.italic) t = `*${t}*`;
         if (r.strike) t = `~~${t}~~`;
       }
+      // A bare address reads back as itself, not [https://x](https://x).
+      if (r.href && !r.code && (r.href === r.text || r.href === `https://${r.text}`)) return t;
       return r.href ? `[${t}](${r.href})` : t;
     })
     .join("");
@@ -64,7 +67,7 @@ function inline(src: string, marks: Mark[] = []): Node[] {
   for (let m = re.exec(src); m; m = re.exec(src)) {
     push(src.slice(last, m.index), marks);
     if (m[1]) push(m[1].slice(1, -1), [...marks, { type: "code" }]);
-    else if (m[2]) out.push(...inline(m[3], [...marks, { type: "link", attrs: { href: m[4], target: null, rel: null } }]));
+    else if (m[2]) out.push(...inline(m[3], [...marks, { type: "link", attrs: { href: m[4], target: "_blank", rel: "noopener noreferrer nofollow" } }]));
     else if (m[5]) out.push(...inline(m[6] ?? m[7], [...marks, { type: "bold" }]));
     else if (m[8]) out.push(...inline(m[9], [...marks, { type: "strike" }]));
     else if (m[10]) out.push(...inline(m[11] ?? m[12], [...marks, { type: "italic" }]));
@@ -168,5 +171,5 @@ export function markdownToDoc(md: string): { type: "doc"; content: Node[] } {
 /** Markdown → the JSON string the app stores, or null for empty input. */
 export function fromMarkdown(md: string | null | undefined): string | null {
   if (!md || !md.trim()) return null;
-  return JSON.stringify(markdownToDoc(md));
+  return JSON.stringify(linkifyDoc(markdownToDoc(md)));
 }

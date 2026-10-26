@@ -9,6 +9,8 @@ import { createMention, mentionRenderExtension } from "./mention";
 import type { MentionMember } from "./mention-list";
 import { Button } from "@/components/ui/button";
 import { extractText } from "@/lib/mentions";
+import { LinkifiedText } from "@/components/shared/linkified-text";
+import { linkifyDoc } from "@/lib/linkify";
 
 const RENDER_EXTENSIONS = [StarterKit, mentionRenderExtension];
 
@@ -75,7 +77,7 @@ export function CommentBody({ body }: { body: string }) {
     if (!isClient) return undefined;
     try {
       const doc = JSON.parse(body);
-      if (doc && typeof doc === "object" && doc.type === "doc") return generateHTML(doc, RENDER_EXTENSIONS);
+      if (doc && typeof doc === "object" && doc.type === "doc") return generateHTML(linkifyDoc(doc), RENDER_EXTENSIONS);
     } catch {
       /* legacy plain text */
     }
@@ -83,6 +85,6 @@ export function CommentBody({ body }: { body: string }) {
   }, [body, isClient]);
 
   if (html === undefined) return <p className="whitespace-pre-wrap text-sm">{extractText(body)}</p>;
-  if (html === null) return <p className="whitespace-pre-wrap text-sm">{body}</p>;
+  if (html === null) return <p className="whitespace-pre-wrap break-words text-sm"><LinkifiedText text={body} /></p>;
   return <div className="tiptap text-sm" dangerouslySetInnerHTML={{ __html: html }} />;
 }

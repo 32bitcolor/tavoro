@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SectionHeader } from "@/components/shared/page";
 import { cn } from "@/lib/utils";
 import { LocalTime } from "@/components/shared/local-time";
+import { LinkifiedText } from "@/components/shared/linkified-text";
 
 export type IntakeMessageDTO = {
   id: string;
@@ -90,7 +91,7 @@ export function IntakeConversation({
                 {m.kind === "reply" && !m.fromRequester && <span>to the requester</span>}
                 <span>· <LocalTime iso={m.at} format="dateTime" /></span>
               </p>
-              <p className="mt-1 whitespace-pre-wrap break-words">{m.body}</p>
+              <p className="mt-1 whitespace-pre-wrap break-words"><LinkifiedText text={m.body} /></p>
             </li>
           ))}
         </ul>

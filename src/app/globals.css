@@ -449,6 +449,18 @@ body {
   font-weight: 600;
   margin: 0.35rem 0;
 }
+/* Links in rich text and linkified plain text. */
+.tiptap a,
+.text-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.tiptap a:hover,
+.text-link:hover {
+  text-decoration-thickness: 2px;
+}
 .tiptap p.is-editor-empty:first-child::before {
   content: "Add a description…";
   color: color-mix(in srgb, currentColor 40%, transparent);

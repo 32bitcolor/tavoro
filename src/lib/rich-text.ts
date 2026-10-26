@@ -25,6 +25,8 @@ export type Block = {
   runs: Run[];
 };
 
+import { splitLinks } from "@/lib/linkify";
+
 type Node = {
   type?: string;
   text?: string;
@@ -39,15 +41,17 @@ function inline(nodes: Node[] | undefined): Run[] {
     if (n.type === "text" && typeof n.text === "string") {
       const marks = new Set((n.marks ?? []).map((m) => m.type));
       const link = n.marks?.find((m) => m.type === "link")?.attrs?.href;
-      runs.push({
-        href: typeof link === "string" ? link : undefined,
-        text: n.text,
+      const style = {
         bold: marks.has("bold") || undefined,
         italic: marks.has("italic") || undefined,
         underline: marks.has("underline") || undefined,
         strike: marks.has("strike") || undefined,
         code: marks.has("code") || undefined,
-      });
+      };
+      if (typeof link === "string") runs.push({ href: link, text: n.text, ...style });
+      // Bare addresses typed as plain text still become links.
+      else if (style.code) runs.push({ text: n.text, ...style });
+      else for (const p of splitLinks(n.text)) runs.push({ href: p.href, text: p.text, ...style });
     } else if (n.type === "mention") {
       runs.push({ text: `@${String(n.attrs?.label ?? "someone")}`, bold: true });
     } else if (n.type === "hardBreak") {
