@@ -12,7 +12,7 @@ import { newGuestNonce } from "@/lib/review-guest-token";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 11; // bump when the shape changes
+export const BACKUP_FORMAT = 12; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";

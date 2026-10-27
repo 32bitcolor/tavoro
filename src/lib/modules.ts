@@ -96,5 +96,6 @@ export const SECTION_LABELS: Record<string, string> = {
   help: "Help",
   reviews: "Reviews",
   team: "Team",
+  reports: "Reports",
   settings: "Settings",
 };

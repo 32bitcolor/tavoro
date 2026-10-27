@@ -84,4 +84,4 @@ So to lock down a sensitive project, add the right people to a group and tick th
 
 ---
 
-← [Single sign-on & provisioning](sso.md) · [All guides](README.md) · [Account & themes](account-themes.md) →
+← [Reports](reports.md) · [All guides](README.md) · [Account & themes](account-themes.md) →

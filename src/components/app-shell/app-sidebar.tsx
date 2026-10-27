@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, ChevronsUpDown, Gauge, LifeBuoy, LogOut, Settings, Users } from "lucide-react";
+import { ChartColumn, Check, ChevronsUpDown, Gauge, LifeBuoy, LogOut, Settings, Users } from "lucide-react";
 
 import { logout } from "@/app/actions/auth";
 import { switchWorkspace } from "@/app/actions/workspace";
@@ -120,6 +120,16 @@ export function AppSidebar({
                   <Link href="/team">
                     <Gauge />
                     <span>Team</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+            {canViewTeam && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive(pathname, "/reports")} tooltip="Reports">
+                  <Link href="/reports">
+                    <ChartColumn />
+                    <span>Reports</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

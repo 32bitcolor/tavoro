@@ -12,6 +12,7 @@ import {
   Shield,
   Users,
   ClipboardList,
+  ChartColumn,
   Settings,
   LifeBuoy,
 } from "lucide-react";
@@ -326,6 +327,11 @@ export default async function DashboardPage() {
                   <Button asChild variant="outline" size="sm">
                     <Link href="/team">
                       <ClipboardList className="size-4" /> Team workload
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/reports">
+                      <ChartColumn className="size-4" /> Reports
                     </Link>
                   </Button>
                   <Button asChild variant="outline" size="sm">

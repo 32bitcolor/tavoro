@@ -193,6 +193,7 @@ model Card {
   keySeq         Int? // this card's number in its board's key sequence — null if the board has no cardKeyPrefix; display as "{board.cardKeyPrefix}-{keySeq}"
   statusId       String? // canonical status — source of truth for cross-board views; kept in sync with the card's column on move
   sprintId       String? // optional sprint assignment (independent of project); powers the team sprint board
+  completedAt    DateTime? // when it entered a "done"-category status; set by a DB trigger (see migration card_completed_at), never by app code
   position       String
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
@@ -215,6 +216,7 @@ model Card {
   @@index([parentCardId, position])
   @@index([statusId])
   @@index([sprintId])
+  @@index([completedAt])
 }
 
 // A key a card had on a board it has since been moved off (e.g. SEC-12 after moving to
@@ -263,6 +265,7 @@ model Project {
   methodology     Methodology         @default(ADDIE)
   status          String              @default("active") // active / on_hold / completed
   sprintsEnabled  Boolean             @default(false) // opt-in: surface sprint planning for this project
+  completedAt     DateTime? // when status became "completed"; set by a DB trigger, never by app code
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)

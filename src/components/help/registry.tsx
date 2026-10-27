@@ -14,6 +14,7 @@ import {
   Palette,
   Bot,
   KeyRound,
+  ChartColumn,
   type LucideIcon,
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ import MembersAccess from "@/components/help/topics/members-access";
 import AccountThemes from "@/components/help/topics/account-themes";
 import AiMcp from "@/components/help/topics/ai-mcp";
 import Sso from "@/components/help/topics/sso";
+import Reports from "@/components/help/topics/reports";
 
 export type HelpGroup = "Start here" | "Methodology" | "Modules";
 
@@ -149,6 +151,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     icon: KeyRound,
     group: "Modules",
     Body: Sso,
+  },
+  {
+    slug: "reports",
+    title: "Reports",
+    summary: "Admins & managers: intake, delivery and time numbers for the team.",
+    icon: ChartColumn,
+    group: "Modules",
+    Body: Reports,
   },
   {
     slug: "members-access",

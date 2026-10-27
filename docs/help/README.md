@@ -25,5 +25,6 @@ The guides built into Tavoro (the **Help** link in the app's sidebar), as Markdo
 - [Notifications & email](notifications.md) — What sends an email, @-mentions, and admin controls.
 - [AI assistants (MCP)](ai-mcp.md) — Connect Claude, ChatGPT, and other AI assistants to your workspace over MCP.
 - [Single sign-on & provisioning](sso.md) — Sign in through your identity provider, provision members with SCIM, and set roles from groups.
+- [Reports](reports.md) — Admins & managers: intake, delivery and time numbers for the team.
 - [Members, groups & access](members-access.md) — Admin: manage members, groups, and group-based access.
 - [Account & themes](account-themes.md) — Change your password and pick from 17 built-in themes.

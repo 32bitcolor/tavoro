@@ -114,4 +114,4 @@ When a sign-in through the identity provider fails, the sign-in page says why:
 
 ---
 
-← [AI assistants (MCP)](ai-mcp.md) · [All guides](README.md) · [Members, groups & access](members-access.md) →
+← [AI assistants (MCP)](ai-mcp.md) · [All guides](README.md) · [Reports](reports.md) →
