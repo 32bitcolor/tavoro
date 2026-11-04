@@ -6,6 +6,9 @@
 
 Content lives on its own, not inside a project. Projects finish and get deleted; the compliance course they produced still has to be reviewed every year. When content came from a project, the item remembers which one, and it stays in the inventory even if that project is later deleted.
 
+![The Content page: four tiles counting expired, review-overdue, expiring and review-due items, filters, and the inventory list sorted most urgent first](../../public/help-shots/content-inventory.png)
+*Content: what needs attention first.*
+
 ## Add content
 
 1. Open **Content** in the sidebar and choose **New content**. Give it a title and a type (**Course**, **Job aid**, **Video**, **Assessment**, **Document** or **Other**).
@@ -25,6 +28,9 @@ Finished something in a project? On the project page, a deliverable whose status
 **Expires** — The date it must no longer be in use, such as the end of a certification year.
 
 When you’ve checked an item and it’s still right, choose **Mark reviewed**. Tavoro records the date and moves the next review one cadence ahead (12 months if no cadence is set). If it was marked **Needs review**, it goes back to **Published**.
+
+![A content item's page: its lifecycle badge, the Mark reviewed bar, details, dates, labels and the project it came from](../../public/help-shots/content-item.png)
+*A tracked course, with its review due in 12 days.*
 
 ## What the badges mean
 

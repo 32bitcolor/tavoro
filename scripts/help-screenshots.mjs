@@ -33,6 +33,7 @@ const SEED = {
   whiteboard: "Module 1 – learner journey",
   group: "Design Team",
   needsInfoRequest: "Excel for analysts",
+  content: "HIPAA Privacy & Security 2026",
 };
 
 const browser = await chromium.launch();
@@ -305,6 +306,16 @@ if (want("intake-request", "intake-status")) {
 if (want("my-work")) {
   await go("/my-work");
   await shot("my-work");
+}
+
+if (want("content-inventory")) {
+  await go("/content");
+  await shot("content-inventory");
+}
+
+if (want("content-item")) {
+  await openLink("/content", SEED.content);
+  await shot("content-item");
 }
 
 if (want("members")) {

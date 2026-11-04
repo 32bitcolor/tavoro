@@ -1,4 +1,4 @@
-import { Lead, H2, P, UL, LI, Callout, DefList, Def, Steps, UI } from "@/components/help/prose";
+import { Lead, H2, P, UL, LI, Callout, DefList, Def, Steps, UI, Screenshot } from "@/components/help/prose";
 
 export default function Content() {
   return (
@@ -16,6 +16,12 @@ export default function Content() {
         from a project, the item remembers which one, and it stays in the inventory even if that
         project is later deleted.
       </P>
+
+      <Screenshot
+        name="content-inventory"
+        alt="The Content page: four tiles counting expired, review-overdue, expiring and review-due items, filters, and the inventory list sorted most urgent first"
+        caption="Content: what needs attention first."
+      />
 
       <H2>Add content</H2>
       <Steps>
@@ -52,6 +58,12 @@ export default function Content() {
         Tavoro records the date and moves the next review one cadence ahead (12 months if no cadence
         is set). If it was marked <UI>Needs review</UI>, it goes back to <UI>Published</UI>.
       </P>
+
+      <Screenshot
+        name="content-item"
+        alt="A content item's page: its lifecycle badge, the Mark reviewed bar, details, dates, labels and the project it came from"
+        caption="A tracked course, with its review due in 12 days."
+      />
 
       <H2>What the badges mean</H2>
       <P>Each item shows the most urgent thing about it:</P>
