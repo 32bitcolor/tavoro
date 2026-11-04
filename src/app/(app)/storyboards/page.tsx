@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Film } from "lucide-react";
+import { Film, LayoutTemplate } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
@@ -11,6 +11,7 @@ import { CreateButton } from "@/components/app-shell/quick-create";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Storyboards · Tavoro" };
 
@@ -41,7 +42,17 @@ export default async function StoryboardsPage() {
       <PageHeader
         title="Storyboards"
         description="Screen-by-screen course design, ready for SME review."
-        actions={<CreateButton kind="storyboard" />}
+        actions={
+          <>
+            <Button asChild size="sm" variant="ghost">
+              <Link href="/templates?kind=storyboard">
+                <LayoutTemplate className="size-4" aria-hidden="true" />
+                Templates
+              </Link>
+            </Button>
+            <CreateButton kind="storyboard" />
+          </>
+        }
       />
 
       {storyboards.length === 0 ? (

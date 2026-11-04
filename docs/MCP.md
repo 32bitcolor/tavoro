@@ -79,6 +79,7 @@ as a signed-in member. This doc records what was built and why.
 | Planning | `list_intake`, `get_intake`, `get_sprint` | `triage_intake`, `create_sprint`, `update_sprint` |
 | Whiteboards | `list_whiteboards`, `get_whiteboard` (items, positions, colours, frames, and arrows with what they connect) | `create_whiteboard` (optionally linked to a card or storyboard), `add_to_whiteboard` (boxes, ellipses, diamonds, sticky notes, text, frames, arrows; refs connect items in one call; unplaced items are laid out in rows), `add_diagram` (nodes + edges, laid out top-down or left-to-right with dagre, optionally in a titled frame), `update_whiteboard` (rename; move, resize, relabel, recolour, dash or delete items) |
 | Content | `list_content` (by lifecycle: attention, expired, review_overdue, expiring, review_due, …), `get_content` | `create_content`, `update_content` (dates, cadence, owner by email, labels by name), `mark_content_reviewed`, `track_deliverable` |
+| Templates | `list_templates` | `create_project_from_template` (dates shifted to `start_date`), `create_storyboard_from_template` (standalone or for a deliverable), `save_as_template` (new or replace) |
 
 \* destructive
 

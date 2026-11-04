@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { FolderKanban } from "lucide-react";
+import { FolderKanban, LayoutTemplate } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
@@ -11,6 +11,7 @@ import { CreateButton } from "@/components/app-shell/quick-create";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Projects · Tavoro" };
 
@@ -41,7 +42,17 @@ export default async function ProjectsPage() {
       <PageHeader
         title="Projects"
         description="ADDIE/SAM projects — phases, deliverables, SME reviews, and time."
-        actions={<CreateButton kind="project" />}
+        actions={
+          <>
+            <Button asChild size="sm" variant="ghost">
+              <Link href="/templates?kind=project">
+                <LayoutTemplate className="size-4" aria-hidden="true" />
+                Templates
+              </Link>
+            </Button>
+            <CreateButton kind="project" />
+          </>
+        }
       />
 
       {projects.length === 0 ? (

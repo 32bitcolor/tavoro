@@ -77,6 +77,16 @@ for card attachments and should be revisited for video assets.
    deep copy. Same for a project skeleton (phases + deliverables + milestones). Cheaper than a
    `StoryboardTemplate`/`TemplateScreen` mirror that then has to be kept in sync with the real
    models forever.
+
+   **Revised when built (2026-11-04):** templates are a single `Template` row holding a JSON
+   snapshot (`lib/templates.ts`), not flagged `Project`/`Storyboard` rows. A flagged template
+   project would have shown up in every query that reads projects, deliverables or milestones
+   (lists, My Work, the dashboard, reports, reminders, search, MCP), around 60 call sites,
+   each needing an `isTemplate: false` filter that is easy to forget. The snapshot is still not a
+   mirrored model tree: it is parsed with a tolerant zod schema (`v: 1`), names statuses and
+   labels instead of holding ids so it survives a backup restore, and instantiation goes through
+   the normal models. The trade-off is that a template isn't edited in place: you change a
+   project and choose *Save as template → Replace*.
 5. **Tagging reuses `Label`** — now workspace-level as of 2026-08-12 — rather than inventing a
    parallel "tag" vocabulary. One vocabulary the whole workspace shares was the entire point of
    that migration; a second one would undo it. Cost is a join table per taggable entity

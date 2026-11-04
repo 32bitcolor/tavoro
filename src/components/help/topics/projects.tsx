@@ -41,6 +41,13 @@ export default function Projects() {
         for what each is and when to reach for it. ADDIE seeds five phases, SAM seeds three, and
         Custom starts empty for you to build your own.
       </P>
+      <P>
+        Run the same kind of project often? Save one as a template and pick it under <UI>Start from</UI> next time: see{" "}
+        <Link href="/help/templates" className="underline underline-offset-2">
+          Templates
+        </Link>
+        .
+      </P>
 
       <H2>Phases</H2>
       <Screenshot name="project" alt="A project page with its phase, next milestone and alignment summary, the phases list, and the Boards section" caption="A project: phase progress, next milestone, alignment, then phases and boards." />

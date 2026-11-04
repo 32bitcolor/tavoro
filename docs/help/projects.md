@@ -14,6 +14,8 @@ Projects live under **Projects** in the sidebar. When you create one you choose 
 
 Not sure which methodology fits? See [ADDIE vs. SAM](addie-sam.md) for what each is and when to reach for it. ADDIE seeds five phases, SAM seeds three, and Custom starts empty for you to build your own.
 
+Run the same kind of project often? Save one as a template and pick it under **Start from** next time: see [Templates](templates.md).
+
 ## Phases
 
 ![A project page with its phase, next milestone and alignment summary, the phases list, and the Boards section](../../public/help-shots/project.png)

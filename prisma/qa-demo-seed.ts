@@ -295,6 +295,7 @@ const scene = (elements: unknown[]) =>
 async function wipe(workspaceId: string) {
   await prisma.savedView.deleteMany({ where: { workspaceId } });
   await prisma.contentItem.deleteMany({ where: { workspaceId } });
+  await prisma.template.deleteMany({ where: { workspaceId } });
   await prisma.whiteboard.deleteMany({ where: { workspaceId } });
   await prisma.storyboard.deleteMany({ where: { workspaceId } });
   await prisma.intakeRequest.deleteMany({ where: { workspaceId } });

@@ -47,6 +47,8 @@ Tools that can’t sign in through a browser use a **personal token** instead: *
 
 **Content** — List the content inventory by what needs attention, add or update items, mark them reviewed, and track a finished deliverable.
 
+**Templates** — List project and storyboard templates, start a project or storyboard from one, and save a project or storyboard as a new template.
+
 **Review** — Start review rounds, comment on a screen or a PDF page, resolve or won’t-fix threads, record your own decision, and send comments to a board as cards.
 
 Text goes in and out as Markdown. Connected assistants also get ready-made **prompts**: a project status report, summarizing review feedback, drafting storyboard screens, triaging intake, and planning a sprint.

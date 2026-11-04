@@ -46,6 +46,7 @@ import { BoardsSection } from "@/components/project/boards-section";
 import { DeliverablesSection } from "@/components/project/deliverables-section";
 import { MilestonesSection } from "@/components/project/milestones-section";
 import { TimeTracking } from "@/components/project/time-tracking";
+import { SaveAsTemplate } from "@/components/templates/save-as-template";
 
 type Phase = {
   id: string;
@@ -379,7 +380,8 @@ export function ProjectView({
         initial={initialTimeEntries}
       />
 
-      <div className="mt-10 border-t border-border pt-4">
+      <div className="mt-10 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+        <SaveAsTemplate kind="project" sourceId={project.id} sourceName={name} />
         <ConfirmDelete
           title="Delete this project?"
           description="This permanently deletes the project and all its phases, deliverables, milestones, and time entries."

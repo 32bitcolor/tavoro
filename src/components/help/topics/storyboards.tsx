@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI, Screenshot } from "@/components/help/prose";
 
 export default function Storyboards() {
@@ -30,6 +31,15 @@ export default function Storyboards() {
           <UI>Delete storyboard</UI> removes it and its screens.
         </>
       </Steps>
+
+      <P>
+        To start from a storyboard you&rsquo;ve built before, pick it under <UI>Start from</UI> in the same dialog. Any
+        storyboard can be saved as one with <UI>Save as template</UI> at the bottom of its page (see{" "}
+        <Link href="/help/templates" className="underline underline-offset-2">
+          Templates
+        </Link>
+        ).
+      </P>
 
       <Callout tone="note">
         The storyboard <UI>Status</UI> tracks its overall state, and each card in the storyboards grid

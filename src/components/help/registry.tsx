@@ -16,6 +16,7 @@ import {
   Bot,
   KeyRound,
   ChartColumn,
+  LayoutTemplate,
   type LucideIcon,
 } from "lucide-react";
 
@@ -36,6 +37,7 @@ import AiMcp from "@/components/help/topics/ai-mcp";
 import Sso from "@/components/help/topics/sso";
 import Reports from "@/components/help/topics/reports";
 import Content from "@/components/help/topics/content";
+import Templates from "@/components/help/topics/templates";
 
 export type HelpGroup = "Start here" | "Methodology" | "Modules";
 
@@ -121,6 +123,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     icon: Library,
     group: "Modules",
     Body: Content,
+  },
+  {
+    slug: "templates",
+    title: "Templates",
+    summary: "Save a project or storyboard once and start new ones from it.",
+    icon: LayoutTemplate,
+    group: "Modules",
+    Body: Templates,
   },
   {
     slug: "intake",

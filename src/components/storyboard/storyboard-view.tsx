@@ -13,6 +13,7 @@ import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { PageContainer, PageHeader } from "@/components/shared/page";
 import { InlineTitle } from "@/components/shared/inline-title";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { SaveAsTemplate } from "@/components/templates/save-as-template";
 import { ExportMenu } from "@/components/shared/export-menu";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -110,7 +111,8 @@ export function StoryboardView({
 
       <StoryboardWhiteboards storyboardId={storyboard.id} whiteboards={whiteboards} />
 
-      <div className="mt-10 border-t border-border pt-4">
+      <div className="mt-10 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+        <SaveAsTemplate kind="storyboard" sourceId={storyboard.id} sourceName={title} />
         <ConfirmDelete
           title="Delete this storyboard?"
           description="This permanently deletes the storyboard and all of its screens."

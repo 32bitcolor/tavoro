@@ -15,6 +15,7 @@ L&D / enablement teams. Runs on your own server (a Proxmox VM is the documented 
 > - storyboards and Excalidraw whiteboards
 > - a stakeholder intake queue
 > - a content inventory with review and expiry tracking
+> - project and storyboard templates
 > - an objectives → content → assessment alignment spine
 > - email notifications
 > - an **MCP server**, so Claude and other AI assistants can read and work in a workspace
@@ -140,6 +141,9 @@ review that.
   with an owner, where it lives, and review and expiry dates. Items are flagged as review due,
   overdue, expiring or expired; owners get reminders 60/30/7 days ahead; **Mark reviewed** rolls
   the next review forward by the item's cadence. Finished deliverables can be tracked in one click.
+- **Templates**: save a project (phases, deliverables, milestones, storyboards, objectives,
+  assessment items, boards and cards) or a storyboard as a template, then start new ones from it.
+  Dates shift to the new start date; statuses, people and history start fresh.
 - **My Work**: everything waiting on you.
   - reviews awaiting your decision, which you can decide right there
   - reviews you've requested, your assigned cards and subtasks, and upcoming milestones
@@ -274,11 +278,10 @@ Three are live; two are next.
    turnaround times. See [docs/REVIEW-LINKS.md](docs/REVIEW-LINKS.md).
 3. **Objectives → content → assessment alignment spine** ✅: objectives threaded through storyboard
    screens and assessment items, with coverage and gap analysis.
-4. **Content lifecycle and a reusable asset library** (next): a content inventory with review and
-   expiry dates, impact analysis when a source changes, and a searchable library of templates,
-   scenarios and question banks. A first design, grounded in the current schema, is on the
-   [`content-lifecycle-design`](https://github.com/32bitcolor/tavoro/blob/content-lifecycle-design/docs/CONTENT-LIFECYCLE-REUSE.md)
-   branch.
+4. **Content lifecycle and a reusable asset library** (in progress): the content inventory with
+   review and expiry reminders ✅ and project and storyboard templates ✅. Still planned: an asset
+   library, question banks, and impact analysis when a source changes. See
+   [docs/CONTENT-LIFECYCLE-REUSE.md](docs/CONTENT-LIFECYCLE-REUSE.md).
 5. **LMS integration** (next): publish and sync courses to your LMS, and pull completion and
    assessment data back for impact reporting.
 

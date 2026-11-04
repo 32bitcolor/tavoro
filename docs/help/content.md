@@ -77,4 +77,4 @@ When content is no longer in use, choose **Retire**. It leaves the default list 
 
 ---
 
-← [Whiteboards](whiteboards.md) · [All guides](README.md) · [Intake](intake.md) →
+← [Whiteboards](whiteboards.md) · [All guides](README.md) · [Templates](templates.md) →

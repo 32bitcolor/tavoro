@@ -318,6 +318,11 @@ if (want("content-item")) {
   await shot("content-item");
 }
 
+if (want("templates")) {
+  await go("/templates");
+  await shot("templates");
+}
+
 if (want("members")) {
   await go("/settings/members");
   await shot("members");

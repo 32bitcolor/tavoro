@@ -26,6 +26,7 @@ model User {
   /// Sessions signed before this are void (password changed or reset).
   sessionsValidAfter      DateTime?
   ownedContent            ContentItem[]     @relation("ContentOwner")
+  templates               Template[]
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @updatedAt
   memberships             Membership[]
@@ -76,6 +77,7 @@ model Workspace {
   labels               Label[]
   savedViews           SavedView[]
   contentItems         ContentItem[]
+  templates            Template[]
   reviewFiles          ReviewFile[]
   apiTokens            ApiToken[]
   ssoConnection        SsoConnection?
@@ -1045,4 +1047,26 @@ model ContentItemLabel {
 
   @@id([contentItemId, labelId])
   @@index([labelId])
+}
+
+// ── Templates ────────────────────────────────────────────────────────────────
+// A reusable project skeleton or storyboard, saved as a self-contained snapshot
+// (lib/templates.ts). Deliberately NOT a flagged Project/Storyboard: a live template
+// project would leak into every list, report, reminder and search that reads projects.
+// The snapshot names statuses and labels instead of holding ids, so it survives a
+// backup restore and a deleted status.
+model Template {
+  id          String    @id @default(cuid())
+  workspaceId String
+  kind        String // project / storyboard
+  name        String
+  description String?
+  data        Json // TemplateSnapshot (lib/templates.ts), versioned by its `v`
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, kind])
 }

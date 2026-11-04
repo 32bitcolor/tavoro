@@ -8,6 +8,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { getActiveMembership } from "@/lib/dal";
 import { getStoryboardForUser, getScreenForUser, getDeliverableForUser } from "@/lib/authz";
 import { positionBetween, positionForIndex } from "@/lib/ordering";
+import { createStoryboardFromTemplate } from "@/app/actions/templates";
 import { STORYBOARD_STATUSES, SCREEN_TYPES, SCREEN_FIELDS, type ScreenFieldKey } from "@/lib/storyboard";
 
 const Title = z.string().trim().min(1, "Required").max(180);
@@ -21,7 +22,10 @@ function storyboardPath(storyboardId: string) {
 // ── Storyboards ──────────────────────────────────────────────────────────────
 
 export async function createStoryboard(formData: FormData): Promise<void> {
-  const res = await createStoryboardNamed(String(formData.get("title") ?? ""));
+  const templateId = String(formData.get("templateId") ?? "");
+  const res = templateId
+    ? await createStoryboardFromTemplate(templateId, String(formData.get("title") ?? ""))
+    : await createStoryboardNamed(String(formData.get("title") ?? ""));
   if (res.storyboard) redirect(storyboardPath(res.storyboard.id));
   if (res.error === "Not signed in.") redirect("/login");
 }

@@ -12,6 +12,8 @@ Storyboards live under **Storyboards** in the sidebar. You can create one on its
 2. Open it, then set the **Status** — **Draft**, **In review**, or **Approved** — and add a description to frame the course.
 3. Build it out screen by screen (below). Rename the storyboard anytime by clicking its title; **Delete storyboard** removes it and its screens.
 
+To start from a storyboard you’ve built before, pick it under **Start from** in the same dialog. Any storyboard can be saved as one with **Save as template** at the bottom of its page (see [Templates](templates.md)).
+
 > **Note.** The storyboard **Status** tracks its overall state, and each card in the storyboards grid shows its status and screen count — a quick read on what’s still in draft versus ready for a SME.
 
 ## Screens

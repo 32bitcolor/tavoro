@@ -8,6 +8,7 @@ import { getActiveMembership } from "@/lib/dal";
 import { getProjectForUser, getPhaseForUser } from "@/lib/authz";
 import { positionBetween, positionForIndex } from "@/lib/ordering";
 import { createProjectForWorkspace } from "@/lib/projects";
+import { createProjectFromTemplate } from "@/app/actions/templates";
 import { PHASE_STATUSES, PROJECT_STATUSES } from "@/lib/methodology";
 
 const Name = z.string().trim().min(1, "Required").max(140);
@@ -25,6 +26,12 @@ export async function createProject(formData: FormData): Promise<void> {
 
   const name = Name.safeParse(formData.get("name"));
   if (!name.success) return;
+  const templateId = String(formData.get("templateId") ?? "");
+  if (templateId) {
+    const res = await createProjectFromTemplate(templateId, name.data, String(formData.get("startDate") ?? "") || null);
+    if ("id" in res && res.id) redirect(projectPath(res.id));
+    return;
+  }
   const methodology = Methodology.catch("ADDIE").parse(formData.get("methodology"));
 
   const project = await createProjectForWorkspace(membership.workspaceId, name.data, methodology);
