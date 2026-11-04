@@ -59,7 +59,7 @@ as a signed-in member. This doc records what was built and why.
    and `fetch(id)` returns `{ id, title, text, url, metadata }` with the item as a full Markdown
    document (`lib/mcp/documents.ts`). That's the shape ChatGPT's deep research and company knowledge
    require, and it suits any assistant that wants to read rather than navigate. Ids are
-   `card:…`, `project:…`, `deliverable:…`, `board:…`, `storyboard:…`, `review:…`, `intake:…`, `whiteboard:…`.
+   `card:…`, `project:…`, `deliverable:…`, `board:…`, `storyboard:…`, `review:…`, `intake:…`, `whiteboard:…`, `content:…`.
 9. **People stay in control.** Settings → **AI & MCP** shows each connection with last use, and
    revokes it at once. Admins see and can revoke everyone's in their workspace. Tokens can only be
    created from the browser, never through MCP. Login now honours `?next=` (same-site paths only),
@@ -78,6 +78,7 @@ as a signed-in member. This doc records what was built and why.
 | Reviews | `list_reviews`, `get_review_round`, `get_deliverable_feedback` | `add_review_comment` (on a screen and field with a quote, a PDF page, or the whole round; or a reply), `set_review_comment_status`, `decide_review`, `start_review_round`, `send_comments_to_board` |
 | Planning | `list_intake`, `get_intake`, `get_sprint` | `triage_intake`, `create_sprint`, `update_sprint` |
 | Whiteboards | `list_whiteboards`, `get_whiteboard` (items, positions, colours, frames, and arrows with what they connect) | `create_whiteboard` (optionally linked to a card or storyboard), `add_to_whiteboard` (boxes, ellipses, diamonds, sticky notes, text, frames, arrows; refs connect items in one call; unplaced items are laid out in rows), `add_diagram` (nodes + edges, laid out top-down or left-to-right with dagre, optionally in a titled frame), `update_whiteboard` (rename; move, resize, relabel, recolour, dash or delete items) |
+| Content | `list_content` (by lifecycle: attention, expired, review_overdue, expiring, review_due, …), `get_content` | `create_content`, `update_content` (dates, cadence, owner by email, labels by name), `mark_content_reviewed`, `track_deliverable` |
 
 \* destructive
 

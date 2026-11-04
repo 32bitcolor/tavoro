@@ -4,7 +4,7 @@ import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { sendMail } from "../src/lib/mailer";
 import { enqueueEmail } from "../src/lib/queues";
-import { runDueReminders } from "../src/lib/reminders";
+import { runDueReminders, runLifecycleReminders } from "../src/lib/reminders";
 import { sweepReviewFiles } from "../src/lib/review-file-sweep";
 import { sweepOAuth } from "../src/lib/oauth-sweep";
 import { S3Client } from "@aws-sdk/client-s3";
@@ -70,8 +70,9 @@ const remindersWorker = new Worker(
   "reminders",
   async () => {
     const n = await runDueReminders(prisma, enqueueEmail);
-    console.log(`[worker] reminders: enqueued ${n} email(s)`);
-    return { ok: true, enqueued: n };
+    const c = await runLifecycleReminders(prisma, enqueueEmail);
+    console.log(`[worker] reminders: enqueued ${n} due-date + ${c} content lifecycle email(s)`);
+    return { ok: true, enqueued: n + c };
   },
   { connection },
 );

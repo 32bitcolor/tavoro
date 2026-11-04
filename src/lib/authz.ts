@@ -357,3 +357,16 @@ export async function getWhiteboardForUser(whiteboardId: string) {
     select: { id: true, workspaceId: true },
   });
 }
+
+// ── Content inventory ────────────────────────────────────────────────────────
+// A shared library: every member of the workspace sees every item (no group grants,
+// docs/CONTENT-LIFECYCLE-REUSE.md "Access control").
+
+export async function getContentItemForUser(contentItemId: string) {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  return prisma.contentItem.findFirst({
+    where: { id: contentItemId, workspace: ownedByUser(ctx) },
+    select: { id: true, workspaceId: true, reviewDate: true, expiryDate: true, reviewIntervalMonths: true, status: true },
+  });
+}

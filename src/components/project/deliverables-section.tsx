@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { X, Link2, Film } from "lucide-react";
+import { X, Link2, Film, Library } from "lucide-react";
 import { SectionHeader } from "@/components/shared/page";
 import { InlineTitle } from "@/components/shared/inline-title";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
@@ -21,6 +21,7 @@ import {
   listLinkableCards,
 } from "@/app/actions/deliverables";
 import { createStoryboardForDeliverable } from "@/app/actions/storyboards";
+import { trackDeliverable } from "@/app/actions/content";
 import {
   DELIVERABLE_TYPES,
   DELIVERABLE_TYPE_LABEL,
@@ -42,6 +43,8 @@ type Deliverable = {
   phaseId: string | null;
   card: CardLink | null;
   storyboard: StoryboardLink | null;
+  /** Set once the deliverable is tracked in the content inventory. */
+  contentItemId: string | null;
   rounds: RoundSummary[];
 };
 type PhaseRef = { id: string; name: string };
@@ -77,7 +80,7 @@ export function DeliverablesSection({
     const res = await createDeliverable(projectId, name, type);
     if ("deliverable" in res && res.deliverable) {
       const d = res.deliverable;
-      setItems((prev) => [...prev, { id: d.id, name: d.name, type: d.type, status: d.status, phaseId: d.phaseId, card: null, storyboard: null, rounds: [] }]);
+      setItems((prev) => [...prev, { id: d.id, name: d.name, type: d.type, status: d.status, phaseId: d.phaseId, card: null, storyboard: null, contentItemId: null, rounds: [] }]);
     }
   }
 
@@ -95,6 +98,15 @@ export function DeliverablesSection({
     if ("storyboard" in res && res.storyboard) {
       patch(d.id, { storyboard: res.storyboard });
       router.push(`/storyboards/${res.storyboard.id}`);
+    }
+  }
+
+  // Shipped: put it in the content inventory, where its review and expiry dates live.
+  async function track(d: Deliverable) {
+    const res = await trackDeliverable(d.id);
+    if ("id" in res && res.id) {
+      patch(d.id, { contentItemId: res.id });
+      router.push(`/content/${res.id}`);
     }
   }
 
@@ -203,6 +215,20 @@ export function DeliverablesSection({
                 <Button variant="secondary" size="xs" onClick={() => openStoryboard(d)} title={d.storyboard ? "Open the linked storyboard" : "Create a storyboard for this deliverable"}>
                   <Film className="size-3" /> {d.storyboard ? "Open storyboard" : "Create storyboard"}
                 </Button>
+              )}
+
+              {d.contentItemId ? (
+                <Button variant="secondary" size="xs" asChild>
+                  <Link href={`/content/${d.contentItemId}`} title="Open its record in the content inventory">
+                    <Library className="size-3" /> In Content
+                  </Link>
+                </Button>
+              ) : (
+                d.status === "complete" && (
+                  <Button variant="secondary" size="xs" onClick={() => track(d)} title="Track it in the content inventory, with review and expiry dates">
+                    <Library className="size-3" /> Track in Content
+                  </Button>
+                )
               )}
             </div>
 

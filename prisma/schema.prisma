@@ -25,6 +25,7 @@ model User {
   passwordHash            String
   /// Sessions signed before this are void (password changed or reset).
   sessionsValidAfter      DateTime?
+  ownedContent            ContentItem[]     @relation("ContentOwner")
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @updatedAt
   memberships             Membership[]
@@ -74,6 +75,7 @@ model Workspace {
   sprints              Sprint[]
   labels               Label[]
   savedViews           SavedView[]
+  contentItems         ContentItem[]
   reviewFiles          ReviewFile[]
   apiTokens            ApiToken[]
   ssoConnection        SsoConnection?
@@ -277,6 +279,7 @@ model Project {
   objectives      LearningObjective[]
   assessmentItems AssessmentItem[]
   intakeRequest   IntakeRequest?
+  contentItems    ContentItem[]
   boards          Board[]
 
   @@index([workspaceId])
@@ -314,6 +317,7 @@ model Deliverable {
   reviewFiles  ReviewFile[]
   timeEntries  TimeEntry[]
   storyboard   Storyboard?
+  contentItems ContentItem[]
 
   @@index([projectId, position])
 }
@@ -652,12 +656,13 @@ model Comment {
 // per workspace, case-insensitively (enforced by a lower(name) index, see the
 // workspace_level_labels migration; Prisma can't express a functional unique index).
 model Label {
-  id          String      @id @default(cuid())
-  workspaceId String
-  name        String
-  color       String // hex like "#ef4444"
-  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  cards       CardLabel[]
+  id           String             @id @default(cuid())
+  workspaceId  String
+  name         String
+  color        String // hex like "#ef4444"
+  workspace    Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  cards        CardLabel[]
+  contentItems ContentItemLabel[]
 
   @@index([workspaceId, name])
 }
@@ -990,4 +995,54 @@ model ScimLog {
   connection   SsoConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@index([connectionId, createdAt])
+}
+
+// Content in the world — a published course, job aid, video — tracked after it ships
+// (docs/CONTENT-LIFECYCLE-REUSE.md, phases 0–1). Workspace-scoped: the project that
+// produced it is provenance only (SetNull), so deleting a project never deletes
+// inventory.
+model ContentItem {
+  id                   String    @id @default(cuid())
+  workspaceId          String
+  title                String
+  description          String?
+  contentType          String    @default("course") // course / job_aid / video / assessment / document / other
+  status               String    @default("published") // draft / published / needs_review / retired
+  ownerId              String? // person of record after launch
+  externalUrl          String? // where it really lives (LMS, Rise link, Drive)
+  publishedAt          DateTime?
+  reviewDate           DateTime? // next scheduled review
+  reviewIntervalMonths Int? // "Mark reviewed" moves reviewDate this far ahead
+  lastReviewedAt       DateTime?
+  expiryDate           DateTime? // must not be in use after
+  // Staged reminders (lib/reminders.ts): the last stage ("30", "7", …) already sent for
+  // each date, so a daily scan sends each stage once. Cleared when the date changes.
+  reviewRemindedStage  String?
+  expiryRemindedStage  String?
+  deliverableId        String?
+  projectId            String?
+  createdById          String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner       User?              @relation("ContentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  deliverable Deliverable?       @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
+  project     Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  labels      ContentItemLabel[]
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, reviewDate])
+  @@index([workspaceId, expiryDate])
+  @@index([deliverableId])
+}
+
+model ContentItemLabel {
+  contentItemId String
+  labelId       String
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  label         Label       @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([contentItemId, labelId])
+  @@index([labelId])
 }

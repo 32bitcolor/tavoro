@@ -56,4 +56,4 @@ The **Whiteboards** page lists every whiteboard in the workspace, most recently 
 
 ---
 
-← [Storyboards](storyboards.md) · [All guides](README.md) · [Intake](intake.md) →
+← [Storyboards](storyboards.md) · [All guides](README.md) · [Content inventory](content.md) →

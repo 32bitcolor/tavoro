@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ClipboardCheck, Columns3, Flag, Inbox, ListChecks, Send, Shapes } from "lucide-react";
+import { ClipboardCheck, Columns3, Flag, Inbox, Library, ListChecks, Send, Shapes } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { requireUser, getActiveMembership } from "@/lib/dal";
@@ -8,6 +8,8 @@ import { projectVisibilityWhere, boardVisibilityWhere, whiteboardVisibilityWhere
 import { dueMeta, dueToneClass } from "@/lib/due";
 import { REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/methodology";
 import { INTAKE_STATUS_LABEL, OPEN_STATUSES, intakeStatusTone, ticketLabel, type IntakeStatus } from "@/lib/intake";
+import { attentionReason, myContentAttention } from "@/lib/content-inventory";
+import { LIFECYCLE_LABEL, LIFECYCLE_TONE } from "@/lib/content";
 import { SectionHeader } from "@/components/shared/page";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -34,7 +36,7 @@ export default async function MyWorkPage() {
     whiteboardVisibilityWhere(),
   ]);
 
-  const [toReview, requested, cards, subtasks, milestones, myWhiteboards, myRequests] = await Promise.all([
+  const [toReview, requested, cards, subtasks, milestones, myWhiteboards, myRequests, myContent] = await Promise.all([
     prisma.reviewCycle.findMany({
       where: {
         reviewerId: me.id,
@@ -100,6 +102,8 @@ export default async function MyWorkPage() {
       orderBy: [{ targetDate: "asc" }, { createdAt: "asc" }],
       select: { id: true, number: true, title: true, status: true, targetDate: true, requesterName: true },
     }),
+    // Content I own that's due for review or expiring (lib/content-inventory.ts).
+    myContentAttention(me.id, wsId),
   ]);
 
   const inbox: InboxReview[] = toReview.map((r) => ({
@@ -117,7 +121,7 @@ export default async function MyWorkPage() {
   }));
 
   const totalItems =
-    inbox.length + requested.length + myRequests.length + cards.length + subtasks.length + milestones.length + myWhiteboards.length;
+    inbox.length + requested.length + myRequests.length + myContent.length + cards.length + subtasks.length + milestones.length + myWhiteboards.length;
 
   if (totalItems === 0) {
     return (
@@ -195,6 +199,25 @@ export default async function MyWorkPage() {
                 </Link>
               );
             })}
+          </Card>
+        </section>
+      )}
+
+      {/* Content I own that needs a review or a replacement — only shown when there is some */}
+      {myContent.length > 0 && (
+        <section>
+          <SectionHeader>My content to review · {myContent.length}</SectionHeader>
+          <Card className="divide-y divide-border p-0">
+            {myContent.map((c) => (
+              <Link key={c.id} href={`/content/${c.id}`} className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-muted/50">
+                <Library className="size-4 shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium">{c.title}</div>
+                  <div className="truncate text-sm text-muted-foreground">{attentionReason(c)}</div>
+                </div>
+                <StatusBadge tone={LIFECYCLE_TONE[c.lifecycle]}>{LIFECYCLE_LABEL[c.lifecycle]}</StatusBadge>
+              </Link>
+            ))}
           </Card>
         </section>
       )}

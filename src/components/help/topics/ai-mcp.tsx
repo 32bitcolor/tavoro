@@ -87,6 +87,10 @@ export default function AiMcp() {
           objectives. Read whiteboards and draw on them: labelled shapes, sticky notes, frames and arrows, or a whole flowchart laid out
           automatically (a learner journey, a branching scenario, a course map).
         </Def>
+        <Def term="Content">
+          List the content inventory by what needs attention, add or update items, mark them reviewed, and track a
+          finished deliverable.
+        </Def>
         <Def term="Review">
           Start review rounds, comment on a screen or a PDF page, resolve or won&rsquo;t-fix threads, record your own decision, and send
           comments to a board as cards.

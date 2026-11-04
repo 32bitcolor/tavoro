@@ -43,6 +43,11 @@ export const NOTIFICATION_TYPES = [
     label: "Due-date reminders",
     description: "A nudge the day before a card or milestone is due.",
   },
+  {
+    key: "lifecycle",
+    label: "Content reviews & expiry",
+    description: "Ahead of a tracked item's review date (30 and 7 days) and expiry date (60, 30 and 7 days), to its owner, or admins and managers when it has none.",
+  },
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]["key"];

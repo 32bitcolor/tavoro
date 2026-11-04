@@ -56,6 +56,11 @@ export default function Notifications() {
           A nudge the day before something is due: cards (to their assignees), milestones (to admins),
           and reviews not yet decided (to the reviewer, guests included).
         </Def>
+        <Def term="Content reviews & expiry">
+          Ahead of a tracked content item&rsquo;s review date (30 and 7 days before, and on the day) and
+          expiry date (60, 30 and 7 days before, and on the day), to its owner, or to admins and managers
+          when it has none. See the Content inventory help topic.
+        </Def>
       </DefList>
 
       <P>

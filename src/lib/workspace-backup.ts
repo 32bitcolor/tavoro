@@ -12,7 +12,7 @@ import { newGuestNonce } from "@/lib/review-guest-token";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 12; // bump when the shape changes
+export const BACKUP_FORMAT = 13; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -148,10 +148,18 @@ const SPECS: Spec[] = [
   },
   { key: "timeEntry", model: "timeEntry", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", deliverableId: "deliverable", userId: USER } },
   { key: "comment", model: "comment", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", authorId: USER } },
+  // The content inventory (after Project and Deliverable, whose ids it keeps as provenance).
+  {
+    key: "contentItem",
+    model: "contentItem",
+    where: (w) => ({ workspaceId: w }),
+    fks: { workspaceId: WS, ownerId: USER, deliverableId: "deliverable", projectId: "project", createdById: USER },
+  },
   // junctions
   // Keys cards had on boards they were moved off (see moveCardToBoard).
   { key: null, model: "cardKeyAlias", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board", cardId: "card" } },
   { key: null, model: "cardLabel", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", labelId: "label" } },
+  { key: null, model: "contentItemLabel", where: (w) => ({ contentItem: { workspaceId: w } }), fks: { contentItemId: "contentItem", labelId: "label" } },
   { key: null, model: "cardAssignee", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", userId: USER } },
   { key: null, model: "cardSme", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", userId: USER } },
   { key: null, model: "boardGroup", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board", groupId: "group" } },

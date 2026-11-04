@@ -1,5 +1,6 @@
 import type { PrismaClient } from "../generated/prisma/client";
-import { cardDueReminder, milestoneDueReminder, reviewDueReminder, withLink } from "./email-templates";
+import { cardDueReminder, contentLifecycleReminder, milestoneDueReminder, reviewDueReminder, withLink } from "./email-templates";
+import { daysUntil, EXPIRY_STAGES, formatDay, relativeDays, REVIEW_STAGES, stageFor } from "./content";
 import { appUrl } from "./app-url";
 import { notificationEnabled } from "./notifications";
 import { guestLinkPath } from "./review-guest-token";
@@ -137,5 +138,88 @@ export async function runDueReminders(prisma: PrismaClient, enqueue: Enqueue): P
     sent++;
   }
 
+  return sent;
+}
+
+/**
+ * Content review and expiry reminders (docs/CONTENT-LIFECYCLE-REUSE.md, "The
+ * reminder-window wrinkle"). Unlike the due-tomorrow rule above, these give lead time —
+ * reviews at 30 and 7 days and on the day, expiry at 60, 30 and 7 days and on the day —
+ * so a one-day window can't make them exactly-once. Each item instead records the last
+ * stage sent per date; the daily scan sends a stage only once, and an edited date
+ * clears it (actions/content.ts). Drafts and retired items are skipped; an overdue item
+ * shows on the inventory and isn't mailed every day.
+ */
+export async function runLifecycleReminders(prisma: PrismaClient, enqueue: Enqueue): Promise<number> {
+  const now = new Date();
+  // Anything whose next stage could fire today: the furthest stage is 60 days out.
+  const horizon = new Date(now.getTime() + 61 * 86_400_000);
+  const items = await prisma.contentItem.findMany({
+    where: {
+      status: { in: ["published", "needs_review"] },
+      OR: [{ reviewDate: { lte: horizon } }, { expiryDate: { lte: horizon } }],
+    },
+    select: {
+      id: true,
+      title: true,
+      workspaceId: true,
+      reviewDate: true,
+      expiryDate: true,
+      reviewRemindedStage: true,
+      expiryRemindedStage: true,
+      owner: { select: { name: true, email: true, memberships: { select: { workspaceId: true, suspendedAt: true } } } },
+      workspace: { select: { notificationSettings: true } },
+    },
+  });
+
+  let sent = 0;
+  const managersCache = new Map<string, { name: string | null; email: string }[]>();
+  async function managers(workspaceId: string) {
+    if (!managersCache.has(workspaceId)) {
+      managersCache.set(
+        workspaceId,
+        await prisma.user.findMany({
+          where: { memberships: { some: { workspaceId, role: { in: ["ADMIN", "MANAGER"] }, suspendedAt: null } } },
+          select: { name: true, email: true },
+        }),
+      );
+    }
+    return managersCache.get(workspaceId)!;
+  }
+
+  for (const it of items) {
+    if (!notificationEnabled(it.workspace.notificationSettings, "lifecycle")) continue;
+    const kinds = [
+      { kind: "review" as const, date: it.reviewDate, last: it.reviewRemindedStage, stages: REVIEW_STAGES, field: "reviewRemindedStage" as const },
+      { kind: "expiry" as const, date: it.expiryDate, last: it.expiryRemindedStage, stages: EXPIRY_STAGES, field: "expiryRemindedStage" as const },
+    ];
+    for (const k of kinds) {
+      if (!k.date) continue;
+      const days = daysUntil(k.date, now);
+      const stage = stageFor(days, k.stages);
+      if (!stage || stage === k.last) continue;
+
+      // The owner, while they're still an active member here; otherwise whoever runs the workspace.
+      const ownerActive = it.owner?.memberships.some((m) => m.workspaceId === it.workspaceId && !m.suspendedAt);
+      const to = ownerActive && it.owner ? [it.owner] : await managers(it.workspaceId);
+      for (const r of to) {
+        await enqueue({
+          to: r.email,
+          ...withLink(
+            contentLifecycleReminder({
+              recipientName: r.name ?? r.email,
+              title: it.title,
+              kind: k.kind,
+              when: relativeDays(days),
+              date: formatDay(k.date),
+            }),
+            appUrl(`/content/${it.id}`),
+          ),
+        });
+        sent++;
+      }
+      await prisma.contentItem.update({ where: { id: it.id }, data: { [k.field]: stage } });
+    }
+  }
   return sent;
 }

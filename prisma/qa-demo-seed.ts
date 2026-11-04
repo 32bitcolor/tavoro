@@ -294,6 +294,7 @@ const scene = (elements: unknown[]) =>
 // ── wipe ──────────────────────────────────────────────────────────────────────
 async function wipe(workspaceId: string) {
   await prisma.savedView.deleteMany({ where: { workspaceId } });
+  await prisma.contentItem.deleteMany({ where: { workspaceId } });
   await prisma.whiteboard.deleteMany({ where: { workspaceId } });
   await prisma.storyboard.deleteMany({ where: { workspaceId } });
   await prisma.intakeRequest.deleteMany({ where: { workspaceId } });
@@ -1544,6 +1545,45 @@ async function main() {
       createdAt: day(-4, 16),
     },
   });
+
+  // Content inventory (lifecycle: one of each state, so the tiles and filters have
+  // something to show). Calendar dates, so UTC midnight. --------------------------
+  const cday = (n: number) => day(n, 0);
+  const CONTENT: {
+    title: string; type: string; owner?: string; status?: string; published?: number; review?: number; every?: number;
+    expiry?: number; url?: string; labels?: string[]; deliverableId?: string; projectId?: string; notes?: string;
+  }[] = [
+    { title: "HIPAA Privacy & Security 2026", type: "course", owner: "priya", published: -59, review: 12, every: 12, expiry: 300, url: "https://lms.example.com/courses/hipaa-2026", labels: ["Compliance"], deliverableId: hipDel.sb, projectId: hipaa.project.id, notes: "Annual required training. Regulation text checked against HHS guidance at each review." },
+    { title: "HIPAA final assessment", type: "assessment", owner: "priya", published: -59, review: -5, every: 12, labels: ["Compliance"], deliverableId: hipDel.quiz, projectId: hipaa.project.id },
+    { title: "Fire safety refresher (video)", type: "video", owner: "jordan", published: -340, expiry: 20, url: "https://video.example.com/fire-safety", labels: ["Video", "Compliance"], notes: "Narrator has left the company; a re-record is needed before expiry." },
+    { title: "Code of Conduct 2025", type: "course", owner: "maya", published: -400, expiry: -10, labels: ["Compliance", "High priority"], notes: "Superseded by the 2026 policy; replacement in planning." },
+    { title: "New manager essentials – job aid", type: "job_aid", owner: "hannah", published: -60, review: 120, every: 6, url: "https://docs.example.com/new-manager-essentials" },
+    { title: "Reporting a phishing email – quick guide", type: "job_aid", owner: "sam", status: "needs_review", published: -200, review: 165, every: 12, notes: "The Report button moved in the new mail client; screenshots are out of date." },
+    { title: "Onboarding welcome video", type: "video", published: -170, review: 6, every: 6, labels: ["Video"] },
+    { title: "Accessibility checklist for course builds", type: "document", owner: "diego", published: -30, labels: ["Accessibility"] },
+    { title: "Lotus Notes basics (legacy)", type: "course", owner: "tom", status: "retired", published: -2200, notes: "Retired when the company moved off Notes." },
+  ];
+  for (const c of CONTENT) {
+    await prisma.contentItem.create({
+      data: {
+        workspaceId: ws.id,
+        title: c.title,
+        contentType: c.type,
+        status: c.status ?? "published",
+        ownerId: c.owner ? users[c.owner].id : null,
+        externalUrl: c.url ?? null,
+        description: c.notes ?? null,
+        publishedAt: c.published != null ? cday(c.published) : null,
+        reviewDate: c.review != null ? cday(c.review) : null,
+        reviewIntervalMonths: c.every ?? null,
+        expiryDate: c.expiry != null ? cday(c.expiry) : null,
+        deliverableId: c.deliverableId ?? null,
+        projectId: c.projectId ?? null,
+        createdById: admin.id,
+        labels: c.labels ? { create: c.labels.map((l) => ({ labelId: labelIds[l] })) } : undefined,
+      },
+    });
+  }
 
   // Saved views (personal to admin) ------------------------------------------------
   const secBoard = await prisma.board.findFirstOrThrow({ where: { workspaceId: ws.id, cardKeyPrefix: "SEC" } });

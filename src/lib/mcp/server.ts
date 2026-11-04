@@ -12,6 +12,7 @@ import { loadRound, registerReviewTools } from "@/lib/mcp/tools/reviews";
 import { registerPlanningTools } from "@/lib/mcp/tools/planning";
 import { loadWhiteboard, registerWhiteboardTools } from "@/lib/mcp/tools/whiteboards";
 import { registerDocumentTools } from "@/lib/mcp/documents";
+import { registerContentTools } from "@/lib/mcp/tools/content";
 
 // Tavoro's MCP server (docs/MCP.md): tools for reading and changing the workspace,
 // resources for reading one thing by URI, and prompts for common ID workflows. Built
@@ -228,6 +229,7 @@ export function buildMcpServer(): McpServer {
   registerReviewTools(server);
   registerPlanningTools(server);
   registerWhiteboardTools(server);
+  registerContentTools(server);
   registerResources(server);
   registerPrompts(server);
   return server;

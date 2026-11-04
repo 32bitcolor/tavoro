@@ -110,6 +110,7 @@ type DeliverableInit = {
   phaseId: string | null;
   card: { id: string; title: string; boardId: string; boardName: string } | null;
   storyboard: { id: string; title: string } | null;
+  contentItemId: string | null;
   rounds: RoundSummary[];
 };
 type MilestoneInit = { id: string; name: string; dueDate: string | null; completedAt: string | null };

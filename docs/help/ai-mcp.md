@@ -45,6 +45,8 @@ Tools that can’t sign in through a browser use a **personal token** instead: *
 
 **Design** — Create storyboards, add and edit screens (on-screen text, narration, visuals, interaction, developer notes) and link them to objectives. Read whiteboards and draw on them: labelled shapes, sticky notes, frames and arrows, or a whole flowchart laid out automatically (a learner journey, a branching scenario, a course map).
 
+**Content** — List the content inventory by what needs attention, add or update items, mark them reviewed, and track a finished deliverable.
+
 **Review** — Start review rounds, comment on a screen or a PDF page, resolve or won’t-fix threads, record your own decision, and send comments to a board as cards.
 
 Text goes in and out as Markdown. Connected assistants also get ready-made **prompts**: a project status report, summarizing review feedback, drafting storyboard screens, triaging intake, and planning a sprint.

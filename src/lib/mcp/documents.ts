@@ -18,12 +18,13 @@ import { loadStoryboard } from "@/lib/mcp/tools/storyboards";
 import { loadWhiteboard } from "@/lib/mcp/tools/whiteboards";
 import { loadRound } from "@/lib/mcp/tools/reviews";
 import { loadIntake } from "@/lib/mcp/tools/planning";
+import { loadContent } from "@/lib/mcp/tools/content";
 
 // The search/fetch pair (docs/MCP.md). This is the shape ChatGPT's deep research and
 // company knowledge expect — search(query) → { results: [{ id, title, url }] } and
 // fetch(id) → { id, title, text, url, metadata } — and it suits any assistant that
 // wants whole documents. Ids are "<type>:<id>" (card:…, project:…, board:…,
-// storyboard:…, deliverable:…, review:…, intake:…, whiteboard:…). The detailed get_* tools remain.
+// storyboard:…, deliverable:…, review:…, intake:…, whiteboard:…, content:…). The detailed get_* tools remain.
 
 type Doc = { id: string; title: string; text: string; url: string; metadata: Record<string, string> };
 
@@ -254,6 +255,27 @@ async function whiteboardDoc(id: string): Promise<Doc> {
   };
 }
 
+async function contentDoc(id: string): Promise<Doc> {
+  const c = await loadContent(id);
+  return {
+    id: `content:${c.id}`,
+    title: `Content · ${c.title}`,
+    url: c.url,
+    metadata: { type: "content", lifecycle: c.lifecycle, status: c.status },
+    text: lines(
+      `# ${c.title}`,
+      "",
+      `${c.type} · ${c.status} · ${c.lifecycle}${c.why ? ` (${c.why})` : ""}`,
+      `Owner: ${c.owner ? c.owner.name ?? c.owner.email : "—"}`,
+      `Published: ${c.publishedAt ?? "—"} · Next review: ${c.reviewDate ?? "—"}${c.reviewEveryMonths ? ` (every ${c.reviewEveryMonths} months)` : ""} · Expires: ${c.expiryDate ?? "—"}`,
+      c.externalUrl ? `Lives at: ${c.externalUrl}` : null,
+      c.labels.length ? `Labels: ${c.labels.join(", ")}` : null,
+      c.project ? `From project: ${c.project.name} (project:${c.project.id})` : null,
+      c.description ? `\n${c.description}` : null,
+    ),
+  };
+}
+
 const FETCHERS: Record<string, (id: string) => Promise<Doc>> = {
   card: cardDoc,
   project: projectDoc,
@@ -263,6 +285,7 @@ const FETCHERS: Record<string, (id: string) => Promise<Doc>> = {
   deliverable: deliverableDoc,
   intake: intakeDoc,
   whiteboard: whiteboardDoc,
+  content: contentDoc,
 };
 
 export function registerDocumentTools(server: McpServer) {
@@ -272,7 +295,7 @@ export function registerDocumentTools(server: McpServer) {
     {
       title: "Search the workspace",
       description:
-        "Search cards (by title, or a key such as SEC-12), projects, deliverables, boards, storyboards, whiteboards, review rounds and intake requests by name. Returns ids to pass to fetch, which returns the full document.",
+        "Search cards (by title, or a key such as SEC-12), projects, deliverables, boards, storyboards, whiteboards, review rounds, intake requests and tracked content by name. Returns ids to pass to fetch, which returns the full document.",
       input: { query: z.string().min(1).describe("Words to look for, or a card key such as SEC-12") },
       output: { results: z.array(z.object({ id: z.string(), title: z.string(), url: z.string() })) },
       kind: "read",
@@ -284,7 +307,7 @@ export function registerDocumentTools(server: McpServer) {
       const [boardVis, projectVis, storyboardVis, whiteboardVis] = await Promise.all([boardVisibilityWhere(), projectVisibilityWhere(), storyboardVisibilityWhere(), whiteboardVisibilityWhere()]);
       const onBoard = { board: { workspaceId: wsId, ...boardVis } };
       const key = /^([A-Za-z][A-Za-z0-9]{0,9})-(\d+)$/.exec(q);
-      const [keyHit, cards, projects, deliverables, boards, storyboards, rounds, intake, whiteboards] = await Promise.all([
+      const [keyHit, cards, projects, deliverables, boards, storyboards, rounds, intake, whiteboards, content] = await Promise.all([
         key ? resolveCardKey(key[1], Number(key[2])) : null,
         prisma.card.findMany({
           where: { title: contains, OR: [{ column: onBoard }, { parentCard: { column: onBoard } }] },
@@ -304,6 +327,7 @@ export function registerDocumentTools(server: McpServer) {
         }),
         prisma.intakeRequest.findMany({ where: { workspaceId: wsId, title: contains }, take: 5, select: { id: true, number: true, title: true } }),
         prisma.whiteboard.findMany({ where: { workspaceId: wsId, title: contains, ...whiteboardVis }, take: 5, select: { id: true, title: true } }),
+        prisma.contentItem.findMany({ where: { workspaceId: wsId, title: contains }, take: 5, select: { id: true, title: true } }),
       ]);
       const results: { id: string; title: string; url: string }[] = [];
       if (keyHit) results.push({ id: `card:${keyHit.cardId}`, title: `${q.toUpperCase()} · ${keyHit.title}`, url: link(`/boards/${keyHit.boardId}?card=${keyHit.cardId}`) });
@@ -321,6 +345,7 @@ export function registerDocumentTools(server: McpServer) {
       for (const r of rounds) results.push({ id: `review:${r.id}`, title: `Review · ${r.deliverable.name}, round ${r.number}`, url: link(`/reviews/${r.id}`) });
       for (const r of intake) results.push({ id: `intake:${r.id}`, title: `Intake ${ticketLabel(r.number)} · ${r.title}`, url: link("/intake") });
       for (const w of whiteboards) results.push({ id: `whiteboard:${w.id}`, title: `Whiteboard · ${w.title}`, url: link(`/whiteboards/${w.id}`) });
+      for (const c of content) results.push({ id: `content:${c.id}`, title: `Content · ${c.title}`, url: link(`/content/${c.id}`) });
       return { results };
     },
   );

@@ -126,4 +126,4 @@ Intake is the top of the funnel: it’s where demand enters, gets weighed, and t
 
 ---
 
-← [Whiteboards](whiteboards.md) · [All guides](README.md) · [My Work & reviews](my-work.md) →
+← [Content inventory](content.md) · [All guides](README.md) · [My Work & reviews](my-work.md) →

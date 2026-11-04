@@ -443,3 +443,29 @@ export function reviewDueReminder(params: { reviewerName: string; deliverableNam
     text: `Hi ${reviewerName},\n\nYour review of "${deliverableName}" is due ${when}.`,
   };
 }
+
+/** A tracked content item's review or expiry date is coming up (lib/reminders.ts). */
+export function contentLifecycleReminder(params: {
+  recipientName: string;
+  title: string;
+  kind: "review" | "expiry";
+  when: string; // "in 30 days", "today"
+  date: string; // "Jan 31, 2027"
+}): Email {
+  const { recipientName, title, kind, when, date } = params;
+  const what = kind === "review" ? `is due for review ${when}` : `expires ${when}`;
+  const next =
+    kind === "review"
+      ? "Look it over, then mark it reviewed in Tavoro to schedule the next review."
+      : "Plan its replacement or retirement, or move the expiry date if it's still valid.";
+  return {
+    subject: kind === "review" ? `Review due ${when}: "${title}"` : `Expires ${when}: "${title}"`,
+    html: layout(
+      kind === "review" ? "Content due for review" : "Content expiring",
+      `<p>Hi ${esc(recipientName)},</p>
+<p><strong>${esc(title)}</strong> ${esc(what)} (${esc(date)}).</p>
+<p>${esc(next)}</p>`,
+    ),
+    text: `Hi ${recipientName},\n\n"${title}" ${what} (${date}).\n\n${next}`,
+  };
+}

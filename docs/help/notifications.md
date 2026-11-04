@@ -30,6 +30,8 @@ There are eight categories of notification. Each one can be switched on or off f
 
 **Due-date reminders** — A nudge the day before something is due: cards (to their assignees), milestones (to admins), and reviews not yet decided (to the reviewer, guests included).
 
+**Content reviews & expiry** — Ahead of a tracked content item’s review date (30 and 7 days before, and on the day) and expiry date (60, 30 and 7 days before, and on the day), to its owner, or to admins and managers when it has none. See the Content inventory help topic.
+
 Notice how the audience is always the people connected to the work: a status change reaches the card’s assignees and SMEs, a comment reaches the same circle, a review decision goes back to whoever requested it. Tavoro figures out who to tell so you don’t have to cc anyone.
 
 ## Every email links straight back

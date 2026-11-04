@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   const contains = { contains: q, mode: "insensitive" as const };
   const keyMatch = CARD_KEY_RE.exec(q);
 
-  const [keyHit, boards, projects, storyboards, whiteboards, cards] = await Promise.all([
+  const [keyHit, boards, projects, storyboards, whiteboards, content, cards] = await Promise.all([
     keyMatch ? resolveCardKey(keyMatch[1], Number(keyMatch[2])) : Promise.resolve(null),
     prisma.board.findMany({
       where: { workspaceId: wsId, name: contains, ...(await boardVisibilityWhere()) },
@@ -46,6 +46,13 @@ export async function GET(req: Request) {
     }),
     prisma.whiteboard.findMany({
       where: { workspaceId: wsId, title: contains, ...(await whiteboardVisibilityWhere()) },
+      select: { id: true, title: true },
+      take: TAKE,
+    }),
+    // The content inventory is workspace-wide (no group grants); retired items included,
+    // so "did we ever ship X?" still finds it.
+    prisma.contentItem.findMany({
+      where: { workspaceId: wsId, title: contains },
       select: { id: true, title: true },
       take: TAKE,
     }),
@@ -91,6 +98,7 @@ export async function GET(req: Request) {
     ...projects.map((p) => ({ type: "project" as const, id: p.id, label: p.name, href: `/projects/${p.id}` })),
     ...storyboards.map((s) => ({ type: "storyboard" as const, id: s.id, label: s.title, href: `/storyboards/${s.id}` })),
     ...whiteboards.map((w) => ({ type: "whiteboard" as const, id: w.id, label: w.title, href: `/whiteboards/${w.id}` })),
+    ...content.map((c) => ({ type: "content" as const, id: c.id, label: c.title, href: `/content/${c.id}` })),
     ...cards
       .filter((c) => c.id !== keyHit?.cardId)
       .map((c) => {

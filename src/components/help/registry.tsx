@@ -7,6 +7,7 @@ import {
   Timer,
   Film,
   Shapes,
+  Library,
   Inbox,
   ListChecks,
   Bell,
@@ -34,6 +35,7 @@ import AccountThemes from "@/components/help/topics/account-themes";
 import AiMcp from "@/components/help/topics/ai-mcp";
 import Sso from "@/components/help/topics/sso";
 import Reports from "@/components/help/topics/reports";
+import Content from "@/components/help/topics/content";
 
 export type HelpGroup = "Start here" | "Methodology" | "Modules";
 
@@ -111,6 +113,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     icon: Shapes,
     group: "Modules",
     Body: Whiteboards,
+  },
+  {
+    slug: "content",
+    title: "Content inventory",
+    summary: "Track what you've shipped, with review and expiry dates and reminders.",
+    icon: Library,
+    group: "Modules",
+    Body: Content,
   },
   {
     slug: "intake",

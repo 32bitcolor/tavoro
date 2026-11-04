@@ -20,6 +20,7 @@ The guides built into Tavoro (the **Help** link in the app's sidebar), as Markdo
 - [Sprints](sprints.md) — Time-boxed iterations and the team sprint board.
 - [Storyboards](storyboards.md) — Screen-by-screen course design with rich per-screen fields.
 - [Whiteboards](whiteboards.md) — Collaborative Excalidraw canvases for workflows and wireframes.
+- [Content inventory](content.md) — Track what you've shipped, with review and expiry dates and reminders.
 - [Intake](intake.md) — Capture, triage, score, and convert stakeholder requests.
 - [My Work & reviews](my-work.md) — Your personal hub and the SME review lifecycle.
 - [Notifications & email](notifications.md) — What sends an email, @-mentions, and admin controls.

@@ -23,6 +23,8 @@ import { prisma } from "@/lib/db";
 import { Role } from "@/generated/prisma/client";
 import { NAV_MODULES } from "@/lib/modules";
 import { PageContainer, PageHeader, SectionHeader } from "@/components/shared/page";
+import { attentionCounts } from "@/lib/content-inventory";
+import { LIFECYCLE_LABEL, type Lifecycle } from "@/lib/content";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
@@ -53,6 +55,8 @@ function formatDue(date: Date) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+const CONTENT_ATTENTION: Lifecycle[] = ["expired", "review_overdue", "expiring", "review_due"];
+
 export default async function DashboardPage() {
   const user = await requireUser();
   const membership = await getActiveMembership();
@@ -70,7 +74,7 @@ export default async function DashboardPage() {
     storyboardVisibilityWhere(),
   ]);
 
-  const [projects, boardCount, storyboardCount, milestones, myReviews] = await Promise.all([
+  const [projects, boardCount, storyboardCount, milestones, myReviews, content] = await Promise.all([
     prisma.project.findMany({
       where: { workspaceId: wsId, ...projectVis },
       orderBy: { updatedAt: "desc" },
@@ -104,6 +108,7 @@ export default async function DashboardPage() {
         deliverable: { select: { name: true, project: { select: { id: true, name: true } } } },
       },
     }),
+    attentionCounts(wsId),
   ]);
 
   const activeProjects = projects.filter((p) => p.status === "active");
@@ -269,6 +274,35 @@ export default async function DashboardPage() {
               </div>
             )}
           </div>
+
+          {content.total > 0 && (
+            <div>
+              <SectionHeader action={<Link href="/content" className="text-xs font-medium text-muted-foreground hover:text-foreground">Inventory</Link>}>
+                Content health
+              </SectionHeader>
+              {CONTENT_ATTENTION.every((k) => content[k] === 0) ? (
+                <p className="rounded-lg border border-border bg-surface px-4 py-3 text-sm text-muted-foreground">
+                  All {content.total} tracked {content.total === 1 ? "item is" : "items are"} current.
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {CONTENT_ATTENTION.filter((k) => content[k] > 0).map((k) => (
+                    <li key={k}>
+                      <Link
+                        href={`/content?lifecycle=${k}`}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface p-3 text-sm transition-colors hover:border-border-strong hover:bg-hover"
+                      >
+                        <span className="font-medium">{LIFECYCLE_LABEL[k]}</span>
+                        <span className={k === "expired" || k === "review_overdue" ? "font-semibold tabular-nums text-destructive-ink" : "font-semibold tabular-nums text-warning-ink"}>
+                          {content[k]}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </section>
       </div>
 

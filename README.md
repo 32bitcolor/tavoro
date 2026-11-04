@@ -14,6 +14,7 @@ L&D / enablement teams. Runs on your own server (a Proxmox VM is the documented 
 > - ADDIE/SAM project management and team sprints
 > - storyboards and Excalidraw whiteboards
 > - a stakeholder intake queue
+> - a content inventory with review and expiry tracking
 > - an objectives → content → assessment alignment spine
 > - email notifications
 > - an **MCP server**, so Claude and other AI assistants can read and work in a workspace
@@ -135,6 +136,10 @@ review that.
   teaches. Storyboards can be linked to a project deliverable, and export to Word or PDF.
 - **Whiteboards**: Excalidraw canvases for workflows, wireframes and ideas. They autosave, and can
   be linked to a storyboard or started from a board card.
+- **Content inventory**: what the team has shipped (courses, job aids, videos, documents), each
+  with an owner, where it lives, and review and expiry dates. Items are flagged as review due,
+  overdue, expiring or expired; owners get reminders 60/30/7 days ahead; **Mark reviewed** rolls
+  the next review forward by the item's cadence. Finished deliverables can be tracked in one click.
 - **My Work**: everything waiting on you.
   - reviews awaiting your decision, which you can decide right there
   - reviews you've requested, your assigned cards and subtasks, and upcoming milestones
