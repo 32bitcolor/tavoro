@@ -16,8 +16,12 @@ import { Role } from "@/generated/prisma/client";
 const day = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a date like 2027-01-31.")
-  .transform((s) => new Date(`${s}T00:00:00.000Z`))
-  .refine((d) => !Number.isNaN(d.getTime()), "That isn't a real date.");
+  // 2027-02-30 would otherwise roll over to March 2.
+  .refine((s) => {
+    const d = new Date(`${s}T00:00:00.000Z`);
+    return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(s);
+  }, "That isn't a real date.")
+  .transform((s) => new Date(`${s}T00:00:00.000Z`));
 
 // Only web links: the URL is rendered as a link, so `javascript:` and friends stay out.
 const url = z
