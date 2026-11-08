@@ -7,6 +7,11 @@ import { getActiveMembership } from "@/lib/dal";
 import { getContentItemForUser, getDeliverableForUser } from "@/lib/authz";
 import { addMonths, CONTENT_STATUSES, CONTENT_TYPES, REVIEW_INTERVALS, type ContentType } from "@/lib/content";
 import { Role } from "@/generated/prisma/client";
+import { impactOf, normalizeSource, type Origin } from "@/lib/content-impact";
+import { notificationsEnabled } from "@/lib/notify";
+import { enqueueEmail } from "@/lib/queues";
+import { appUrl } from "@/lib/app-url";
+import { contentNeedsReviewAfterChange, withLink } from "@/lib/email-templates";
 
 // The content inventory (docs/CONTENT-LIFECYCLE-REUSE.md, phases 0–1). Any member can
 // add and edit items — it's a shared record of what the team has shipped; deleting
@@ -98,6 +103,8 @@ export async function updateContentItem(id: string, patch: Partial<ContentFields
       // A moved date starts its reminders over.
       ...(data.reviewDate !== undefined && !sameDay(data.reviewDate, item.reviewDate) ? { reviewRemindedStage: null } : {}),
       ...(data.expiryDate !== undefined && !sameDay(data.expiryDate, item.expiryDate) ? { expiryRemindedStage: null } : {}),
+      // Moving off "needs review" settles whatever flagged it.
+      ...(data.status && data.status !== "needs_review" && item.status === "needs_review" ? { needsReviewReason: null, needsReviewAt: null } : {}),
     },
   });
   touched(id);
@@ -132,6 +139,8 @@ export async function markContentReviewed(id: string) {
       lastReviewedAt: now,
       reviewDate: next,
       reviewRemindedStage: null,
+      needsReviewReason: null,
+      needsReviewAt: null,
       ...(item.status === "needs_review" ? { status: "published" } : {}),
     },
   });
@@ -190,4 +199,115 @@ export async function trackDeliverable(deliverableId: string) {
   touched(item.id);
   revalidatePath(`/projects/${deliverable.project.id}`);
   return { id: item.id, existing: false };
+}
+
+// ── Dependencies and impact (phase 5) ─────────────────────────────────────────
+
+const SourceName = z.string().trim().min(2, "Name what it depends on.").max(200);
+
+/** Record that a content item depends on another item, or on an outside source. */
+export async function addContentDependency(contentId: string, on: { targetId: string } | { externalSource: string }, note?: string | null) {
+  const item = await getContentItemForUser(contentId);
+  const membership = await getActiveMembership();
+  if (!item || !membership || item.workspaceId !== membership.workspaceId) return { error: "Content not found." };
+  const n = z.string().trim().max(500).nullable().optional().safeParse(note ?? null);
+  if (!n.success) return { error: "Keep the note under 500 characters." };
+  let data: { targetId: string } | { externalSource: string };
+  if ("targetId" in on) {
+    if (on.targetId === contentId) return { error: "An item can't depend on itself." };
+    const target = await getContentItemForUser(on.targetId);
+    if (!target || target.workspaceId !== item.workspaceId) return { error: "That content isn't in this workspace." };
+    if (await prisma.contentDependency.findFirst({ where: { sourceId: contentId, targetId: on.targetId }, select: { id: true } })) {
+      return { error: "It already depends on that." };
+    }
+    data = { targetId: on.targetId };
+  } else {
+    const name = SourceName.safeParse(on.externalSource);
+    if (!name.success) return { error: firstError(name.error) };
+    const clean = normalizeSource(name.data);
+    if (await prisma.contentDependency.findFirst({ where: { sourceId: contentId, externalSource: { equals: clean, mode: "insensitive" } }, select: { id: true } })) {
+      return { error: "It already depends on that." };
+    }
+    data = { externalSource: clean };
+  }
+  const dep = await prisma.contentDependency.create({
+    data: { ...data, sourceId: contentId, workspaceId: item.workspaceId, note: n.data || null, createdById: membership.userId },
+    select: { id: true },
+  });
+  touched(contentId);
+  if ("targetId" in data) revalidatePath(`/content/${data.targetId}`);
+  revalidatePath("/content/sources");
+  return { id: dep.id };
+}
+
+export async function removeContentDependency(dependencyId: string) {
+  const membership = await getActiveMembership();
+  if (!membership) return { error: "Not signed in." };
+  const dep = await prisma.contentDependency.findFirst({ where: { id: dependencyId, workspaceId: membership.workspaceId }, select: { sourceId: true, targetId: true } });
+  if (!dep || !(await getContentItemForUser(dep.sourceId))) return { error: "Dependency not found." };
+  await prisma.contentDependency.delete({ where: { id: dependencyId } });
+  touched(dep.sourceId);
+  if (dep.targetId) revalidatePath(`/content/${dep.targetId}`);
+  revalidatePath("/content/sources");
+  return { ok: true as const };
+}
+
+/** "This changed": flag everything that depends on it (directly or through other content)
+ *  for review, record why, and email the owners. Published items move to Needs review;
+ *  drafts keep their status but get the reason. Retired items are left alone. */
+export async function flagContentChange(origin: Origin, note?: string | null) {
+  const membership = await getActiveMembership();
+  if (!membership) return { error: "Not signed in." };
+  let changed: string;
+  if ("contentId" in origin) {
+    const o = await getContentItemForUser(origin.contentId);
+    if (!o || o.workspaceId !== membership.workspaceId) return { error: "Content not found." };
+    changed = (await prisma.contentItem.findUniqueOrThrow({ where: { id: origin.contentId }, select: { title: true } })).title;
+  } else {
+    const name = SourceName.safeParse(origin.externalSource);
+    if (!name.success) return { error: firstError(name.error) };
+    changed = normalizeSource(name.data);
+  }
+  const n = z.string().trim().max(1000).nullable().optional().safeParse(note ?? null);
+  if (!n.success) return { error: "Keep the note under 1,000 characters." };
+  const cleanNote = n.data || null;
+
+  const impacted = await impactOf(membership.workspaceId, "contentId" in origin ? origin : { externalSource: changed });
+  if (!impacted.length) return { flagged: [], drafts: 0 };
+  const now = new Date();
+  const reason = (via: string) => (via === changed ? `${changed} changed` : `${via} depends on ${changed}, which changed`).slice(0, 300) + (cleanNote ? `: ${cleanNote}`.slice(0, 500) : "");
+  const live = impacted.filter((i) => i.status !== "draft");
+  const drafts = impacted.filter((i) => i.status === "draft");
+  await prisma.$transaction([
+    ...live.map((i) => prisma.contentItem.update({ where: { id: i.id }, data: { status: "needs_review", needsReviewReason: reason(i.via), needsReviewAt: now } })),
+    ...drafts.map((i) => prisma.contentItem.update({ where: { id: i.id }, data: { needsReviewReason: reason(i.via), needsReviewAt: now } })),
+  ]);
+
+  // Mail the owners of live items (or the workspace's admins and managers for unowned ones).
+  if (live.length && (await notificationsEnabled(membership.workspaceId, "lifecycle"))) {
+    const flaggedBy = (await prisma.user.findUnique({ where: { id: membership.userId }, select: { name: true, email: true } }))!;
+    const active = new Set(
+      (await prisma.membership.findMany({ where: { workspaceId: membership.workspaceId, suspendedAt: null }, select: { userId: true } })).map((m) => m.userId),
+    );
+    const managers = await prisma.user.findMany({
+      where: { memberships: { some: { workspaceId: membership.workspaceId, role: { in: ["ADMIN", "MANAGER"] }, suspendedAt: null } } },
+      select: { id: true, name: true, email: true },
+    });
+    for (const i of live) {
+      const to = i.owner && active.has(i.owner.id) ? [i.owner] : managers;
+      for (const r of to) {
+        if (r.id === membership.userId) continue; // they just did it
+        await enqueueEmail({
+          to: r.email,
+          ...withLink(
+            contentNeedsReviewAfterChange({ recipientName: r.name ?? r.email, title: i.title, changed, note: cleanNote, flaggedBy: flaggedBy.name ?? flaggedBy.email }),
+            appUrl(`/content/${i.id}`),
+          ),
+        });
+      }
+    }
+  }
+  for (const i of impacted) revalidatePath(`/content/${i.id}`);
+  touched();
+  return { flagged: live.map((i) => ({ id: i.id, title: i.title, via: i.via })), drafts: drafts.length };
 }

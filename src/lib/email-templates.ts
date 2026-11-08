@@ -469,3 +469,18 @@ export function contentLifecycleReminder(params: {
     text: `Hi ${recipientName},\n\n"${title}" ${what} (${date}).\n\n${next}`,
   };
 }
+
+export function contentNeedsReviewAfterChange(params: { recipientName: string; title: string; changed: string; note: string | null; flaggedBy: string }): Email {
+  const { recipientName, title, changed, note, flaggedBy } = params;
+  return {
+    subject: `Needs review: "${title}" (${changed} changed)`,
+    html: layout(
+      "Content needs review",
+      `<p>Hi ${esc(recipientName)},</p>
+<p>${esc(flaggedBy)} marked <strong>${esc(changed)}</strong> as changed. <strong>${esc(title)}</strong> depends on it, so it's been flagged for review.</p>
+${note ? `<p style="border-left:3px solid #ddd;padding-left:10px;color:#444">${esc(note)}</p>` : ""}
+<p>Check it still holds, update it if not, then mark it reviewed in Tavoro.</p>`,
+    ),
+    text: `Hi ${recipientName},\n\n${flaggedBy} marked "${changed}" as changed. "${title}" depends on it, so it's been flagged for review.${note ? `\n\n${note}` : ""}\n\nCheck it still holds, update it if not, then mark it reviewed in Tavoro.`,
+  };
+}

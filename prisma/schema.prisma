@@ -19,54 +19,55 @@ enum Role {
 }
 
 model User {
-  id                      String            @id @default(cuid())
-  email                   String            @unique
+  id                      String              @id @default(cuid())
+  email                   String              @unique
   name                    String?
   passwordHash            String
   /// Sessions signed before this are void (password changed or reset).
   sessionsValidAfter      DateTime?
-  ownedContent            ContentItem[]     @relation("ContentOwner")
-  uploadedAssets          Asset[]           @relation("AssetUploader")
-  bankItems               BankItem[]        @relation("BankItemCreator")
+  ownedContent            ContentItem[]       @relation("ContentOwner")
+  uploadedAssets          Asset[]             @relation("AssetUploader")
+  bankItems               BankItem[]          @relation("BankItemCreator")
+  contentDependencies     ContentDependency[] @relation("DependencyCreator")
   templates               Template[]
-  createdAt               DateTime          @default(now())
-  updatedAt               DateTime          @updatedAt
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
   memberships             Membership[]
   assignedCards           CardAssignee[]
   smeCards                CardSme[]
   comments                Comment[]
-  reviewCycles            ReviewCycle[]     @relation("ReviewReviewer")
-  requestedReviews        ReviewCycle[]     @relation("ReviewRequester")
-  startedReviewRounds     ReviewRound[]     @relation("ReviewRoundCreator")
+  reviewCycles            ReviewCycle[]       @relation("ReviewReviewer")
+  requestedReviews        ReviewCycle[]       @relation("ReviewRequester")
+  startedReviewRounds     ReviewRound[]       @relation("ReviewRoundCreator")
   uploadedReviewFiles     ReviewFile[]
-  overriddenReviewRounds  ReviewRound[]     @relation("ReviewRoundOverride")
-  reviewComments          ReviewComment[]   @relation("ReviewCommentAuthor")
-  resolvedReviewComments  ReviewComment[]   @relation("ReviewCommentResolver")
+  overriddenReviewRounds  ReviewRound[]       @relation("ReviewRoundOverride")
+  reviewComments          ReviewComment[]     @relation("ReviewCommentAuthor")
+  resolvedReviewComments  ReviewComment[]     @relation("ReviewCommentResolver")
   timeEntries             TimeEntry[]
   groupMemberships        GroupMembership[]
   whiteboards             Whiteboard[]
-  submittedIntakeRequests IntakeRequest[]   @relation("IntakeRequester")
-  assignedIntakeRequests  IntakeRequest[]   @relation("IntakeAssignee")
+  submittedIntakeRequests IntakeRequest[]     @relation("IntakeRequester")
+  assignedIntakeRequests  IntakeRequest[]     @relation("IntakeAssignee")
   savedViews              SavedView[]
   apiTokens               ApiToken[]
   oauthCodes              OAuthCode[]
   ssoIdentities           SsoIdentity[]
   idpGroupMemberships     IdpGroupMember[]
-  publicBoards            Board[]           @relation("BoardPublicSharer")
-  intakeDecisions         IntakeRequest[]   @relation("IntakeDecider")
-  intakeMessages          IntakeMessage[]   @relation("IntakeMessageAuthor")
+  publicBoards            Board[]             @relation("BoardPublicSharer")
+  intakeDecisions         IntakeRequest[]     @relation("IntakeDecider")
+  intakeMessages          IntakeMessage[]     @relation("IntakeMessageAuthor")
 }
 
 model Workspace {
-  id                   String            @id @default(cuid())
+  id                   String              @id @default(cuid())
   name                 String
-  slug                 String            @unique
-  intakeEnabled        Boolean           @default(true) // admin on/off toggle for the public intake form
-  formerSlugs          String[]          @default([]) // intake links it used to have; /request/<old> forwards to the current one
-  publicBoardsEnabled  Boolean           @default(true) // admin switch: off hides every board's public link (lib/board-share.ts)
+  slug                 String              @unique
+  intakeEnabled        Boolean             @default(true) // admin on/off toggle for the public intake form
+  formerSlugs          String[]            @default([]) // intake links it used to have; /request/<old> forwards to the current one
+  publicBoardsEnabled  Boolean             @default(true) // admin switch: off hides every board's public link (lib/board-share.ts)
   notificationSettings Json? // admin per-type email toggles; null/absent key = enabled (opt-out). See src/lib/notifications.ts
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
   members              Membership[]
   boards               Board[]
   projects             Project[]
@@ -82,6 +83,7 @@ model Workspace {
   templates            Template[]
   assets               Asset[]
   bankItems            BankItem[]
+  contentDependencies  ContentDependency[]
   reviewFiles          ReviewFile[]
   apiTokens            ApiToken[]
   ssoConnection        SsoConnection?
@@ -1068,18 +1070,24 @@ model ContentItem {
   // each date, so a daily scan sends each stage once. Cleared when the date changes.
   reviewRemindedStage  String?
   expiryRemindedStage  String?
+  // Why it was flagged "needs review" by an impact check ("HR policy 4.2 changed"), and
+  // when. Cleared when it's marked reviewed or its status moves off needs_review.
+  needsReviewReason    String?
+  needsReviewAt        DateTime?
   deliverableId        String?
   projectId            String?
   createdById          String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  owner       User?              @relation("ContentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  deliverable Deliverable?       @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
-  project     Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  labels      ContentItemLabel[]
-  assets      ContentItemAsset[]
+  workspace    Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner        User?               @relation("ContentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  deliverable  Deliverable?        @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
+  project      Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  labels       ContentItemLabel[]
+  assets       ContentItemAsset[]
+  dependsOn    ContentDependency[] @relation("DependencySource")
+  dependedOnBy ContentDependency[] @relation("DependencyTarget")
 
   @@index([workspaceId, status])
   @@index([workspaceId, reviewDate])
@@ -1135,6 +1143,29 @@ model ContentItemAsset {
 
   @@id([contentItemId, assetId])
   @@index([assetId])
+}
+
+// "This content depends on that" (phase 5): on another tracked item, or on something
+// outside Tavoro named in free text ("HR policy 4.2"), since most real dependencies
+// aren't in the system. Deliberately one edge table, not a graph engine.
+model ContentDependency {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  sourceId       String // the content item that depends
+  targetId       String? // on another content item…
+  externalSource String? // …or on something outside Tavoro
+  note           String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  source    ContentItem  @relation("DependencySource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target    ContentItem? @relation("DependencyTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  createdBy User?        @relation("DependencyCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([sourceId])
+  @@index([targetId])
+  @@index([workspaceId, externalSource])
 }
 
 model ContentItemLabel {

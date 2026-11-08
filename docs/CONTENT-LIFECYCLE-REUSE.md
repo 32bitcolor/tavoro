@@ -1,6 +1,6 @@
 # Content lifecycle & reusable asset library — design
 
-**Status:** phases 0–4 built (inventory, lifecycle, assets, templates, question bank); phase 5 (impact) not started.
+**Status:** all phases built (inventory, lifecycle, assets, templates, question bank, impact).
 **Owner:** @32bitcolor
 **Pillar:** 4 of 5 in [the vision](../README.md#the-vision). Pillars 1–3 are live; this and
 LMS integration remain.
@@ -113,6 +113,18 @@ for card attachments and should be revisited for video assets.
    projects the viewer can see and counts the rest. Templates carry the bank id per
    assessment item and keep it on instantiation only if the entry still exists in the
    workspace. Backups (format 16) export the bank before assessment items so provenance remaps.
+   **Impact, as built (2026-11-10):** `ContentDependency` as designed plus `workspaceId`
+   (to list outside sources without a join) and `createdById`, with a CHECK that exactly one
+   of `targetId` / `externalSource` is set. Outside sources are free text matched loosely
+   (trimmed, spaces collapsed, case-insensitive) and suggested from existing names, so one
+   change finds every item without a separate "source" entity. "This changed…" (on an item, or
+   per source on /content/sources) previews the transitive dependents (breadth-first,
+   cycle-safe, retired items excluded), then sets published ones to `needs_review` with
+   `needsReviewReason` / `needsReviewAt` recorded, notes the reason on drafts without changing
+   their status, and emails owners (managers for unowned items) under the `lifecycle`
+   notification switch. The reason is cleared by "Mark reviewed" or by moving the status off
+   needs review. Not built: seeding dependencies automatically from the alignment spine or
+   from asset/bank usage; with real data, that's the obvious next step.
 5. **Tagging reuses `Label`** — now workspace-level as of 2026-08-12 — rather than inventing a
    parallel "tag" vocabulary. One vocabulary the whole workspace shares was the entire point of
    that migration; a second one would undo it. Cost is a join table per taggable entity

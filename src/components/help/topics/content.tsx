@@ -101,6 +101,39 @@ export default function Content() {
         <UI>Settings → Notifications → Content reviews &amp; expiry</UI>.
       </P>
 
+      <H2>Dependencies: what to check when something changes</H2>
+      <P>
+        Courses rest on things that change: a policy, a product screen, a regulation, another
+        course. Record those under <UI>Dependencies</UI> on an item&rsquo;s page, and when one
+        changes, Tavoro finds everything that relies on it.
+      </P>
+      <Steps>
+        <>
+          Under <UI>Depends on</UI>, choose <UI>Other content</UI> to pick another item in the
+          inventory, or <UI>Something outside Tavoro</UI> and name it (for example{" "}
+          <em>Privacy policy 4.2</em>). Use the same name every time; Tavoro suggests names already
+          in use, and ignores differences in capitals and spacing.
+        </>
+        <>
+          When it changes, choose <UI>This changed…</UI>: on the item&rsquo;s page for content, or
+          on <UI>Content → Outside sources</UI> for anything outside Tavoro. You&rsquo;ll see
+          everything that depends on it, including content that depends on that content, before
+          you confirm. Add a note saying what changed.
+        </>
+      </Steps>
+      <P>
+        Each published item is marked <UI>Needs review</UI> with the reason (&ldquo;Privacy policy
+        4.2 changed&rdquo;, plus your note), and its owner is emailed, or the workspace&rsquo;s
+        admins and managers if it has no owner. Drafts keep their status but show the reason.
+        Retired items are left alone. The reason shows on the item, in the inventory and on its
+        owner&rsquo;s <UI>My Work</UI> until someone marks it reviewed.
+      </P>
+      <Screenshot
+        name="content-impact"
+        alt="The This changed dialog for an outside source: the items that depend on it, directly or indirectly, a note box, and a Flag for review button"
+        caption="Flagging everything that depends on a changed policy."
+      />
+
       <H2>Retiring and deleting</H2>
       <P>
         When content is no longer in use, choose <UI>Retire</UI>. It leaves the default list (choose{" "}

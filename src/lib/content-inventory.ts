@@ -20,6 +20,8 @@ export const CONTENT_SELECT = {
   reviewIntervalMonths: true,
   lastReviewedAt: true,
   expiryDate: true,
+  needsReviewReason: true,
+  needsReviewAt: true,
   updatedAt: true,
   owner: { select: { id: true, name: true, email: true } },
   project: { select: { id: true, name: true } },
@@ -105,7 +107,10 @@ export async function myContentAttention(userId: string, workspaceId: string): P
 }
 
 /** "Review due in 12 days" / "Expired 3 days ago" — the one-line reason an item is listed. */
-export function attentionReason(r: Pick<ContentRow, "lifecycle" | "reviewDate" | "expiryDate">, now = new Date()): string | null {
+export function attentionReason(
+  r: Pick<ContentRow, "lifecycle" | "reviewDate" | "expiryDate"> & { needsReviewReason?: string | null },
+  now = new Date(),
+): string | null {
   const rel = (d: Date) => relativeDays(daysUntil(d, now));
   switch (r.lifecycle) {
     case "expired":
@@ -117,7 +122,7 @@ export function attentionReason(r: Pick<ContentRow, "lifecycle" | "reviewDate" |
     case "review_due":
       return `Review due ${rel(r.reviewDate!)}`;
     case "needs_review":
-      return "Marked as needing review";
+      return r.needsReviewReason ? `Flagged for review: ${r.needsReviewReason}` : "Marked as needing review";
     default:
       return null;
   }

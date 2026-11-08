@@ -162,3 +162,10 @@ export function Breadcrumbs() {
     </Breadcrumb>
   );
 }
+
+/** For server pages below a section (e.g. /content/sources): names the page in the
+ *  breadcrumb, since a server component can't call useSetPageTitle itself. */
+export function PageTitle({ title, trail }: { title: string; trail?: Crumb[] | null }) {
+  useSetPageTitle(title, trail);
+  return null;
+}

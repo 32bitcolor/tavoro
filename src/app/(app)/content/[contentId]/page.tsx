@@ -8,6 +8,8 @@ import { lifecycleOf } from "@/lib/content";
 import { ContentDetail } from "@/components/content/content-detail";
 import { PageContainer } from "@/components/shared/page";
 import { ContentAssets } from "@/components/assets/content-assets";
+import { ContentDependencies } from "@/components/content/content-dependencies";
+import { externalSources, impactOf } from "@/lib/content-impact";
 import { assetFileUrl } from "@/lib/assets";
 import { ASSET_TYPE_LABEL, formatBytes, type AssetType } from "@/lib/asset-types";
 import { Role } from "@/generated/prisma/client";
@@ -23,7 +25,7 @@ export default async function ContentItemPage({ params }: { params: Promise<{ co
   const access = await getContentItemForUser(contentId);
   if (!access || access.workspaceId !== membership.workspaceId) notFound();
 
-  const [item, members, labels, attached, library] = await Promise.all([
+  const [item, members, labels, attached, library, dependsOn, dependedOnBy, impact, sources, allContent] = await Promise.all([
     prisma.contentItem.findUniqueOrThrow({ where: { id: contentId }, select: CONTENT_SELECT }),
     prisma.membership.findMany({
       where: { workspaceId: membership.workspaceId, suspendedAt: null },
@@ -40,6 +42,24 @@ export default async function ContentItemPage({ params }: { params: Promise<{ co
       where: { workspaceId: membership.workspaceId, archivedAt: null, contentItems: { none: { contentItemId: contentId } } },
       select: ASSET_PICK,
       orderBy: { name: "asc" },
+      take: 1000,
+    }),
+    prisma.contentDependency.findMany({
+      where: { sourceId: contentId },
+      select: { id: true, externalSource: true, note: true, target: { select: { id: true, title: true, status: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.contentDependency.findMany({
+      where: { targetId: contentId },
+      select: { id: true, note: true, source: { select: { id: true, title: true, status: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
+    impactOf(membership.workspaceId, { contentId }),
+    externalSources(membership.workspaceId),
+    prisma.contentItem.findMany({
+      where: { workspaceId: membership.workspaceId, id: { not: contentId } },
+      select: { id: true, title: true, contentType: true, status: true },
+      orderBy: { title: "asc" },
       take: 1000,
     }),
   ]);
@@ -70,7 +90,9 @@ export default async function ContentItemPage({ params }: { params: Promise<{ co
           labelIds: item.labels.map((l) => l.label.id),
           lifecycle,
           updatedAt: item.updatedAt.toISOString(),
-          reason: attentionReason({ lifecycle, reviewDate: item.reviewDate, expiryDate: item.expiryDate }),
+          reason:
+            attentionReason({ lifecycle, reviewDate: item.reviewDate, expiryDate: item.expiryDate, needsReviewReason: item.needsReviewReason }) ??
+            (item.needsReviewReason ? `Flagged for review: ${item.needsReviewReason}` : null),
         }}
         members={members.map((m) => ({ id: m.user.id, label: m.user.name ?? m.user.email }))}
         labels={labels}
@@ -88,6 +110,22 @@ export default async function ContentItemPage({ params }: { params: Promise<{ co
             hint: hint(a),
           }))}
           options={library.map((a) => ({ id: a.id, label: a.name, hint: hint(a) }))}
+        />
+        <ContentDependencies
+          contentId={item.id}
+          title={item.title}
+          dependsOn={dependsOn.map((d) => ({
+            id: d.id,
+            note: d.note,
+            target: d.target ? { id: d.target.id, title: d.target.title, retired: d.target.status === "retired" } : null,
+            externalSource: d.externalSource,
+          }))}
+          dependedOnBy={dependedOnBy.map((d) => ({ id: d.id, note: d.note, source: { id: d.source.id, title: d.source.title, retired: d.source.status === "retired" } }))}
+          impact={impact.map((i) => ({ id: i.id, title: i.title, status: i.status, depth: i.depth }))}
+          contentOptions={allContent
+            .filter((c) => !dependsOn.some((d) => d.target?.id === c.id))
+            .map((c) => ({ id: c.id, label: c.title, hint: c.status === "retired" ? "Retired" : undefined }))}
+          sourceSuggestions={sources.map((x) => x.name)}
         />
       </ContentDetail>
     </PageContainer>

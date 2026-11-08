@@ -57,7 +57,7 @@ The under-served needs it's built for:
   → A first-class **alignment spine** threading objectives through storyboard screens and
   assessment items, with coverage and gap views.
 - **Content lifecycle and reuse**: know what's going stale and what depends on what, and stop
-  rebuilding the same templates and scenarios. *(On the roadmap.)*
+  rebuilding the same templates, scenarios and assets.
 - **Proving impact**: move past completion rates toward real outcome data. *(On the roadmap, via
   LMS integration.)*
 
@@ -141,6 +141,9 @@ review that.
   with an owner, where it lives, and review and expiry dates. Items are flagged as review due,
   overdue, expiring or expired; owners get reminders 60/30/7 days ahead; **Mark reviewed** rolls
   the next review forward by the item's cadence. Finished deliverables can be tracked in one click.
+  Record what each item **depends on** (other content, or outside sources such as a policy by
+  name); when one changes, **This changed…** flags everything that relies on it, directly or
+  through other content, for review and emails the owners.
 - **Asset library**: the team's shared shelf of reusable images, video, audio, documents and
   authoring-tool sources: upload them (or link to where they live), tag them with labels, and record
   which content uses each one, so a reshot photo or an expiring licence shows every course to update.
@@ -275,7 +278,7 @@ send to the board. The comment marked SEC-28 is already a card.
 
 Tavoro aims to be the operating system for an instructional-design team: one place for the work
 around a course, from the first request to proof that it worked. It's built around five pillars.
-Three are live; two are next.
+Four are live; LMS integration is next.
 
 1. **Intake and demand management** ✅: structured request capture, triage, impact/effort scoring,
    and approve-to-project conversion.
@@ -285,9 +288,9 @@ Three are live; two are next.
    turnaround times. See [docs/REVIEW-LINKS.md](docs/REVIEW-LINKS.md).
 3. **Objectives → content → assessment alignment spine** ✅: objectives threaded through storyboard
    screens and assessment items, with coverage and gap analysis.
-4. **Content lifecycle and a reusable asset library** (in progress): the content inventory with
-   review and expiry reminders ✅, project and storyboard templates ✅, the asset library ✅ and the
-   question bank ✅. Still planned: impact analysis when a source changes. See
+4. **Content lifecycle and a reusable asset library** ✅: the content inventory with
+   review and expiry reminders ✅, project and storyboard templates ✅, the asset library ✅, the
+   question bank ✅, and impact analysis when a source changes ✅. See
    [docs/CONTENT-LIFECYCLE-REUSE.md](docs/CONTENT-LIFECYCLE-REUSE.md).
 5. **LMS integration** (next): publish and sync courses to your LMS, and pull completion and
    assessment data back for impact reporting.

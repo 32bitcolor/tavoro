@@ -61,6 +61,18 @@ Tavoro emails ahead of each date, once per step:
 
 Reminders go to the item’s owner, or to the workspace’s admins and managers if it has none (or its owner has left). Changing a date starts its reminders over. Drafts and retired items get no reminders, and an overdue item isn’t emailed every day; it shows on the inventory, on the dashboard and on its owner’s **My Work** page until someone acts. Admins can switch these emails off under **Settings → Notifications → Content reviews & expiry**.
 
+## Dependencies: what to check when something changes
+
+Courses rest on things that change: a policy, a product screen, a regulation, another course. Record those under **Dependencies** on an item’s page, and when one changes, Tavoro finds everything that relies on it.
+
+1. Under **Depends on**, choose **Other content** to pick another item in the inventory, or **Something outside Tavoro** and name it (for example *Privacy policy 4.2*). Use the same name every time; Tavoro suggests names already in use, and ignores differences in capitals and spacing.
+2. When it changes, choose **This changed…**: on the item’s page for content, or on **Content → Outside sources** for anything outside Tavoro. You’ll see everything that depends on it, including content that depends on that content, before you confirm. Add a note saying what changed.
+
+Each published item is marked **Needs review** with the reason (“Privacy policy 4.2 changed”, plus your note), and its owner is emailed, or the workspace’s admins and managers if it has no owner. Drafts keep their status but show the reason. Retired items are left alone. The reason shows on the item, in the inventory and on its owner’s **My Work** until someone marks it reviewed.
+
+![The This changed dialog for an outside source: the items that depend on it, directly or indirectly, a note box, and a Flag for review button](../../public/help-shots/content-impact.png)
+*Flagging everything that depends on a changed policy.*
+
 ## Retiring and deleting
 
 When content is no longer in use, choose **Retire**. It leaves the default list (choose **All, incl. retired** in the status filter to see it), stops reminding, and keeps its record, so “did we ever ship a course on this?” still has an answer. **Restore** brings it back.

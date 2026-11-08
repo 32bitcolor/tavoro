@@ -3,7 +3,18 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { prisma } from "@/lib/db";
 import { getContentItemForUser } from "@/lib/authz";
-import { createContentItem, markContentReviewed, setContentLabels, trackDeliverable, updateContentItem, type ContentFields } from "@/app/actions/content";
+import {
+  addContentDependency,
+  createContentItem,
+  flagContentChange,
+  markContentReviewed,
+  removeContentDependency,
+  setContentLabels,
+  trackDeliverable,
+  updateContentItem,
+  type ContentFields,
+} from "@/app/actions/content";
+import { externalSources, impactOf } from "@/lib/content-impact";
 import { attentionReason, CONTENT_SELECT, listContent, type ContentRow } from "@/lib/content-inventory";
 import { CONTENT_STATUSES, CONTENT_TYPES, dayValue, lifecycleOf, REVIEW_INTERVALS } from "@/lib/content";
 import { check, iso, link, principal, tool, ToolError } from "@/lib/mcp/util";
@@ -45,6 +56,13 @@ export async function loadContent(id: string) {
     lastReviewedAt: iso(r.lastReviewedAt),
     project: r.project ? { id: r.project.id, name: r.project.name, url: link(`/projects/${r.project.id}`) } : null,
     deliverable: r.deliverable,
+    flaggedBecause: r.needsReviewReason,
+    dependsOn: (
+      await prisma.contentDependency.findMany({ where: { sourceId: id }, select: { id: true, externalSource: true, note: true, target: { select: { id: true, title: true } } } })
+    ).map((d) => ({ dependencyId: d.id, content: d.target ? { id: d.target.id, title: d.target.title } : null, externalSource: d.externalSource, note: d.note })),
+    dependedOnBy: (
+      await prisma.contentDependency.findMany({ where: { targetId: id }, select: { source: { select: { id: true, title: true } } } })
+    ).map((d) => d.source),
     assets: (
       await prisma.contentItemAsset.findMany({ where: { contentItemId: id }, select: { asset: { select: { id: true, name: true, assetType: true } } } })
     ).map((x) => ({ id: x.asset.id, name: x.asset.name, type: x.asset.assetType, url: link(`/assets/${x.asset.id}`) })),
@@ -207,6 +225,97 @@ export function registerContentTools(server: McpServer) {
     async ({ deliverable }) => {
       const res = check(await trackDeliverable(deliverable));
       return { ...(await loadContent(res.id)), alreadyTracked: res.existing };
+    },
+  );
+
+  tool(
+    server,
+    "add_content_dependency",
+    {
+      title: "Record what content depends on",
+      description:
+        "Record that a content item depends on another content item, or on something outside Tavoro (a policy, system or regulation, by name). When that changes, flag_content_change finds everything that depends on it. Pass exactly one of dependsOnContent or externalSource; reuse an existing outside-source name (list_content_sources) so one change finds everything.",
+      kind: "write",
+      input: {
+        content: contentRef,
+        dependsOnContent: z.string().optional().describe("Content item id it depends on"),
+        externalSource: z.string().max(200).optional().describe("Name of an outside source, e.g. 'Privacy policy 4.2'"),
+        note: z.string().max(500).optional(),
+      },
+    },
+    async ({ content, dependsOnContent, externalSource, note }) => {
+      if (!dependsOnContent === !externalSource) throw new ToolError("Pass exactly one of dependsOnContent or externalSource.");
+      if (!(await getContentItemForUser(content))) throw new ToolError("Content not found, or it's in another workspace.");
+      check(await addContentDependency(content, dependsOnContent ? { targetId: dependsOnContent } : { externalSource: externalSource! }, note ?? null));
+      return loadContent(content);
+    },
+  );
+
+  tool(
+    server,
+    "remove_content_dependency",
+    {
+      title: "Remove a content dependency",
+      description: "Stop recording a dependency (dependencyId from get_content's dependsOn).",
+      kind: "write",
+      idempotent: true,
+      input: { dependencyId: z.string().min(1) },
+    },
+    async ({ dependencyId }) => {
+      check(await removeContentDependency(dependencyId));
+      return { removed: dependencyId };
+    },
+  );
+
+  tool(
+    server,
+    "list_content_sources",
+    {
+      title: "List outside sources",
+      description: "The outside sources (policies, systems, regulations) the inventory depends on, with the items that depend on each, directly and in total.",
+      kind: "read",
+      input: {},
+    },
+    async () => {
+      const ws = principal().workspaceId;
+      const sources = await externalSources(ws);
+      return {
+        sources: await Promise.all(
+          sources.map(async (s) => ({
+            name: s.name,
+            directlyDependent: s.items.map((i) => ({ id: i.id, title: i.title, status: i.status })),
+            totalAffectedIfChanged: (await impactOf(ws, { externalSource: s.name })).length,
+          })),
+        ),
+      };
+    },
+  );
+
+  tool(
+    server,
+    "flag_content_change",
+    {
+      title: "Flag a change for review",
+      description:
+        "Something changed: a content item, or an outside source by name. Everything that depends on it, directly or through other content, is flagged for review: published items move to needs_review with the reason recorded, drafts get the reason only, and owners are emailed. Pass exactly one of content or externalSource. Use preview: true to see what would be flagged without changing anything.",
+      kind: "write",
+      input: {
+        content: z.string().optional().describe("Content item id that changed"),
+        externalSource: z.string().max(200).optional().describe("Outside source name that changed"),
+        note: z.string().max(1000).optional().describe("What changed; included in the emails and the recorded reason"),
+        preview: z.boolean().optional(),
+      },
+    },
+    async ({ content, externalSource, note, preview }) => {
+      if (!content === !externalSource) throw new ToolError("Pass exactly one of content or externalSource.");
+      if (content && !(await getContentItemForUser(content))) throw new ToolError("Content not found, or it's in another workspace.");
+      const origin = content ? { contentId: content } : { externalSource: externalSource! };
+      if (preview) {
+        const hit = await impactOf(principal().workspaceId, origin);
+        return { preview: true, wouldFlag: hit.map((h) => ({ id: h.id, title: h.title, status: h.status, via: h.via, indirect: h.depth > 1 })) };
+      }
+      const res = check(await flagContentChange(origin, note ?? null));
+      return { flagged: res.flagged.map((f) => ({ ...f, url: link(`/content/${f.id}`) })), draftsNoted: res.drafts };
     },
   );
 }

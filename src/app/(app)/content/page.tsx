@@ -56,7 +56,17 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
       <PageHeader
         title="Content"
         description="Everything your team has shipped, and what needs reviewing or replacing before it goes stale."
-        actions={<NewContentButton />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/content/sources"
+              className="inline-flex h-8 items-center rounded-md border border-border px-3 text-sm font-medium outline-none hover:bg-hover focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
+              Outside sources
+            </Link>
+            <NewContentButton />
+          </div>
+        }
       />
 
       {counts.total > 0 && (

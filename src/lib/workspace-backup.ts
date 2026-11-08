@@ -12,7 +12,7 @@ import { newGuestNonce } from "@/lib/review-guest-token";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 16; // bump when the shape changes
+export const BACKUP_FORMAT = 17; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -156,6 +156,14 @@ const SPECS: Spec[] = [
     model: "contentItem",
     where: (w) => ({ workspaceId: w }),
     fks: { workspaceId: WS, ownerId: USER, deliverableId: "deliverable", projectId: "project", createdById: USER },
+  },
+  // What content depends on (other items, or outside sources by name): after every item exists.
+  {
+    key: null,
+    model: "contentDependency",
+    where: (w) => ({ workspaceId: w }),
+    fks: { workspaceId: WS, sourceId: "contentItem", targetId: "contentItem", createdById: USER },
+    prepare: async (d, row) => !!d.sourceId && (!!d.targetId || !!row.externalSource),
   },
   // The asset library. Uploaded files travel with their bytes (media/, keyed by row id)
   // and are re-uploaded under new keys; a file whose bytes are missing is skipped, and so

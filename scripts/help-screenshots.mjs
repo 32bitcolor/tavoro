@@ -320,6 +320,15 @@ if (want("content-item")) {
   await shot("content-item");
 }
 
+if (want("content-impact")) {
+  await go("/content/sources");
+  await page.getByRole("button", { name: "This changed…" }).first().click();
+  await page.getByRole("dialog").waitFor();
+  await settle();
+  await shot("content-impact");
+  await page.keyboard.press("Escape");
+}
+
 if (want("assets-library")) {
   await go("/assets");
   await shot("assets-library");
