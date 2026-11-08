@@ -93,11 +93,14 @@ export function ContentDetail({
   members,
   labels,
   canDelete,
+  children,
 }: {
   item: Item;
   members: { id: string; label: string }[];
   labels: { id: string; name: string; color: string }[];
   canDelete: boolean;
+  /** Extra sections (the asset list), shown after labels. */
+  children?: React.ReactNode;
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(item.title);
@@ -306,6 +309,8 @@ export function ContentDetail({
           </div>
         </section>
       )}
+
+      {children}
 
       {(item.project || item.deliverable) && (
         <section>

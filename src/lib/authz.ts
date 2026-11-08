@@ -370,3 +370,14 @@ export async function getContentItemForUser(contentItemId: string) {
     select: { id: true, workspaceId: true, reviewDate: true, expiryDate: true, reviewIntervalMonths: true, status: true },
   });
 }
+
+/** An asset in one of the user's workspaces. The library is workspace-wide, like the
+ *  content inventory: any member may see and reuse every asset. */
+export async function getAssetForUser(assetId: string) {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  return prisma.asset.findFirst({
+    where: { id: assetId, workspace: ownedByUser(ctx) },
+    select: { id: true, workspaceId: true, storageKey: true, fileName: true, mimeType: true, sizeBytes: true, uploadedById: true, externalUrl: true },
+  });
+}

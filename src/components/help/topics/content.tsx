@@ -125,6 +125,10 @@ export default function Content() {
           AI assistants connected over MCP can list, update and mark content reviewed, and track a
           deliverable.
         </LI>
+        <LI>
+          Under <UI>Assets</UI> on an item&rsquo;s page, record the library assets it uses, so the{" "}
+          <UI>Assets</UI> library can say where each one is used.
+        </LI>
         <LI>Workspace backups include the inventory.</LI>
       </UL>
     </>

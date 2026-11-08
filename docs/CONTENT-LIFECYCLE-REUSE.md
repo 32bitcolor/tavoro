@@ -1,6 +1,6 @@
 # Content lifecycle & reusable asset library — design
 
-**Status:** design proposed, nothing built.
+**Status:** phases 0–3 built (inventory, lifecycle, assets, templates); phases 4–5 (bank, impact) not started.
 **Owner:** @32bitcolor
 **Pillar:** 4 of 5 in [the vision](../README.md#the-vision). Pillars 1–3 are live; this and
 LMS integration remain.
@@ -87,6 +87,20 @@ for card attachments and should be revisited for video assets.
    labels instead of holding ids so it survives a backup restore, and instantiation goes through
    the normal models. The trade-off is that a template isn't edited in place: you change a
    project and choose *Save as template → Replace*.
+   **Asset library, as built (2026-11-08):** as designed, plus three things the design left
+   open. (a) `ContentItemAsset` is a plain junction (content ↔ asset, many-to-many) — "attach
+   assets to content items" with "where is this used?" for free. (b) `archivedAt` instead of a
+   status: archived assets leave the default view but keep their file and their content links,
+   matching how retired content works. (c) Any file type is accepted, but only types recognised
+   from the file's own first bytes (raster images, PDF, MP4/WebM, MP3/WAV/OGG/M4A) are ever
+   served inline; everything else — Office files, zips, SVG, authoring sources — is served as
+   `application/octet-stream` with `Content-Disposition: attachment` under a `sandbox` CSP.
+   Uploads stream through `PUT /api/assets` (like review files), capped at 95 MB by Cloudflare;
+   replacing a file writes a new key and deletes the old one; the nightly worker sweep removes
+   asset objects with no row (e.g. after a workspace is deleted). Backups (format 15) carry the
+   bytes. On backup size: assets make the single-`.zip` backup grow with the library — fine for
+   a team library of photos and sources, but a library full of video would want a streamed
+   export; not built until someone hits it.
 5. **Tagging reuses `Label`** — now workspace-level as of 2026-08-12 — rather than inventing a
    parallel "tag" vocabulary. One vocabulary the whole workspace shares was the entire point of
    that migration; a second one would undo it. Cost is a join table per taggable entity

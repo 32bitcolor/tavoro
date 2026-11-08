@@ -8,6 +8,7 @@ import {
   Film,
   Shapes,
   Library,
+  Images,
   Inbox,
   ListChecks,
   Bell,
@@ -37,6 +38,7 @@ import AiMcp from "@/components/help/topics/ai-mcp";
 import Sso from "@/components/help/topics/sso";
 import Reports from "@/components/help/topics/reports";
 import Content from "@/components/help/topics/content";
+import Assets from "@/components/help/topics/assets";
 import Templates from "@/components/help/topics/templates";
 
 export type HelpGroup = "Start here" | "Methodology" | "Modules";
@@ -123,6 +125,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     icon: Library,
     group: "Modules",
     Body: Content,
+  },
+  {
+    slug: "assets",
+    title: "Asset library",
+    summary: "Reusable images, video, audio and source files, and the content that uses them.",
+    icon: Images,
+    group: "Modules",
+    Body: Assets,
   },
   {
     slug: "templates",

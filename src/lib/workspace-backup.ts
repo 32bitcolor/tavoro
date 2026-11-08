@@ -2,7 +2,7 @@ import "server-only";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
-import { getObjectBytes, putObjectBytes, buildObjectKey, buildReviewObjectKey } from "@/lib/storage";
+import { getObjectBytes, putObjectBytes, buildAssetObjectKey, buildObjectKey, buildReviewObjectKey } from "@/lib/storage";
 import { workspaceStatusSeedData } from "@/lib/status";
 import { newGuestNonce } from "@/lib/review-guest-token";
 
@@ -12,7 +12,7 @@ import { newGuestNonce } from "@/lib/review-guest-token";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 14; // bump when the shape changes
+export const BACKUP_FORMAT = 15; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -155,6 +155,23 @@ const SPECS: Spec[] = [
     where: (w) => ({ workspaceId: w }),
     fks: { workspaceId: WS, ownerId: USER, deliverableId: "deliverable", projectId: "project", createdById: USER },
   },
+  // The asset library. Uploaded files travel with their bytes (media/, keyed by row id)
+  // and are re-uploaded under new keys; a file whose bytes are missing is skipped, and so
+  // are its junction rows. Link assets need no bytes.
+  {
+    key: "asset",
+    model: "asset",
+    where: (w) => ({ workspaceId: w }),
+    fks: { workspaceId: WS, uploadedById: USER },
+    prepare: async (d, row, media) => {
+      if (!row.storageKey) return true;
+      const bytes = media[row.id];
+      if (!bytes) return false;
+      d.storageKey = buildAssetObjectKey(d.workspaceId, crypto.randomUUID(), d.fileName ?? "file");
+      await putObjectBytes(d.storageKey, bytes, d.mimeType ?? "application/octet-stream");
+      return true;
+    },
+  },
   // Templates: self-contained snapshots that name statuses and labels instead of
   // holding ids, so the JSON needs no remapping.
   { key: "template", model: "template", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS, createdById: USER }, json: ["data"] },
@@ -163,6 +180,14 @@ const SPECS: Spec[] = [
   { key: null, model: "cardKeyAlias", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board", cardId: "card" } },
   { key: null, model: "cardLabel", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", labelId: "label" } },
   { key: null, model: "contentItemLabel", where: (w) => ({ contentItem: { workspaceId: w } }), fks: { contentItemId: "contentItem", labelId: "label" } },
+  { key: null, model: "assetLabel", where: (w) => ({ asset: { workspaceId: w } }), fks: { assetId: "asset", labelId: "label" }, prepare: async (d) => !!d.assetId && !!d.labelId },
+  {
+    key: null,
+    model: "contentItemAsset",
+    where: (w) => ({ asset: { workspaceId: w } }),
+    fks: { contentItemId: "contentItem", assetId: "asset" },
+    prepare: async (d) => !!d.assetId && !!d.contentItemId,
+  },
   { key: null, model: "cardAssignee", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", userId: USER } },
   { key: null, model: "cardSme", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", userId: USER } },
   { key: null, model: "boardGroup", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board", groupId: "group" } },
@@ -214,10 +239,10 @@ export async function exportWorkspace(workspaceId: string): Promise<{
   const attachments = await prisma.attachment.findMany({ where: { workspaceId } });
   data.attachment = attachments;
 
-  // media bytes for each attachment and review file (best-effort — a missing object
-  // is skipped). Ids are cuids, unique across both tables.
+  // media bytes for each attachment, review file and uploaded asset (best-effort — a
+  // missing object is skipped). Ids are cuids, unique across the tables.
   const media: Record<string, Uint8Array> = {};
-  for (const a of [...attachments, ...(data.reviewFile ?? [])]) {
+  for (const a of [...attachments, ...(data.reviewFile ?? []), ...(data.asset ?? []).filter((x: any) => x.storageKey)]) {
     const bytes = await getObjectBytes(a.storageKey);
     if (bytes) media[a.id] = bytes;
   }

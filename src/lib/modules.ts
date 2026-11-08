@@ -6,6 +6,7 @@ import {
   FolderKanban,
   Film,
   Library,
+  Images,
   Shapes,
   Timer,
   type LucideIcon,
@@ -89,6 +90,13 @@ export const MODULES: ModuleDef[] = [
     href: "/content",
     icon: Library,
     tagline: "What you've shipped, and what's due for review",
+  },
+  {
+    key: "assets",
+    name: "Assets",
+    href: "/assets",
+    icon: Images,
+    tagline: "Reusable images, video, audio and source files",
   },
   // Future pillar: an "Integrations" capability (publish/sync to an LMS, pull
   // completion & assessment data back for impact reporting). Reintroduced as a

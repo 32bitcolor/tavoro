@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   const contains = { contains: q, mode: "insensitive" as const };
   const keyMatch = CARD_KEY_RE.exec(q);
 
-  const [keyHit, boards, projects, storyboards, whiteboards, content, cards] = await Promise.all([
+  const [keyHit, boards, projects, storyboards, whiteboards, content, assets, cards] = await Promise.all([
     keyMatch ? resolveCardKey(keyMatch[1], Number(keyMatch[2])) : Promise.resolve(null),
     prisma.board.findMany({
       where: { workspaceId: wsId, name: contains, ...(await boardVisibilityWhere()) },
@@ -54,6 +54,12 @@ export async function GET(req: Request) {
     prisma.contentItem.findMany({
       where: { workspaceId: wsId, title: contains },
       select: { id: true, title: true },
+      take: TAKE,
+    }),
+    // The asset library is workspace-wide too; archived assets included, like retired content.
+    prisma.asset.findMany({
+      where: { workspaceId: wsId, OR: [{ name: contains }, { fileName: contains }] },
+      select: { id: true, name: true },
       take: TAKE,
     }),
     // Cards and subtasks alike — a subtask is just a Card with parentCardId
@@ -99,6 +105,7 @@ export async function GET(req: Request) {
     ...storyboards.map((s) => ({ type: "storyboard" as const, id: s.id, label: s.title, href: `/storyboards/${s.id}` })),
     ...whiteboards.map((w) => ({ type: "whiteboard" as const, id: w.id, label: w.title, href: `/whiteboards/${w.id}` })),
     ...content.map((c) => ({ type: "content" as const, id: c.id, label: c.title, href: `/content/${c.id}` })),
+    ...assets.map((a) => ({ type: "asset" as const, id: a.id, label: a.name, href: `/assets/${a.id}` })),
     ...cards
       .filter((c) => c.id !== keyHit?.cardId)
       .map((c) => {

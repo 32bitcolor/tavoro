@@ -26,6 +26,7 @@ model User {
   /// Sessions signed before this are void (password changed or reset).
   sessionsValidAfter      DateTime?
   ownedContent            ContentItem[]     @relation("ContentOwner")
+  uploadedAssets          Asset[]           @relation("AssetUploader")
   templates               Template[]
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @updatedAt
@@ -78,6 +79,7 @@ model Workspace {
   savedViews           SavedView[]
   contentItems         ContentItem[]
   templates            Template[]
+  assets               Asset[]
   reviewFiles          ReviewFile[]
   apiTokens            ApiToken[]
   ssoConnection        SsoConnection?
@@ -665,6 +667,7 @@ model Label {
   workspace    Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   cards        CardLabel[]
   contentItems ContentItemLabel[]
+  assets       AssetLabel[]
 
   @@index([workspaceId, name])
 }
@@ -1032,11 +1035,62 @@ model ContentItem {
   deliverable Deliverable?       @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
   project     Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
   labels      ContentItemLabel[]
+  assets      ContentItemAsset[]
 
   @@index([workspaceId, status])
   @@index([workspaceId, reviewDate])
   @@index([workspaceId, expiryDate])
   @@index([deliverableId])
+}
+
+// A reusable file in the asset library (docs/CONTENT-LIFECYCLE-REUSE.md, phase 2):
+// workspace-level, unlike Attachment (card-bound). Either an uploaded file (storageKey
+// + fileName/mimeType/sizeBytes) or a link to where it really lives (externalUrl).
+model Asset {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  name         String
+  description  String?
+  assetType    String    @default("other") // image / video / audio / document / template_file / other
+  storageKey   String?   @unique
+  fileName     String?
+  mimeType     String? // sniffed from the bytes, never the browser's claim
+  sizeBytes    Int?
+  externalUrl  String?
+  archivedAt   DateTime? // hidden from the library by default, kept
+  uploadedById String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  workspace    Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  uploadedBy   User?              @relation("AssetUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  labels       AssetLabel[]
+  contentItems ContentItemAsset[]
+
+  @@index([workspaceId, assetType])
+  @@index([workspaceId, archivedAt])
+}
+
+model AssetLabel {
+  assetId String
+  labelId String
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  label   Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([assetId, labelId])
+  @@index([labelId])
+}
+
+// "This course uses these assets" — so the library can answer "where is this used?".
+model ContentItemAsset {
+  contentItemId String
+  assetId       String
+  createdAt     DateTime    @default(now())
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  asset         Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@id([contentItemId, assetId])
+  @@index([assetId])
 }
 
 model ContentItemLabel {

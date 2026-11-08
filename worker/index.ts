@@ -96,7 +96,7 @@ const maintenanceWorker = new Worker(
   "maintenance",
   async () => {
     const r = await sweepReviewFiles(prisma, s3, process.env.S3_BUCKET ?? "tavoro");
-    console.log(`[worker] review-file sweep: ${r.unusedFiles} unused upload(s), ${r.orphanedObjects} orphaned object(s) removed`);
+    console.log(`[worker] file sweep: ${r.unusedFiles} unused review upload(s), ${r.orphanedObjects} orphaned review object(s), ${r.orphanedAssets} orphaned asset file(s) removed`);
     const o = await sweepOAuth(prisma);
     console.log(`[worker] MCP credential sweep: ${o.codes} code(s), ${o.tokens} token(s), ${o.clients} unused client(s) removed`);
     return { ...r, oauth: o };

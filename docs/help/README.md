@@ -21,6 +21,7 @@ The guides built into Tavoro (the **Help** link in the app's sidebar), as Markdo
 - [Storyboards](storyboards.md) — Screen-by-screen course design with rich per-screen fields.
 - [Whiteboards](whiteboards.md) — Collaborative Excalidraw canvases for workflows and wireframes.
 - [Content inventory](content.md) — Track what you've shipped, with review and expiry dates and reminders.
+- [Asset library](assets.md) — Reusable images, video, audio and source files, and the content that uses them.
 - [Templates](templates.md) — Save a project or storyboard once and start new ones from it.
 - [Intake](intake.md) — Capture, triage, score, and convert stakeholder requests.
 - [My Work & reviews](my-work.md) — Your personal hub and the SME review lifecycle.

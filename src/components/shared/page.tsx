@@ -35,7 +35,8 @@ export function PageHeader({
 }) {
   return (
     <div className={cn("flex flex-wrap items-start justify-between gap-4", className)}>
-      <div className="min-w-0 flex-1">
+      {/* min-w-64: on a phone, the actions wrap below the title instead of squeezing it. */}
+      <div className="min-w-64 flex-1">
         {eyebrow ? (
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{eyebrow}</p>
         ) : null}

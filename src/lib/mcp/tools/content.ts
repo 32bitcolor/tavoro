@@ -45,6 +45,9 @@ export async function loadContent(id: string) {
     lastReviewedAt: iso(r.lastReviewedAt),
     project: r.project ? { id: r.project.id, name: r.project.name, url: link(`/projects/${r.project.id}`) } : null,
     deliverable: r.deliverable,
+    assets: (
+      await prisma.contentItemAsset.findMany({ where: { contentItemId: id }, select: { asset: { select: { id: true, name: true, assetType: true } } } })
+    ).map((x) => ({ id: x.asset.id, name: x.asset.name, type: x.asset.assetType, url: link(`/assets/${x.asset.id}`) })),
     updatedAt: iso(r.updatedAt),
   };
 }
@@ -149,8 +152,10 @@ export function registerContentTools(server: McpServer) {
       input: { title: z.string().min(1).max(200), ...fields },
     },
     async ({ title, labels, ...rest }) => {
+      // Resolve labels (and the owner) first, so a bad name fails before anything is created.
+      const ids = labels ? await labelIds(labels) : null;
       const res = check(await createContentItem({ title, ...(await toPatch(rest)) }));
-      if (labels) check(await setContentLabels(res.id, await labelIds(labels)));
+      if (ids) check(await setContentLabels(res.id, ids));
       return loadContent(res.id);
     },
   );
@@ -167,9 +172,10 @@ export function registerContentTools(server: McpServer) {
     },
     async ({ content, title, labels, ...rest }) => {
       if (!(await getContentItemForUser(content))) throw new ToolError("Content not found, or it's in another workspace.");
+      const ids = labels ? await labelIds(labels) : null;
       const patch = { ...(await toPatch(rest)), ...(title ? { title } : {}) };
       if (Object.keys(patch).length) check(await updateContentItem(content, patch));
-      if (labels) check(await setContentLabels(content, await labelIds(labels)));
+      if (ids) check(await setContentLabels(content, ids));
       return loadContent(content);
     },
   );

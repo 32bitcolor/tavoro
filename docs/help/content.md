@@ -73,8 +73,9 @@ When content is no longer in use, choose **Retire**. It leaves the default list 
 - The dashboard’s **Content health** panel counts what needs attention.
 - Search (**Ctrl K**) finds content by title, retired items included.
 - AI assistants connected over MCP can list, update and mark content reviewed, and track a deliverable.
+- Under **Assets** on an item’s page, record the library assets it uses, so the **Assets** library can say where each one is used.
 - Workspace backups include the inventory.
 
 ---
 
-← [Whiteboards](whiteboards.md) · [All guides](README.md) · [Templates](templates.md) →
+← [Whiteboards](whiteboards.md) · [All guides](README.md) · [Asset library](assets.md) →

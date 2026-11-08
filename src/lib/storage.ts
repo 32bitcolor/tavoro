@@ -63,6 +63,13 @@ export function buildReviewObjectKey(workspaceId: string, deliverableId: string,
   return `workspace/${workspaceId}/review/${deliverableId}/${crypto.randomUUID()}-${safe}`;
 }
 
+/** Object keys for library assets: workspace/{id}/asset/{assetId}/{uuid}-{name}. A
+ *  replaced file gets a new key, so a cached copy of the old one can't be served. */
+export function buildAssetObjectKey(workspaceId: string, assetId: string, fileName: string): string {
+  const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "file";
+  return `workspace/${workspaceId}/asset/${assetId}/${crypto.randomUUID()}-${safe}`;
+}
+
 /** Stream a request body to storage as a multipart upload — never buffered whole in
  *  memory, so it scales to the large files phase-3 review (and later video) needs. */
 export async function putObjectStream(key: string, body: ReadableStream<Uint8Array>, contentType: string): Promise<void> {

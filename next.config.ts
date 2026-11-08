@@ -13,8 +13,12 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Baseline security headers on every response. Production traffic reaches the app
   // through the Cloudflare tunnel, not Caddy, so they're set here. Framing is limited
-  // to the app itself (review files open in an in-app frame); routes that serve
-  // uploaded files add their own sandboxing CSP on top.
+  // to the app itself (review files open in an in-app frame).
+  //
+  // Routes that serve uploaded files (card attachments, review files, library assets)
+  // send their own stricter `sandbox` CSP and no-referrer policy. A header set here
+  // REPLACES the one a route handler sets, so the page CSP must skip those routes or it
+  // silently strips their sandbox.
   async headers() {
     return [
       {
@@ -22,9 +26,14 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
           { key: "Strict-Transport-Security", value: "max-age=31536000" },
+        ],
+      },
+      {
+        source: "/((?!api/attachments/|api/review-files/|api/assets/|review/g/[^/]+/file).*)",
+        headers: [
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Content-Security-Policy", value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'" },
         ],
       },

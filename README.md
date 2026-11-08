@@ -141,6 +141,10 @@ review that.
   with an owner, where it lives, and review and expiry dates. Items are flagged as review due,
   overdue, expiring or expired; owners get reminders 60/30/7 days ahead; **Mark reviewed** rolls
   the next review forward by the item's cadence. Finished deliverables can be tracked in one click.
+- **Asset library**: the team's shared shelf of reusable images, video, audio, documents and
+  authoring-tool sources: upload them (or link to where they live), tag them with labels, and record
+  which content uses each one, so a reshot photo or an expiring licence shows every course to update.
+  Replacing a file keeps the asset's labels and links.
 - **Templates**: save a project (phases, deliverables, milestones, storyboards, objectives,
   assessment items, boards and cards) or a storyboard as a template, then start new ones from it.
   Dates shift to the new start date; statuses, people and history start fresh.
@@ -159,7 +163,7 @@ review that.
   **Settings → Notifications**.
 - **Dashboard**: active projects with phase progress, reviews awaiting you, and upcoming milestones.
 - **Workspace admin**:
-  - **backup and restore**, including attachments and review files
+  - **backup and restore**, including attachments, review files and library assets
   - workspace **labels**
   - a one-click **self-update** (pull, rebuild, migrate) from **Settings → Updates**
 - **Single sign-on and provisioning**: connect a SAML 2.0 identity provider (tested with JumpCloud) so
@@ -279,8 +283,8 @@ Three are live; two are next.
 3. **Objectives → content → assessment alignment spine** ✅: objectives threaded through storyboard
    screens and assessment items, with coverage and gap analysis.
 4. **Content lifecycle and a reusable asset library** (in progress): the content inventory with
-   review and expiry reminders ✅ and project and storyboard templates ✅. Still planned: an asset
-   library, question banks, and impact analysis when a source changes. See
+   review and expiry reminders ✅, project and storyboard templates ✅, and the asset library ✅.
+   Still planned: question banks, and impact analysis when a source changes. See
    [docs/CONTENT-LIFECYCLE-REUSE.md](docs/CONTENT-LIFECYCLE-REUSE.md).
 5. **LMS integration** (next): publish and sync courses to your LMS, and pull completion and
    assessment data back for impact reporting.
