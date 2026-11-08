@@ -107,8 +107,8 @@ review that.
   - deliverables linked to board cards and storyboards, each with its review rounds
   - milestones, time tracking, and optional sprint planning
 - **Review rounds** (SME review and approval):
-  - **Starting a round** freezes the storyboard as it is, or reviews a **PDF, image or video**
-    (MP4/WebM) you upload, up to 95 MB. A Storyline or Rise export, or a screen recording, works well.
+  - **Starting a round** freezes the storyboard as it is, or reviews a **PDF or image** (up to
+    95 MB) or a **video** (MP4/WebM, up to 500 MB, uploaded in parts) you upload. A Storyline or Rise export, or a screen recording, works well.
   - **Reviewers** are workspace members and/or **guests**. Each guest gets a personal, expiring
     link (no account needed) to a page that shows just that one round.
   - **Commenting:** reviewers select storyboard text to quote it. On a PDF or image they drop
@@ -288,8 +288,7 @@ Four are live; LMS integration is next.
    and approve-to-project conversion.
 2. **SME review and approval** ✅: review rounds on frozen storyboards, PDFs, images and videos,
    with anchored comments (pins, quotes, video timestamps), guest links, an every-reviewer gate, email notifications, comments sent to
-   the board as cards, Word/PDF export, and SME turnaround reporting. Still planned: videos over
-   95 MB. See [docs/REVIEW-LINKS.md](docs/REVIEW-LINKS.md).
+   the board as cards, Word/PDF export, and SME turnaround reporting. See [docs/REVIEW-LINKS.md](docs/REVIEW-LINKS.md).
 3. **Objectives → content → assessment alignment spine** ✅: objectives threaded through storyboard
    screens and assessment items, with coverage and gap analysis.
 4. **Content lifecycle and a reusable asset library** ✅: the content inventory with

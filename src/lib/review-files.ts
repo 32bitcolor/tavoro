@@ -8,6 +8,9 @@ import { contentDisposition } from "@/lib/content-disposition";
 // script), no HTML, no SCORM — ever.
 
 export const MAX_REVIEW_FILE_BYTES = 95 * 1024 * 1024; // under Cloudflare's 100 MB body cap
+/** Larger files (videos) go up in parts of this size, to this total. */
+export const PART_BYTES = 50 * 1024 * 1024;
+export const MAX_MULTIPART_BYTES = 500 * 1024 * 1024;
 
 export const REVIEW_FILE_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp", "image/gif", "video/mp4", "video/webm"] as const;
 export type ReviewFileType = (typeof REVIEW_FILE_TYPES)[number];

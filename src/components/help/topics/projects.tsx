@@ -148,9 +148,9 @@ export default function Projects() {
       </Steps>
 
       <Callout tone="tip">
-        Reviewing a file? PDFs, PNG, JPEG, WebP or GIF images, and MP4 or WebM videos up to 95 MB work.
-        For an e-learning build, publish it to PDF (Storyline: <UI>Publish → Print</UI>), or record a
-        walkthrough video, and upload that. For video, export at 720p to stay under the limit. Tavoro shows
+        Reviewing a file? PDFs and PNG, JPEG, WebP or GIF images up to 95 MB work, and MP4 or WebM
+        videos up to 500 MB. For an e-learning build, publish it to PDF (Storyline:{" "}
+        <UI>Publish → Print</UI>), or record a walkthrough video, and upload that. Tavoro shows
         files; it never runs them. For the next round, upload the new version, or reuse the same file.
       </Callout>
 

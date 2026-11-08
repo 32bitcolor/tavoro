@@ -1,4 +1,4 @@
-import { DeleteObjectsCommand, ListObjectsV2Command, type S3Client } from "@aws-sdk/client-s3";
+import { AbortMultipartUploadCommand, DeleteObjectsCommand, ListMultipartUploadsCommand, ListObjectsV2Command, type S3Client } from "@aws-sdk/client-s3";
 import type { PrismaClient } from "../generated/prisma/client";
 
 // Nightly clean-up of review files nobody will ever look at (run by the worker, so no
@@ -27,7 +27,7 @@ export async function sweepReviewFiles(
   s3: S3Client,
   bucket: string,
   now = new Date(),
-): Promise<{ unusedFiles: number; orphanedObjects: number; orphanedAssets: number }> {
+): Promise<{ unusedFiles: number; orphanedObjects: number; orphanedAssets: number; abandonedUploads: number }> {
   const cutoff = new Date(now.getTime() - GRACE_MS);
 
   // 1. Rows with no round, older than the grace period: drop the row, then its bytes.
@@ -72,7 +72,27 @@ export async function sweepReviewFiles(
   }
   await deleteKeys(s3, bucket, assetOrphans);
 
-  return { unusedFiles: unused.length, orphanedObjects: orphans.length, orphanedAssets: assetOrphans.length };
+  // 4. Large uploads sent in parts (PUT /api/review-files/multipart) that were never
+  //    finished: the store keeps their parts until the upload is aborted. On S3 this
+  //    listing finds them. MinIO only lists uploads for an exact key, so it finds none
+  //    here, but MinIO aborts incomplete uploads itself after 24 hours by default
+  //    (api stale_uploads_expiry), so nothing piles up either way.
+  let abandonedUploads = 0;
+  let keyMarker: string | undefined;
+  let idMarker: string | undefined;
+  do {
+    const page = await s3.send(new ListMultipartUploadsCommand({ Bucket: bucket, Prefix: "workspace/", KeyMarker: keyMarker, UploadIdMarker: idMarker }));
+    for (const u of page.Uploads ?? []) {
+      if (u.Key && u.UploadId && u.Initiated && u.Initiated < cutoff && REVIEW_KEY.test(u.Key)) {
+        await s3.send(new AbortMultipartUploadCommand({ Bucket: bucket, Key: u.Key, UploadId: u.UploadId })).catch(() => {});
+        abandonedUploads++;
+      }
+    }
+    keyMarker = page.IsTruncated ? page.NextKeyMarker : undefined;
+    idMarker = page.IsTruncated ? page.NextUploadIdMarker : undefined;
+  } while (keyMarker);
+
+  return { unusedFiles: unused.length, orphanedObjects: orphans.length, orphanedAssets: assetOrphans.length, abandonedUploads };
 }
 
 async function deleteKeys(s3: S3Client, bucket: string, keys: string[]) {

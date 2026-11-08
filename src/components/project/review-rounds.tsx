@@ -386,7 +386,20 @@ function TargetChoice({ on, onClick, children }: { on: boolean; onClick: () => v
 }
 
 const ACCEPT = "application/pdf,image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm";
-const MAX_BYTES = 95 * 1024 * 1024;
+const MAX_BYTES = 95 * 1024 * 1024; // one request; larger files go up in parts
+const MAX_MULTIPART_BYTES = 500 * 1024 * 1024;
+
+/** PUT one part with progress; resolves true when the server took it. */
+function sendPart(url: string, blob: Blob, onProgress: (fraction: number) => void): Promise<boolean> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+    xhr.onload = () => resolve(xhr.status === 200);
+    xhr.onerror = () => resolve(false);
+    xhr.send(blob);
+  });
+}
 
 function fmtSize(n: number) {
   return n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
@@ -411,7 +424,8 @@ function FilePicker({
 
   function upload(f: File) {
     setError(null);
-    if (f.size > MAX_BYTES) return setError("Files can be up to 95 MB.");
+    if (f.size > MAX_MULTIPART_BYTES) return setError("Files can be up to 500 MB.");
+    if (f.size > MAX_BYTES) return void uploadInParts(f);
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", `/api/review-files?deliverableId=${encodeURIComponent(deliverableId)}&name=${encodeURIComponent(f.name)}`);
     xhr.upload.onprogress = (e) => e.lengthComputable && setProgress(e.loaded / e.total);
@@ -430,6 +444,43 @@ function FilePicker({
     };
     setProgress(0);
     xhr.send(f);
+  }
+
+  /** Over 95 MB (a long video): in 50 MB parts, each its own request, so none hits
+   *  Cloudflare's 100 MB cap. A failed part is retried twice before giving up. */
+  async function uploadInParts(f: File) {
+    const base = "/api/review-files/multipart";
+    const fail = (msg: string) => {
+      setProgress(null);
+      setError(msg);
+    };
+    setProgress(0);
+    let uploadId: string | null = null;
+    try {
+      const start = await fetch(`${base}?action=start&deliverableId=${encodeURIComponent(deliverableId)}&name=${encodeURIComponent(f.name)}&size=${f.size}`, { method: "POST" });
+      const s = (await start.json()) as { uploadId?: string; partSize?: number; parts?: number; error?: string };
+      if (!start.ok || !s.uploadId || !s.partSize || !s.parts) return fail(s.error ?? "Upload failed — please try again.");
+      uploadId = s.uploadId;
+      for (let i = 0; i < s.parts; i++) {
+        const blob = f.slice(i * s.partSize, Math.min(f.size, (i + 1) * s.partSize));
+        let ok = false;
+        for (let attempt = 0; attempt < 3 && !ok; attempt++) {
+          ok = await sendPart(`${base}?uploadId=${encodeURIComponent(uploadId)}&part=${i + 1}`, blob, (p) => setProgress((i * s.partSize! + p * blob.size) / f.size));
+        }
+        if (!ok) {
+          await fetch(`${base}?uploadId=${encodeURIComponent(uploadId)}`, { method: "DELETE" });
+          return fail("Upload failed — check your connection and try again.");
+        }
+      }
+      const done = await fetch(`${base}?action=complete&uploadId=${encodeURIComponent(uploadId)}`, { method: "POST" });
+      const body = (await done.json()) as { file?: ReviewFileInfo; error?: string };
+      setProgress(null);
+      if (done.ok && body.file) onChange(body.file);
+      else setError(body.error ?? "Upload failed — please try again.");
+    } catch {
+      if (uploadId) await fetch(`${base}?uploadId=${encodeURIComponent(uploadId)}`, { method: "DELETE" }).catch(() => {});
+      fail("Upload failed — check your connection and try again.");
+    }
   }
 
   if (file) {
@@ -479,7 +530,7 @@ function FilePicker({
             <span>
               <span className="font-medium text-foreground">Choose a file</span> or drop it here
             </span>
-            <span className="text-xs text-muted-foreground">PDF, PNG, JPEG, WebP, GIF, MP4 or WebM · up to {fmtSize(MAX_BYTES)}</span>
+            <span className="text-xs text-muted-foreground">PDF, PNG, JPEG, WebP or GIF up to {fmtSize(MAX_BYTES)} · MP4 or WebM video up to {fmtSize(MAX_MULTIPART_BYTES)}</span>
           </>
         )}
         <input

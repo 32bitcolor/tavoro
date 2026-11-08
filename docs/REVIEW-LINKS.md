@@ -392,8 +392,14 @@ No open questions remain.
   page, MCP and the Word export (one Video section in time order). `components/review/video-review.tsx`:
   "Comment at m:ss" (pauses), "Pin on the frame" (one click on a layer that stops short of the
   native controls), timeline markers that seek, and pins shown on the frame within 1.5 s of their
-  moment. MCP `add_review_comment` takes `at` ("1:23"). **Still the 95 MB single-request cap**:
-  over that needs chunked upload through Cloudflare (S3 multipart with parts proxied by the app).
+  moment. MCP `add_review_comment` takes `at` ("1:23").
+- **Large files (2026-11-08):** over 95 MB, the browser uploads in 50 MB parts
+  (`/api/review-files/multipart`: start → PUT each part → complete), each its own request, so none
+  hits Cloudflare's 100 MB cap; up to 500 MB. The app passes parts to the store's own multipart
+  upload (pending state in Redis, 24 h, bound to the uploader); the type is sniffed once the file is
+  whole and the size checked against what was declared, and anything else is deleted. Failed parts
+  retry twice; a cancelled or failed upload is aborted. MinIO aborts stale incomplete uploads after
+  24 h itself; on S3 the nightly sweep does.
 - Backup format 7 carries review files with their bytes, re-uploaded on restore. The dead presign
   helpers, `S3_PUBLIC_ENDPOINT` and `@aws-sdk/s3-request-presigner` are gone.
 

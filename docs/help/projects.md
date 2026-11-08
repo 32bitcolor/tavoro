@@ -66,7 +66,7 @@ Every deliverable has its own **review rounds**: the SME and stakeholder sign-of
 2. Reviewers select text in any storyboard field and comment on it. On a PDF or image, they click to drop a numbered pin or drag to mark an area. On a PDF, they can also select text and choose**Comment on selection** to quote it. On a video, they play to a moment and choose **Comment at 1:23**, or **Pin on the frame** to point at something in the picture; numbered markers on the timeline under the video jump back to each comment. They can also leave general feedback. Then they choose **Approve**, **Approve with minor changes**, or **Request changes**. The round passes only when **every** reviewer approves (with or without minor changes).
 3. Reply to comments, and mark them **Resolved** or **Won’t fix** with a note the reviewer sees. Then start the next round: it goes back to the same people, and the review page highlights what changed since the last one.
 
-> **Tip.** Reviewing a file? PDFs, PNG, JPEG, WebP or GIF images, and MP4 or WebM videos up to 95 MB work. For an e-learning build, publish it to PDF (Storyline: **Publish → Print**), or record a walkthrough video, and upload that. For video, export at 720p to stay under the limit. Tavoro shows files; it never runs them. For the next round, upload the new version, or reuse the same file.
+> **Tip.** Reviewing a file? PDFs and PNG, JPEG, WebP or GIF images up to 95 MB work, and MP4 or WebM videos up to 500 MB. For an e-learning build, publish it to PDF (Storyline: **Publish → Print**), or record a walkthrough video, and upload that. Tavoro shows files; it never runs them. For the next round, upload the new version, or reuse the same file.
 
 ### Guest reviewers
 

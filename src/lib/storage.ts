@@ -6,6 +6,11 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { Readable } from "node:stream";
@@ -127,4 +132,47 @@ export async function putObjectBytes(key: string, bytes: Uint8Array, contentType
   await serverClient.send(
     new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: bytes, ContentType: contentType }),
   );
+}
+
+// ── Multipart uploads (files over Cloudflare's 100 MB request cap) ─────────────
+// The browser sends the file in parts, one request each; the app passes every part
+// straight to the object store's own multipart upload and completes it at the end.
+
+export async function startMultipart(key: string, contentType: string): Promise<string> {
+  await ensureBucket();
+  const res = await serverClient.send(new CreateMultipartUploadCommand({ Bucket: BUCKET, Key: key, ContentType: contentType }));
+  if (!res.UploadId) throw new Error("no upload id");
+  return res.UploadId;
+}
+
+export async function uploadPart(key: string, uploadId: string, partNumber: number, body: Uint8Array): Promise<string> {
+  const res = await serverClient.send(
+    new UploadPartCommand({ Bucket: BUCKET, Key: key, UploadId: uploadId, PartNumber: partNumber, Body: body, ContentLength: body.byteLength }),
+  );
+  if (!res.ETag) throw new Error("no etag");
+  return res.ETag;
+}
+
+export async function completeMultipart(key: string, uploadId: string, parts: { PartNumber: number; ETag: string }[]): Promise<void> {
+  await serverClient.send(
+    new CompleteMultipartUploadCommand({ Bucket: BUCKET, Key: key, UploadId: uploadId, MultipartUpload: { Parts: parts } }),
+  );
+}
+
+export async function abortMultipart(key: string, uploadId: string): Promise<void> {
+  try {
+    await serverClient.send(new AbortMultipartUploadCommand({ Bucket: BUCKET, Key: key, UploadId: uploadId }));
+  } catch {
+    // already completed or gone
+  }
+}
+
+/** An object's size in bytes, or null if it's absent. */
+export async function objectSize(key: string): Promise<number | null> {
+  try {
+    const res = await serverClient.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }));
+    return res.ContentLength ?? null;
+  } catch {
+    return null;
+  }
 }
