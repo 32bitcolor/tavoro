@@ -13,6 +13,7 @@ import { registerPlanningTools } from "@/lib/mcp/tools/planning";
 import { loadWhiteboard, registerWhiteboardTools } from "@/lib/mcp/tools/whiteboards";
 import { registerDocumentTools } from "@/lib/mcp/documents";
 import { registerContentTools } from "@/lib/mcp/tools/content";
+import { readAnswers } from "@/lib/intake-fields";
 import { registerAssetTools } from "@/lib/mcp/tools/assets";
 import { registerBankTools } from "@/lib/mcp/tools/bank";
 import { registerTemplateTools } from "@/lib/mcp/tools/templates";
@@ -190,12 +191,13 @@ function registerPrompts(server: McpServer) {
       const requests = await prisma.intakeRequest.findMany({
         where: { workspaceId: principal().workspaceId, status: { in: ["submitted", "triaging"] } },
         orderBy: { createdAt: "asc" },
-        select: { number: true, title: true, description: true, targetAudience: true, targetDate: true, impactScore: true, effortScore: true, requesterName: true },
+        select: { number: true, title: true, description: true, targetAudience: true, targetDate: true, answers: true, impactScore: true, effortScore: true, requesterName: true },
       });
+      const withAnswers = requests.map(({ answers, ...r }) => ({ ...r, answers: readAnswers(answers).map((a) => ({ question: a.label, answer: a.value })) }));
       return {
         messages: [
           user(
-            `Triage these training requests. For each, suggest impact (1–5) and effort (1–5) with a one-line reason, whether training is actually the right fix (or a job aid, a process change, or nothing), and a recommendation: approve, reject (with a kind reason for the requester), or ask a question first. Present them as a table. Apply the scores and decisions with triage_intake only after I confirm.\n\n${JSON.stringify(requests, null, 2)}`,
+            `Triage these training requests. For each, suggest impact (1–5) and effort (1–5) with a one-line reason, whether training is actually the right fix (or a job aid, a process change, or nothing), and a recommendation: approve, reject (with a kind reason for the requester), or ask a question first. Present them as a table. Apply the scores and decisions with triage_intake only after I confirm.\n\n${JSON.stringify(withAnswers, null, 2)}`,
           ),
         ],
       };

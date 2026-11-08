@@ -219,6 +219,7 @@ async function intakeDoc(id: string): Promise<Doc> {
       `# ${r.ticket}: ${r.title}`,
       `Status: ${r.status} · From ${r.requester.name}${"email" in r.requester ? ` <${r.requester.email}>` : ""} · Submitted ${r.submitted}`,
       `Audience: ${r.targetAudience ?? "—"} · Target date: ${r.targetDate ?? "—"}`,
+      ...(r.answers ?? []).map((a: { question: string; answer: string }) => `${a.question}: ${a.answer}`),
       `Impact ${r.impact ?? "?"} / Effort ${r.effort ?? "?"}${r.quadrant ? ` (${r.quadrant})` : ""}`,
 
       r.decided ? `Decided ${r.decided.on}${r.decided.by ? ` by ${r.decided.by}` : ""}${r.rejectionReason ? `: ${r.rejectionReason}` : ""}` : "",

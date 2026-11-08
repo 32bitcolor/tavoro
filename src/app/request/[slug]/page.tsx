@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { IntakeForm } from "./intake-form";
+import { readIntakeFields } from "@/lib/intake-fields";
 
 export const metadata = { title: "Submit a request · Tavoro" };
 
@@ -11,7 +12,7 @@ export default async function PublicIntakePage({ params }: { params: Promise<{ s
   // leak anything about the workspace beyond what the form itself needs.
   const workspace = await prisma.workspace.findUnique({
     where: { slug },
-    select: { id: true, name: true, intakeEnabled: true },
+    select: { id: true, name: true, intakeEnabled: true, intakeFields: true },
   });
 
   // An address the workspace used before (its link was changed): forward to the
@@ -25,5 +26,5 @@ export default async function PublicIntakePage({ params }: { params: Promise<{ s
   // workspace's existence shouldn't be distinguishable from a nonexistent one.
   if (!workspace || !workspace.intakeEnabled) notFound();
 
-  return <IntakeForm workspaceId={workspace.id} workspaceName={workspace.name} />;
+  return <IntakeForm workspaceId={workspace.id} workspaceName={workspace.name} fields={readIntakeFields(workspace.intakeFields)} />;
 }

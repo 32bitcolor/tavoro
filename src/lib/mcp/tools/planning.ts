@@ -1,4 +1,5 @@
 import "server-only";
+import { readAnswers } from "@/lib/intake-fields";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { prisma } from "@/lib/db";
@@ -52,6 +53,7 @@ export async function loadIntake(id: string, showEmail?: boolean) {
       requesterEmail: true,
       targetAudience: true,
       targetDate: true,
+      answers: true,
       impactScore: true,
       effortScore: true,
       status: true,
@@ -76,6 +78,7 @@ export async function loadIntake(id: string, showEmail?: boolean) {
     requester: { name: r.requesterName, ...(withEmail ? { email: r.requesterEmail } : {}) },
     targetAudience: r.targetAudience,
     targetDate: day(r.targetDate),
+    answers: readAnswers(r.answers).map((a) => ({ question: a.label, answer: a.value })),
     impact: r.impactScore,
     effort: r.effortScore,
     priority: r.impactScore && r.effortScore ? priorityScore(r.impactScore, r.effortScore) : null,

@@ -113,6 +113,16 @@ export function StatusView({ page, token }: { page: StatusPage; token: string })
             )}
           </dl>
         )}
+        {page.answers.length > 0 && (
+          <dl className="mt-3 flex flex-col gap-2 text-sm">
+            {page.answers.map((a) => (
+              <div key={a.id || a.label}>
+                <dt className="text-muted-foreground">{a.label}</dt>
+                <dd className="whitespace-pre-wrap break-words">{a.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
       </section>
 
       <section aria-labelledby="conversation" className="flex flex-col gap-3">

@@ -45,6 +45,7 @@ export type DetailRequest = {
   /** Only sent to admins and managers. */
   requesterEmail: string | null;
   targetAudience: string | null;
+  answers: { id: string; label: string; value: string }[];
   targetDate: string | null;
   impactScore: number | null;
   effortScore: number | null;
@@ -131,6 +132,18 @@ export function RequestDetail({
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">Audience:</span> {request.targetAudience}
             </p>
+          )}
+          {request.answers.length > 0 && (
+            <dl className="flex flex-col gap-2 border-t border-border pt-3 text-sm">
+              {request.answers.map((a) => (
+                <div key={a.id || a.label}>
+                  <dt className="font-medium">{a.label}</dt>
+                  <dd className="whitespace-pre-wrap break-words text-muted-foreground">
+                    <LinkifiedText text={a.value} />
+                  </dd>
+                </div>
+              ))}
+            </dl>
           )}
         </Card>
 

@@ -1,4 +1,5 @@
 import "server-only";
+import { readAnswers } from "@/lib/intake-fields";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { appUrl } from "@/lib/app-url";
@@ -59,6 +60,7 @@ export async function requestForStatusToken(token: string) {
       description: true,
       targetAudience: true,
       targetDate: true,
+      answers: true,
       requesterName: true,
       requesterEmail: true,
       status: true,
@@ -95,6 +97,7 @@ export async function loadStatusPage(token: string) {
     description: r.description,
     targetAudience: r.targetAudience,
     targetDate: r.targetDate?.toISOString() ?? null,
+    answers: readAnswers(r.answers),
     requesterName: r.requesterName,
     status: r.status,
     rejectionReason: r.status === "rejected" ? r.rejectionReason : null,

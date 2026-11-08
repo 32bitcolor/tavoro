@@ -15,6 +15,7 @@ import { intakeSubmittedConfirmation, newIntakeRequestForAdmin, intakeApprovedNo
 import { appUrl } from "@/lib/app-url";
 import { newStatusNonce, statusPath, statusUrl } from "@/lib/intake-status";
 import { notificationsEnabled } from "@/lib/notify";
+import { collectAnswers, IntakeFieldList, readIntakeFields } from "@/lib/intake-fields";
 
 const Requester = z.object({
   name: z.string().trim().min(1, "Your name is required").max(140),
@@ -51,7 +52,7 @@ export async function submitIntakeRequest(
 
   const workspace = await prisma.workspace.findUnique({
     where: { id: workspaceId },
-    select: { name: true, intakeEnabled: true },
+    select: { name: true, intakeEnabled: true, intakeFields: true },
   });
   if (!workspace?.intakeEnabled) return { error: "This intake form is not currently accepting requests." };
 
@@ -67,6 +68,13 @@ export async function submitIntakeRequest(
 
   const targetDate = input.data.targetDate ? new Date(input.data.targetDate) : null;
   if (targetDate && Number.isNaN(targetDate.getTime())) return { error: "Invalid target date." };
+
+  // The workspace's own questions, checked against how they're defined right now.
+  const collected = collectAnswers(readIntakeFields(workspace.intakeFields), (id) => {
+    const v = formData.get(`q_${id}`);
+    return typeof v === "string" ? v : null;
+  });
+  if ("error" in collected) return { error: collected.error };
 
   const me = await getCurrentUser();
 
@@ -90,6 +98,7 @@ export async function submitIntakeRequest(
             description: input.data.description,
             targetAudience: input.data.targetAudience || null,
             targetDate,
+            ...(collected.answers.length ? { answers: collected.answers } : {}),
           },
           select: { id: true, number: true, statusNonce: true },
         });
@@ -433,4 +442,19 @@ export async function setIntakeEnabled(enabled: boolean): Promise<{ error: strin
   if (!admin) return { error: "You must be a workspace admin." };
   await prisma.workspace.update({ where: { id: admin.workspaceId }, data: { intakeEnabled: enabled } });
   revalidatePath("/settings/intake");
+}
+
+/** Admins: replace the intake form's extra questions. Answers already submitted keep
+ *  the questions as they were asked. */
+export async function setIntakeFields(fields: unknown) {
+  const admin = await getWorkspaceAdmin();
+  if (!admin) return { error: "Only admins can change the intake form." };
+  const parsed = IntakeFieldList.safeParse(fields);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the questions and try again." };
+  const clean = parsed.data.map((f) => ({ ...f, options: f.type === "choice" ? f.options : [] }));
+  await prisma.workspace.update({ where: { id: admin.workspaceId }, data: { intakeFields: clean } });
+  revalidatePath("/settings/intake");
+  const ws = await prisma.workspace.findUnique({ where: { id: admin.workspaceId }, select: { slug: true } });
+  if (ws) revalidatePath(`/request/${ws.slug}`);
+  return { ok: true as const };
 }

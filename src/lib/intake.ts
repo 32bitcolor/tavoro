@@ -1,3 +1,4 @@
+import { answersAsText, readAnswers } from "@/lib/intake-fields";
 export const INTAKE_STATUSES = ["submitted", "triaging", "needs_info", "rejected", "converted"] as const;
 export type IntakeStatus = (typeof INTAKE_STATUSES)[number];
 
@@ -72,8 +73,11 @@ export function projectDescriptionFrom(r: {
   targetAudience: string | null;
   targetDate: Date | null;
   requesterName: string;
+  answers?: unknown;
 }): string {
   const lines = [r.description.trim(), ""];
+  const answers = readAnswers(r.answers);
+  if (answers.length) lines.push(answersAsText(answers), "");
   if (r.targetAudience) lines.push(`Audience: ${r.targetAudience}`);
   if (r.targetDate) {
     lines.push(`Needed by: ${r.targetDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`);

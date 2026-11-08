@@ -48,6 +48,21 @@ export default function Intake() {
         get a confirmation screen with a reference number like <UI>REQ-14</UI>.
       </P>
 
+      <H3>Your own questions</H3>
+      <P>
+        Under <UI>Settings → Intake → Your questions</UI>, admins can add up to 15 questions of their
+        own: the business goal, how many people it&rsquo;s for, whether it&rsquo;s required for
+        compliance. Each question can be a <UI>Short answer</UI>, a <UI>Paragraph</UI>, a{" "}
+        <UI>Choice</UI> (one per line), <UI>Yes / no</UI> or a <UI>Date</UI>, with an optional hint, and
+        can be required. Reorder them with the arrows, then choose <UI>Save questions</UI>; the form
+        shows them straight away.
+      </P>
+      <P>
+        Answers appear on the request, on the requester&rsquo;s status page, and in the description of
+        the project the request becomes. Each answer is saved with the question as it was asked, so
+        rewording or removing a question later never changes what earlier requesters said.
+      </P>
+
       <Callout tone="note" title="Spam protection">
         The form has a hidden honeypot field that real people never see &mdash; if it&rsquo;s filled
         in, the submission is silently dropped. Each network can also submit only five requests an

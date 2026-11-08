@@ -1,3 +1,4 @@
+import { readAnswers } from "@/lib/intake-fields";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getActiveMembership, requireUser } from "@/lib/dal";
@@ -50,6 +51,7 @@ export default async function IntakeRequestPage({ params }: { params: Promise<{ 
             // Requester emails are for admins and managers only.
             requesterEmail: decide ? request.requesterEmail : null,
             targetAudience: request.targetAudience,
+            answers: readAnswers(request.answers),
             targetDate: request.targetDate?.toISOString() ?? null,
             impactScore: request.impactScore,
             effortScore: request.effortScore,

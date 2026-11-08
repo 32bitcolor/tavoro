@@ -5,6 +5,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { getObjectBytes, putObjectBytes, buildAssetObjectKey, buildObjectKey, buildReviewObjectKey } from "@/lib/storage";
 import { workspaceStatusSeedData } from "@/lib/status";
 import { newGuestNonce } from "@/lib/review-guest-token";
+import { IntakeFieldList } from "@/lib/intake-fields";
 
 // Full logical backup of a single workspace: the entire content graph plus its
 // members (by email) and attachment media. Restore recreates it as a NEW
@@ -12,7 +13,7 @@ import { newGuestNonce } from "@/lib/review-guest-token";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 17; // bump when the shape changes
+export const BACKUP_FORMAT = 18; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -64,6 +65,7 @@ const SPECS: Spec[] = [
     model: "intakeRequest",
     where: (w) => ({ workspaceId: w }),
     fks: { workspaceId: WS, convertedProjectId: "project", requestedById: USER, assignedToId: USER, decidedById: USER },
+    json: ["answers"],
     // Formats 9–10 kept the last question on the request; it's a conversation message now.
     // The restored copy gets a fresh status link either way (the id changes).
     prepare: async (d) => {
@@ -213,7 +215,7 @@ const SPECS: Spec[] = [
 export type WorkspaceExport = {
   format: number;
   exportedAt: string;
-  workspace: { name: string; slug: string };
+  workspace: { name: string; slug: string; intakeFields?: unknown };
   users: { id: string; email: string; name: string | null }[];
   members: { email: string; role: string }[];
   data: Record<string, any[]>;
@@ -234,7 +236,7 @@ export async function exportWorkspace(workspaceId: string): Promise<{
 }> {
   const workspace = await prisma.workspace.findUniqueOrThrow({
     where: { id: workspaceId },
-    select: { name: true, slug: true },
+    select: { name: true, slug: true, intakeFields: true },
   });
   const memberships = await prisma.membership.findMany({
     where: { workspaceId },
@@ -262,7 +264,7 @@ export async function exportWorkspace(workspaceId: string): Promise<{
     json: {
       format: BACKUP_FORMAT,
       exportedAt: new Date().toISOString(),
-      workspace: { name: workspace.name, slug: workspace.slug },
+      workspace: { name: workspace.name, slug: workspace.slug, intakeFields: workspace.intakeFields },
       users: memberships.map((m) => ({ id: m.user.id, email: m.user.email, name: m.user.name })),
       members: memberships.map((m) => ({ email: m.user.email, role: m.role })),
       data,
@@ -372,8 +374,15 @@ export async function importWorkspace(
 
   // 1. new workspace with a unique slug
   const name = `${exp.workspace.name} (restored)`;
-  const slug = `${slugify(exp.workspace.name)}-${Math.abs(hashStr(exp.exportedAt + name)) % 100000}`;
-  const ws = await prisma.workspace.create({ data: { name, slug } });
+  // The slug is derived from the backup, so restoring the same file twice would collide;
+  // fall back to a random suffix until one is free.
+  let slug = `${slugify(exp.workspace.name)}-${Math.abs(hashStr(exp.exportedAt + name)) % 100000}`;
+  for (let i = 0; i < 20 && (await prisma.workspace.findFirst({ where: { OR: [{ slug }, { formerSlugs: { has: slug } }] }, select: { id: true } })); i++) {
+    slug = `${slugify(exp.workspace.name)}-${Math.floor(Math.random() * 1_000_000)}`;
+  }
+  // The intake form's own questions (format 18+), re-validated on the way in.
+  const intakeFields = IntakeFieldList.safeParse(exp.workspace.intakeFields ?? []);
+  const ws = await prisma.workspace.create({ data: { name, slug, intakeFields: intakeFields.success ? intakeFields.data : [] } });
   try {
     await fillWorkspace(ws.id, exp, media, importerUserId);
   } catch (err) {

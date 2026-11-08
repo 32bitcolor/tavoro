@@ -63,6 +63,8 @@ model Workspace {
   name                 String
   slug                 String              @unique
   intakeEnabled        Boolean             @default(true) // admin on/off toggle for the public intake form
+  // Extra questions on the intake form, set by admins (lib/intake-fields.ts).
+  intakeFields         Json                @default("[]")
   formerSlugs          String[]            @default([]) // intake links it used to have; /request/<old> forwards to the current one
   publicBoardsEnabled  Boolean             @default(true) // admin switch: off hides every board's public link (lib/board-share.ts)
   notificationSettings Json? // admin per-type email toggles; null/absent key = enabled (opt-out). See src/lib/notifications.ts
@@ -506,6 +508,9 @@ model IntakeRequest {
   description    String
   targetAudience String?
   targetDate     DateTime?
+  // Answers to the workspace's extra intake questions, each with the question as it was
+  // asked: [{ id, label, value }]. A snapshot, so editing the form never rewrites history.
+  answers        Json?
 
   impactScore Int? // 1-5, null until triaged
   effortScore Int? // 1-5, null until triaged

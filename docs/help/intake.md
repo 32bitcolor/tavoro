@@ -18,6 +18,12 @@ Every workspace has a public submission form at its own link — something like 
 
 On the form, the requester fills in **Your name** and **Your email**, **What do you need?** (a short title), and **Tell us more** (the full description). Two optional fields help you triage: **Audience** and **Needed by**. On submit they get a confirmation screen with a reference number like **REQ-14**.
 
+### Your own questions
+
+Under **Settings → Intake → Your questions**, admins can add up to 15 questions of their own: the business goal, how many people it’s for, whether it’s required for compliance. Each question can be a **Short answer**, a **Paragraph**, a **Choice** (one per line), **Yes / no** or a **Date**, with an optional hint, and can be required. Reorder them with the arrows, then choose **Save questions**; the form shows them straight away.
+
+Answers appear on the request, on the requester’s status page, and in the description of the project the request becomes. Each answer is saved with the question as it was asked, so rewording or removing a question later never changes what earlier requesters said.
+
 > **Spam protection.** The form has a hidden honeypot field that real people never see — if it’s filled in, the submission is silently dropped. Each network can also submit only five requests an hour, so a bot (or an over-eager tab) can’t flood your queue.
 
 ## The triage queue

@@ -6,15 +6,81 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
 import { submitIntakeRequest } from "@/app/actions/intake";
+import type { IntakeField } from "@/lib/intake-fields";
 
-export function IntakeForm({ workspaceId, workspaceName }: { workspaceId: string; workspaceName: string }) {
+/** One of the workspace's own questions. Inputs are named q_<id>. */
+function ExtraField({ f }: { f: IntakeField }) {
+  const id = `q_${f.id}`;
+  const label = (
+    <Label htmlFor={id}>
+      {f.label}
+      {!f.required && <span className="font-normal text-muted-foreground"> (optional)</span>}
+    </Label>
+  );
+  const help = f.help ? (
+    <p id={`${id}-help`} className="text-xs text-muted-foreground">
+      {f.help}
+    </p>
+  ) : null;
+  const described = f.help ? `${id}-help` : undefined;
+  if (f.type === "yes_no") {
+    return (
+      <fieldset className="flex flex-col gap-1.5" aria-describedby={described}>
+        <legend className="mb-1.5 text-sm font-medium">
+          {f.label}
+          {!f.required && <span className="font-normal text-muted-foreground"> (optional)</span>}
+        </legend>
+        <div className="flex gap-4 text-sm">
+          {(["yes", "no"] as const).map((v) => (
+            <label key={v} className="inline-flex items-center gap-1.5">
+              <input type="radio" name={id} value={v} required={f.required} className="accent-[var(--accent)]" />
+              {v === "yes" ? "Yes" : "No"}
+            </label>
+          ))}
+        </div>
+        {help}
+      </fieldset>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1.5">
+      {label}
+      {f.type === "long_text" ? (
+        <Textarea id={id} name={id} required={f.required} maxLength={4000} rows={3} aria-describedby={described} />
+      ) : f.type === "choice" ? (
+        <Select id={id} name={id} required={f.required} defaultValue="" aria-describedby={described}>
+          <option value="" disabled={f.required}>
+            {f.required ? "Choose…" : "No answer"}
+          </option>
+          {f.options.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </Select>
+      ) : f.type === "date" ? (
+        <Input id={id} name={id} type="date" required={f.required} aria-describedby={described} />
+      ) : (
+        <Input id={id} name={id} required={f.required} maxLength={280} aria-describedby={described} />
+      )}
+      {help}
+    </div>
+  );
+}
+
+export function IntakeForm({ workspaceId, workspaceName, fields = [] }: { workspaceId: string; workspaceName: string; fields?: IntakeField[] }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ticket, setTicket] = useState<string | null>(null);
   const [statusPath, setStatusPath] = useState<string | null>(null);
 
-  async function onSubmit(formData: FormData) {
+  // onSubmit, not a form action: an action resets the form, which would wipe what the
+  // requester wrote whenever the server turns a submission away.
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
     setPending(true);
     setError(null);
     const result = await submitIntakeRequest(workspaceId, formData);
@@ -55,7 +121,7 @@ export function IntakeForm({ workspaceId, workspaceName }: { workspaceId: string
   }
 
   return (
-    <form action={onSubmit} className="flex flex-col gap-4">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
         Submit a request for training or content, and the {workspaceName} team will review it.
       </p>
@@ -86,6 +152,10 @@ export function IntakeForm({ workspaceId, workspaceName }: { workspaceId: string
         <Label htmlFor="description">Tell us more</Label>
         <Textarea id="description" name="description" required maxLength={4000} rows={5} />
       </div>
+
+      {fields.map((f) => (
+        <ExtraField key={f.id} f={f} />
+      ))}
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
