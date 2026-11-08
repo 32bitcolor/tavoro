@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ArrowRight, FileText, Image as ImageIcon, ListChecks, MessageSquare, Plus, ShieldCheck, Upload, UserRound, X } from "lucide-react";
+import { ArrowRight, FileText, Film, Image as ImageIcon, ListChecks, MessageSquare, Plus, ShieldCheck, Upload, UserRound, X } from "lucide-react";
 import { discardReviewFile, startReviewRound, type RoundTarget } from "@/app/actions/reviews";
 import { REVIEW_STATUS_LABEL, isApproval, type ReviewStatus } from "@/lib/methodology";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ type Guest = { name: string; email: string };
 export type ReviewFileInfo = { id: string; fileName: string; mimeType: string };
 
 export function FileGlyph({ mimeType, className }: { mimeType: string; className?: string }) {
-  const Icon = mimeType === "application/pdf" ? FileText : ImageIcon;
+  const Icon = mimeType === "application/pdf" ? FileText : mimeType.startsWith("video/") ? Film : ImageIcon;
   return <Icon className={cn("size-3.5 shrink-0", className)} aria-hidden="true" />;
 }
 
@@ -239,7 +239,7 @@ function StartRoundForm({
               Storyboard: {storyboard.title}
             </TargetChoice>
           )}
-          <TargetChoice on={kind === "file"} onClick={() => setKind("file")}>A PDF or image</TargetChoice>
+          <TargetChoice on={kind === "file"} onClick={() => setKind("file")}>A PDF, image or video</TargetChoice>
           <TargetChoice on={kind === "none"} onClick={() => setKind("none")}>Nothing to pin to — general feedback</TargetChoice>
         </div>
         {kind === "storyboard" && (
@@ -385,7 +385,7 @@ function TargetChoice({ on, onClick, children }: { on: boolean; onClick: () => v
   );
 }
 
-const ACCEPT = "application/pdf,image/png,image/jpeg,image/webp,image/gif";
+const ACCEPT = "application/pdf,image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm";
 const MAX_BYTES = 95 * 1024 * 1024;
 
 function fmtSize(n: number) {
@@ -479,7 +479,7 @@ function FilePicker({
             <span>
               <span className="font-medium text-foreground">Choose a file</span> or drop it here
             </span>
-            <span className="text-xs text-muted-foreground">PDF, PNG, JPEG, WebP or GIF · up to {fmtSize(MAX_BYTES)}</span>
+            <span className="text-xs text-muted-foreground">PDF, PNG, JPEG, WebP, GIF, MP4 or WebM · up to {fmtSize(MAX_BYTES)}</span>
           </>
         )}
         <input

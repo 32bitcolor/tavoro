@@ -4,11 +4,12 @@ import { contentDisposition } from "@/lib/content-disposition";
 
 // Files under review (docs/REVIEW-LINKS.md, phase 3). Tavoro reviews what it can
 // render WITHOUT executing it: PDFs (rendered by pdf.js into a canvas) and raster
-// images. No SVG (it can carry script), no HTML, no SCORM — ever.
+// images, and MP4/WebM video played by the browser's own <video>. No SVG (it can carry
+// script), no HTML, no SCORM — ever.
 
 export const MAX_REVIEW_FILE_BYTES = 95 * 1024 * 1024; // under Cloudflare's 100 MB body cap
 
-export const REVIEW_FILE_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp", "image/gif"] as const;
+export const REVIEW_FILE_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp", "image/gif", "video/mp4", "video/webm"] as const;
 export type ReviewFileType = (typeof REVIEW_FILE_TYPES)[number];
 
 /** Identify a file by its first bytes, never by its name or the browser's claim. */
@@ -20,6 +21,9 @@ export function sniffReviewFileType(head: Uint8Array): ReviewFileType | null {
   if (at(0, 0xff, 0xd8, 0xff)) return "image/jpeg";
   if (ascii(0, "GIF87a") || ascii(0, "GIF89a")) return "image/gif";
   if (ascii(0, "RIFF") && ascii(8, "WEBP")) return "image/webp";
+  // Video: MP4 (ISO media with a video brand; HEIC/AVIF images share the container) and WebM.
+  if (at(0, 0x1a, 0x45, 0xdf, 0xa3)) return "video/webm";
+  if (ascii(4, "ftyp") && ["isom", "iso2", "iso5", "iso6", "mp41", "mp42", "avc1", "M4V ", "dash", "mmp4"].some((b) => ascii(8, b))) return "video/mp4";
   return null;
 }
 

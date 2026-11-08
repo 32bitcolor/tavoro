@@ -124,15 +124,18 @@ export default function Projects() {
       <Steps>
         <>
           On a deliverable, click <UI>Request a review</UI> and choose what&rsquo;s being reviewed: the
-          linked storyboard, or a <strong>PDF or image</strong> you upload (for example, a Storyline or
-          Rise export). Pick reviewers from your workspace, and/or add <strong>guests</strong> by name and
+          linked storyboard, or a <strong>PDF, image or video</strong> you upload (for example, a
+          Storyline or Rise export, or a screen recording of the course). Pick reviewers from your workspace, and/or add <strong>guests</strong> by name and
           email for SMEs who don&rsquo;t have an account. Set a due date and click <UI>Start round 1</UI>.
           Everyone is emailed a link.
         </>
         <>
           Reviewers select text in any storyboard field and comment on it. On a PDF or image, they click
           to drop a numbered pin or drag to mark an area. On a PDF, they can also select text and choose
-          <UI>Comment on selection</UI> to quote it. They can also leave general feedback.
+          <UI>Comment on selection</UI> to quote it. On a video, they play to a moment and choose{" "}
+          <UI>Comment at 1:23</UI>, or <UI>Pin on the frame</UI> to point at something in the picture;
+          numbered markers on the timeline under the video jump back to each comment. They can also
+          leave general feedback.
           Then they choose <UI>Approve</UI>, <UI>Approve with minor changes</UI>, or{" "}
           <UI>Request changes</UI>. The round passes only when <strong>every</strong> reviewer approves
           (with or without minor changes).
@@ -145,8 +148,9 @@ export default function Projects() {
       </Steps>
 
       <Callout tone="tip">
-        Reviewing a file? PDFs and PNG, JPEG, WebP or GIF images up to 95 MB work. For an e-learning
-        build, publish it to PDF (Storyline: <UI>Publish → Print</UI>) and upload that. Tavoro shows
+        Reviewing a file? PDFs, PNG, JPEG, WebP or GIF images, and MP4 or WebM videos up to 95 MB work.
+        For an e-learning build, publish it to PDF (Storyline: <UI>Publish → Print</UI>), or record a
+        walkthrough video, and upload that. For video, export at 720p to stay under the limit. Tavoro shows
         files; it never runs them. For the next round, upload the new version, or reuse the same file.
       </Callout>
 

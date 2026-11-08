@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { isFileAnchor, parseAnchor, SCREEN_FIELDS, SCREEN_FIELD_LABEL, type ReviewAnchor } from "@/lib/review-anchor";
+import { isFileAnchor, isVideoAnchor, parseAnchor, SCREEN_FIELDS, SCREEN_FIELD_LABEL, timecode, type ReviewAnchor } from "@/lib/review-anchor";
 import { parseSnapshot, type StoryboardSnapshot } from "@/lib/review-snapshot";
 import { memberName } from "@/lib/review-comments";
 import { pinNumbers, quoteOf } from "@/lib/review-feedback";
@@ -189,7 +189,18 @@ export async function roundExport(roundId: string): Promise<ExportDoc | null> {
   const sections: ExportSection[] = [];
   const snapshot = parseSnapshot(round.snapshot);
 
-  if (round.file) {
+  if (round.file?.mimeType.startsWith("video/")) {
+    // One section for the video, comments in time order.
+    const video: ExportSection = { heading: "Video", tags: [], fields: [], comments: [] };
+    const timed = threads
+      .map((t) => ({ t, a: anchors.get(t.id)! }))
+      .sort((x, y) => (isVideoAnchor(x.a) ? x.a.t : -1) - (isVideoAnchor(y.a) ? y.a.t : -1));
+    for (const { t, a } of timed) {
+      if (!isVideoAnchor(a)) general.comments.push(toComment(t, null));
+      else video.comments.push(toComment(t, `At ${timecode(a.t)} · Pin #${pins.get(t.id)}`));
+    }
+    sections.push(video);
+  } else if (round.file) {
     const pages = new Map<number, ExportSection>();
     const page = (n: number) => {
       if (!pages.has(n)) pages.set(n, { heading: isPdf ? `Page ${n}` : "Image", tags: [], fields: [], comments: [] });

@@ -27,6 +27,7 @@ import {
 } from "@/app/actions/reviews";
 import type { ReviewCommentDTO } from "@/lib/review-comments";
 import { FileReview, pageDomId, pinDomId, type FilePin, type ReviewFileView } from "@/components/review/file-review";
+import { VideoReview, type VideoPin } from "@/components/review/video-review";
 import { guestAddComment, guestDecide, guestDeleteComment, guestReopen } from "@/app/actions/review-guest";
 import { ReviewerList, type Assignment } from "@/components/review/reviewer-list";
 import { CardChip, SendToBoardDialog } from "@/components/review/send-to-board";
@@ -52,6 +53,8 @@ import {
 import {
   GENERAL_ANCHOR,
   isFileAnchor,
+  isVideoAnchor,
+  timecode,
   SCREEN_FIELDS,
   SCREEN_FIELD_LABEL,
   parseAnchor,
@@ -191,26 +194,29 @@ export function ReviewRoundView({
 
   // File rounds: number each pinned thread in the order it was left.
   const isPdf = round.file?.mimeType === "application/pdf";
-  const pins = useMemo<FilePin[]>(() => {
-    const out: FilePin[] = [];
+  const isVideo = !!round.file?.mimeType.startsWith("video/");
+  // Pins on a page or image, and moments in a video, numbered together in the order they
+  // were left (a round has one file, so in practice it's one kind or the other).
+  const { pins, videoPins } = useMemo(() => {
+    const pins: FilePin[] = [];
+    const videoPins: VideoPin[] = [];
+    let n = 0;
     for (const t of threads) {
       const a = parseAnchor(t.anchor);
-      if (!isFileAnchor(a)) continue;
-      out.push({
-        threadId: t.id,
-        number: out.length + 1,
-        anchor: a,
-        open: t.status === "open",
-        label: `Comment ${out.length + 1}${t.author ? ` by ${t.author.name}` : ""}`,
-      });
+      if (!isFileAnchor(a) && !isVideoAnchor(a)) continue;
+      n++;
+      const base = { threadId: t.id, number: n, open: t.status === "open", label: `Comment ${n}${t.author ? ` by ${t.author.name}` : ""}` };
+      if (isVideoAnchor(a)) videoPins.push({ ...base, anchor: a });
+      else pins.push({ ...base, anchor: a });
     }
-    return out;
+    return { pins, videoPins };
   }, [threads]);
-  const pinNumber = useMemo(() => new Map(pins.map((p) => [p.threadId, p.number])), [pins]);
+  const pinNumber = useMemo(() => new Map([...pins, ...videoPins].map((p) => [p.threadId, p.number])), [pins, videoPins]);
 
   /** The jump-to label on a thread, or null for a comment on the whole round. */
   function labelFor(threadId: string, a: ReviewAnchor): string | null {
     if (a.kind === "storyboard_field") return `${screenTitle(a.screenId)} · ${SCREEN_FIELD_LABEL[a.field]}`;
+    if (isVideoAnchor(a)) return `${timecode(a.t)} · #${pinNumber.get(threadId) ?? "?"}`;
     if (!isFileAnchor(a)) return null;
     const where = isPdf ? `Page ${a.page}` : "Image";
     const whole = a.kind === "file_region" && a.w === 1 && a.h === 1;
@@ -237,6 +243,16 @@ export function ReviewRoundView({
   }
 
   function jumpTo(a: ReviewAnchor, threadId?: string) {
+    if (isVideoAnchor(a)) {
+      if (!threadId) return;
+      const id = pinDomId(threadId);
+      requestAnimationFrame(() => {
+        document.getElementById(id)?.closest("section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        setFlash(id);
+        setTimeout(() => setFlash((f) => (f === id ? null : f)), 1600);
+      });
+      return;
+    }
     if (isFileAnchor(a)) {
       const whole = a.kind === "file_region" && a.w === 1 && a.h === 1;
       const id = whole || !threadId ? pageDomId(a.page) : pinDomId(threadId);
@@ -332,7 +348,9 @@ export function ReviewRoundView({
           assignment={assignments.find((a) => a.guest?.id === viewer.id) ?? null}
           howTo={
             round.file
-              ? `Click or tap the ${round.file.mimeType === "application/pdf" ? "pages" : "image"} to pin a comment.`
+              ? isVideo
+                ? "Play to a moment and choose Comment at it, or pin a comment on the frame."
+                : `Click or tap the ${round.file.mimeType === "application/pdf" ? "pages" : "image"} to pin a comment.`
               : "Select text in any field and press Comment to quote it."
           }
         />
@@ -351,7 +369,28 @@ export function ReviewRoundView({
                 : `New version — round ${round.previousFile.number} reviewed “${round.previousFile.fileName}”.`}
             </p>
           )}
-          {round.file ? (
+          {round.file && isVideo ? (
+            <VideoReview
+              file={round.file}
+              pins={videoPins}
+              canComment={canComment}
+              composingAnchor={composing && isVideoAnchor(composing.anchor) ? composing.anchor : null}
+              flash={flash}
+              onCompose={(anchor) => setComposing({ anchor })}
+              onSelectPin={selectThread}
+              composer={
+                composing &&
+                isVideoAnchor(composing.anchor) && (
+                  <Composer
+                    anchor={composing.anchor}
+                    members={mentionMembers}
+                    onCancel={() => setComposing(null)}
+                    onPost={(anchor, body) => post(anchor, body)}
+                  />
+                )
+              }
+            />
+          ) : round.file ? (
             <FileReview
               file={round.file}
               pins={pins}
@@ -808,6 +847,8 @@ function Composer({
   const quote = quoteOf(anchor);
   const spot = quote
     ? null
+    : isVideoAnchor(anchor)
+    ? `${anchor.x !== undefined ? "Pinned comment" : "Comment"} at ${timecode(anchor.t)}`
     : isFileAnchor(anchor)
     ? anchor.kind === "file_point"
       ? "Pinned comment"

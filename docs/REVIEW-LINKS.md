@@ -385,8 +385,15 @@ No open questions remain.
   once. A nightly worker job (04:30 UTC, `lib/review-file-sweep.ts`) removes review files no round
   uses after a 24-hour grace period, plus review-file objects whose rows went away when a
   deliverable, project or workspace was deleted. The worker now gets the S3 settings.
-- **Not yet:** video (the 500 MB cap needs chunked upload through Cloudflare; Range serving is
-  already in place).
+- **Video, as built (2026-11-08):** MP4 (ISO media with a video brand; HEIC/AVIF are refused)
+  and WebM, sniffed like the rest and played by the browser's own `<video>` (Range serving was
+  already there). `video_time` anchors carry `t` (seconds) and an optional `x`/`y` pin on the
+  frame; they're numbered with file pins, described as "At 1:23 · #2" on cards, the feedback
+  page, MCP and the Word export (one Video section in time order). `components/review/video-review.tsx`:
+  "Comment at m:ss" (pauses), "Pin on the frame" (one click on a layer that stops short of the
+  native controls), timeline markers that seek, and pins shown on the frame within 1.5 s of their
+  moment. MCP `add_review_comment` takes `at` ("1:23"). **Still the 95 MB single-request cap**:
+  over that needs chunked upload through Cloudflare (S3 multipart with parts proxied by the app).
 - Backup format 7 carries review files with their bytes, re-uploaded on restore. The dead presign
   helpers, `S3_PUBLIC_ENDPOINT` and `@aws-sdk/s3-request-presigner` are gone.
 

@@ -41,7 +41,12 @@ const FileRegionAnchor = z
   .object({ kind: z.literal("file_region"), page: Page, x: Frac, y: Frac, w: Frac, h: Frac, quote: Quote.optional() })
   .refine((a) => a.x + a.w <= 1.0001 && a.y + a.h <= 1.0001 && a.w > 0 && a.h > 0, "Region is off the page.");
 
-export const ReviewAnchor = z.union([GeneralAnchor, StoryboardFieldAnchor, FilePointAnchor, FileRegionAnchor]);
+// Video: a moment (seconds from the start), optionally with a pin on the frame (0–1).
+const VideoTimeAnchor = z
+  .object({ kind: z.literal("video_time"), t: z.number().min(0).max(86_400), x: Frac.optional(), y: Frac.optional() })
+  .refine((a) => (a.x === undefined) === (a.y === undefined), "A pin needs both coordinates.");
+
+export const ReviewAnchor = z.union([GeneralAnchor, StoryboardFieldAnchor, FilePointAnchor, FileRegionAnchor, VideoTimeAnchor]);
 export type ReviewAnchor = z.infer<typeof ReviewAnchor>;
 
 export const GENERAL_ANCHOR: ReviewAnchor = { kind: "general" };
@@ -50,6 +55,26 @@ export type FileAnchor = Extract<ReviewAnchor, { kind: "file_point" | "file_regi
 
 export function isFileAnchor(a: ReviewAnchor): a is FileAnchor {
   return a.kind === "file_point" || a.kind === "file_region";
+}
+
+export type VideoAnchor = Extract<ReviewAnchor, { kind: "video_time" }>;
+
+export function isVideoAnchor(a: ReviewAnchor): a is VideoAnchor {
+  return a.kind === "video_time";
+}
+
+/** Comments that get a numbered marker: pins on a page or image, and moments in a video. */
+export function isPinnedAnchor(a: ReviewAnchor): a is FileAnchor | VideoAnchor {
+  return isFileAnchor(a) || isVideoAnchor(a);
+}
+
+/** 83.4 → "1:23"; an hour or more → "1:02:03". */
+export function timecode(t: number): string {
+  const s = Math.max(0, Math.floor(t));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = String(s % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
 }
 
 /** Read a stored anchor; anything unusable becomes a general comment. */

@@ -1,4 +1,4 @@
-import { isFileAnchor, SCREEN_FIELD_LABEL, type ReviewAnchor } from "@/lib/review-anchor";
+import { isFileAnchor, isPinnedAnchor, isVideoAnchor, SCREEN_FIELD_LABEL, timecode, type ReviewAnchor } from "@/lib/review-anchor";
 import type { StoryboardSnapshot } from "@/lib/review-snapshot";
 import { extractText } from "@/lib/mentions";
 
@@ -7,7 +7,8 @@ import { extractText } from "@/lib/mentions";
 // action, the deliverable's feedback page and the Word/PDF export, so a comment reads
 // the same everywhere.
 
-/** Where a comment sits, in words: "3. Phishing basics · Narration", "Page 2 · #4". */
+/** Where a comment sits, in words: "3. Phishing basics · Narration", "Page 2 · #4",
+ *  "At 1:23 · #2". */
 export function describePlace(
   anchor: ReviewAnchor,
   ctx: { snapshot: StoryboardSnapshot | null; isPdf: boolean; pinNumber?: number },
@@ -17,6 +18,7 @@ export function describePlace(
     const screen = i >= 0 ? `${i + 1}. ${ctx.snapshot!.screens[i].title}` : "A removed screen";
     return `${screen} · ${SCREEN_FIELD_LABEL[anchor.field]}`;
   }
+  if (isVideoAnchor(anchor)) return `At ${timecode(anchor.t)}${ctx.pinNumber == null ? "" : ` · #${ctx.pinNumber}`}`;
   if (isFileAnchor(anchor)) {
     const where = ctx.isPdf ? `Page ${anchor.page}` : "Image";
     const whole = anchor.kind === "file_region" && anchor.w === 1 && anchor.h === 1;
@@ -29,7 +31,7 @@ export function describePlace(
  *  they were left. */
 export function pinNumbers(threads: { id: string; anchor: ReviewAnchor }[]): Map<string, number> {
   const out = new Map<string, number>();
-  for (const t of threads) if (isFileAnchor(t.anchor)) out.set(t.id, out.size + 1);
+  for (const t of threads) if (isPinnedAnchor(t.anchor)) out.set(t.id, out.size + 1);
   return out;
 }
 

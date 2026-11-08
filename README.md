@@ -47,8 +47,8 @@ The under-served needs it's built for:
 
 - **SME review and approval**: the #1 daily bottleneck. Feedback arrives scattered across email
   and marked-up PDFs, with no version control and no deadlines.
-  → **Review rounds**, where SMEs comment directly on the storyboard text or on the PDF/image
-  you exported. Outside SMEs get a personal link, no account needed, and every round shows
+  → **Review rounds**, where SMEs comment directly on the storyboard text, on the PDF/image
+  you exported, or at moments in a walkthrough video. Outside SMEs get a personal link, no account needed, and every round shows
   what changed since the last one.
 - **Intake and demand management**: turn L&D from a reactive order-taker into a strategic partner.
   → A public **intake form** feeding a triage → impact/effort scoring → approve-to-project pipeline.
@@ -107,12 +107,13 @@ review that.
   - deliverables linked to board cards and storyboards, each with its review rounds
   - milestones, time tracking, and optional sprint planning
 - **Review rounds** (SME review and approval):
-  - **Starting a round** freezes the storyboard as it is, or reviews a **PDF or image** you upload,
-    up to 95 MB. A Storyline or Rise export works well.
+  - **Starting a round** freezes the storyboard as it is, or reviews a **PDF, image or video**
+    (MP4/WebM) you upload, up to 95 MB. A Storyline or Rise export, or a screen recording, works well.
   - **Reviewers** are workspace members and/or **guests**. Each guest gets a personal, expiring
     link (no account needed) to a page that shows just that one round.
   - **Commenting:** reviewers select storyboard text to quote it. On a PDF or image they drop
-    numbered pins, mark areas, or select PDF text to quote it. Threads can be resolved or marked
+    numbered pins, mark areas, or select PDF text to quote it. On a video they comment at a moment,
+    optionally pinned on the frame, with markers on the timeline. Threads can be resolved or marked
     *won't fix*, with a note the reviewer sees.
   - **Decisions:** Approve, **Approve with minor changes**, or Request changes. A round passes only
     when **every reviewer approves**. Admins and managers can override, with a recorded reason.
@@ -285,10 +286,10 @@ Four are live; LMS integration is next.
 
 1. **Intake and demand management** ✅: structured request capture, triage, impact/effort scoring,
    and approve-to-project conversion.
-2. **SME review and approval** ✅: review rounds on frozen storyboards, PDFs and images, with
-   anchored comments, guest links, an every-reviewer gate, email notifications, comments sent to
-   the board as cards, Word/PDF export, and SME turnaround reporting. Still planned: reviewing
-   videos. See [docs/REVIEW-LINKS.md](docs/REVIEW-LINKS.md).
+2. **SME review and approval** ✅: review rounds on frozen storyboards, PDFs, images and videos,
+   with anchored comments (pins, quotes, video timestamps), guest links, an every-reviewer gate, email notifications, comments sent to
+   the board as cards, Word/PDF export, and SME turnaround reporting. Still planned: videos over
+   95 MB. See [docs/REVIEW-LINKS.md](docs/REVIEW-LINKS.md).
 3. **Objectives → content → assessment alignment spine** ✅: objectives threaded through storyboard
    screens and assessment items, with coverage and gap analysis.
 4. **Content lifecycle and a reusable asset library** ✅: the content inventory with

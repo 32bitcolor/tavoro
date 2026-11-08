@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getDeliverableForUser } from "@/lib/authz";
 import { COMMENT_SELECT, toCommentDTO } from "@/lib/review-comments";
-import { isFileAnchor, parseAnchor, SCREEN_FIELD_LABEL } from "@/lib/review-anchor";
+import { isFileAnchor, isVideoAnchor, parseAnchor, SCREEN_FIELD_LABEL, timecode } from "@/lib/review-anchor";
 import { parseSnapshot, type StoryboardSnapshot } from "@/lib/review-snapshot";
 import { pinNumbers, quoteOf } from "@/lib/review-feedback";
 import { FeedbackView, type FeedbackGroup, type FeedbackItem } from "@/components/review/feedback-view";
@@ -67,6 +67,10 @@ export default async function DeliverableFeedbackPage({ params }: { params: Prom
           order: screenOrder.get(anchor.screenId) ?? 5000,
         };
         detail = SCREEN_FIELD_LABEL[anchor.field] + (inRound ? "" : " (screen since removed)");
+      } else if (isVideoAnchor(anchor)) {
+        group = { key: "video", label: "Video", order: 10000 };
+        detail = `At ${timecode(anchor.t)} · Pin #${pins.get(t.id)}`;
+        if (round.file) detail += ` · ${round.file.fileName}`;
       } else if (isFileAnchor(anchor)) {
         group = isPdf
           ? { key: `page:${anchor.page}`, label: `Page ${anchor.page}`, order: 10000 + anchor.page }

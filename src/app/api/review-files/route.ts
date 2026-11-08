@@ -29,7 +29,7 @@ export async function PUT(req: Request) {
   const mimeType = sniffReviewFileType(head);
   if (!mimeType) {
     await stream.cancel();
-    return Response.json({ error: "Upload a PDF, or a PNG, JPEG, WebP or GIF image." }, { status: 415 });
+    return Response.json({ error: "Upload a PDF, a PNG, JPEG, WebP or GIF image, or an MP4 or WebM video." }, { status: 415 });
   }
 
   const project = await prisma.project.findUnique({ where: { id: deliverable.projectId }, select: { workspaceId: true } });

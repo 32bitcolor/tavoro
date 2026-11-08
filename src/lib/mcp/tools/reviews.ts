@@ -115,9 +115,16 @@ export async function loadRound(roundId: string, includeContent: boolean) {
 /** The anchor for a new comment, from the friendly arguments. */
 async function anchorFor(
   roundId: string,
-  a: { screen?: string; field?: string; quote?: string; page?: number },
+  a: { screen?: string; field?: string; quote?: string; page?: number; at?: string },
 ): Promise<ReviewAnchor> {
-  const round = await prisma.reviewRound.findUniqueOrThrow({ where: { id: roundId }, select: { snapshot: true, fileId: true } });
+  const round = await prisma.reviewRound.findUniqueOrThrow({ where: { id: roundId }, select: { snapshot: true, fileId: true, file: { select: { mimeType: true } } } });
+  if (a.at != null) {
+    if (!round.file?.mimeType.startsWith("video/")) throw new ToolError("at is for rounds that review a video.");
+    const m = /^(?:(\d+):)?(\d{1,2}):(\d{2})(?:\.\d+)?$|^(\d+(?:\.\d+)?)$/.exec(a.at.trim());
+    if (!m) throw new ToolError('at must be a time like "1:23", "1:02:03" or seconds like "83".');
+    const t = m[4] != null ? Number(m[4]) : Number(m[1] ?? 0) * 3600 + Number(m[2]) * 60 + Number(m[3]);
+    return { kind: "video_time", t };
+  }
   if (a.page != null) {
     if (!round.fileId) throw new ToolError("This round reviews a storyboard, not a file; use screen and field.");
     return { kind: "file_region", page: a.page, x: 0, y: 0, w: 1, h: 1, ...(a.quote ? { quote: { exact: a.quote.slice(0, 500) } } : {}) };
@@ -229,7 +236,7 @@ export function registerReviewTools(server: McpServer) {
     {
       title: "Comment on a review round",
       description:
-        "Leave a comment on a review round as you. Pin it to a storyboard screen and field (screen = number, title or id; field = on_screen_text, narration, visuals, interaction or developer_notes; quote = text it refers to), to a page of a reviewed PDF, or leave both out for a general comment. Set parent_id to reply to a thread.",
+        "Leave a comment on a review round as you. Pin it to a storyboard screen and field (screen = number, title or id; field = on_screen_text, narration, visuals, interaction or developer_notes; quote = text it refers to), to a page of a reviewed PDF, to a moment of a reviewed video (at = \"1:23\"), or leave them out for a general comment. Set parent_id to reply to a thread.",
       input: {
         round_id: z.string().min(1),
         body: z.string().min(1).max(20000).describe("Markdown"),
@@ -237,6 +244,7 @@ export function registerReviewTools(server: McpServer) {
         field: z.enum(["on_screen_text", "narration", "visuals", "interaction", "developer_notes"]).optional(),
         quote: z.string().max(500).optional(),
         page: z.number().int().min(1).optional(),
+        at: z.string().max(12).optional().describe('For a video round: the moment, e.g. "1:23", "1:02:03" or seconds'),
         parent_id: z.string().optional(),
       },
       kind: "write",
