@@ -381,3 +381,14 @@ export async function getAssetForUser(assetId: string) {
     select: { id: true, workspaceId: true, storageKey: true, fileName: true, mimeType: true, sizeBytes: true, uploadedById: true, externalUrl: true },
   });
 }
+
+/** A question-bank item in one of the user's workspaces. Workspace-wide, like the
+ *  content inventory and the asset library. */
+export async function getBankItemForUser(bankItemId: string) {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  return prisma.bankItem.findFirst({
+    where: { id: bankItemId, workspace: ownedByUser(ctx) },
+    select: { id: true, workspaceId: true, createdById: true, prompt: true, itemType: true, kind: true, bloomLevel: true },
+  });
+}

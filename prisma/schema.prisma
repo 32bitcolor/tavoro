@@ -27,6 +27,7 @@ model User {
   sessionsValidAfter      DateTime?
   ownedContent            ContentItem[]     @relation("ContentOwner")
   uploadedAssets          Asset[]           @relation("AssetUploader")
+  bankItems               BankItem[]        @relation("BankItemCreator")
   templates               Template[]
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @updatedAt
@@ -80,6 +81,7 @@ model Workspace {
   contentItems         ContentItem[]
   templates            Template[]
   assets               Asset[]
+  bankItems            BankItem[]
   reviewFiles          ReviewFile[]
   apiTokens            ApiToken[]
   ssoConnection        SsoConnection?
@@ -620,17 +622,58 @@ model ScreenObjective {
 }
 
 model AssessmentItem {
-  id         String                    @id @default(cuid())
-  projectId  String
-  prompt     String
-  itemType   String                    @default("multiple_choice") // multiple_choice/true_false/short_answer/scenario/other
-  position   String
-  createdAt  DateTime                  @default(now())
-  updatedAt  DateTime                  @updatedAt
-  project    Project                   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  objectives AssessmentItemObjective[]
+  id               String                    @id @default(cuid())
+  projectId        String
+  prompt           String
+  itemType         String                    @default("multiple_choice") // multiple_choice/true_false/short_answer/scenario/other
+  position         String
+  // Provenance when copied out of the question bank (docs/CONTENT-LIFECYCLE-REUSE.md,
+  // locked decision 3): a copy, never a live reference, so editing the bank entry never
+  // changes shipped content. SetNull: deleting the bank entry keeps the copies.
+  sourceBankItemId String?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  project          Project                   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  objectives       AssessmentItemObjective[]
+  sourceBankItem   BankItem?                 @relation(fields: [sourceBankItemId], references: [id], onDelete: SetNull)
 
   @@index([projectId, position])
+  @@index([sourceBankItemId])
+}
+
+// Reusable source text: question stems and scenario patterns (phase 4). The bank holds
+// the stem, its type and level, and free-form notes (answer, rationale, source). It is
+// not an exam builder: items are copied into a project's assessment items and edited there.
+model BankItem {
+  id          String    @id @default(cuid())
+  workspaceId String
+  kind        String    @default("question") // question / scenario
+  prompt      String
+  itemType    String    @default("multiple_choice") // AssessmentItem's vocabulary
+  bloomLevel  String? // LearningObjective's vocabulary
+  notes       String?
+  archivedAt  DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User?            @relation("BankItemCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  copies    AssessmentItem[]
+  labels    BankItemLabel[]
+
+  @@index([workspaceId, kind])
+  @@index([workspaceId, archivedAt])
+}
+
+model BankItemLabel {
+  bankItemId String
+  labelId    String
+  bankItem   BankItem @relation(fields: [bankItemId], references: [id], onDelete: Cascade)
+  label      Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([bankItemId, labelId])
+  @@index([labelId])
 }
 
 model AssessmentItemObjective {
@@ -668,6 +711,7 @@ model Label {
   cards        CardLabel[]
   contentItems ContentItemLabel[]
   assets       AssetLabel[]
+  bankItems    BankItemLabel[]
 
   @@index([workspaceId, name])
 }

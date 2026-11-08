@@ -53,4 +53,4 @@ When an asset shouldn’t be reused any more, choose **Archive**. It leaves the 
 
 ---
 
-← [Content inventory](content.md) · [All guides](README.md) · [Templates](templates.md) →
+← [Content inventory](content.md) · [All guides](README.md) · [Question bank](question-bank.md) →

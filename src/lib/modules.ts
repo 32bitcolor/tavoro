@@ -7,6 +7,7 @@ import {
   Film,
   Library,
   Images,
+  BookCheck,
   Shapes,
   Timer,
   type LucideIcon,
@@ -97,6 +98,13 @@ export const MODULES: ModuleDef[] = [
     href: "/assets",
     icon: Images,
     tagline: "Reusable images, video, audio and source files",
+  },
+  {
+    key: "bank",
+    name: "Question bank",
+    href: "/bank",
+    icon: BookCheck,
+    tagline: "Question stems and scenarios to reuse across projects",
   },
   // Future pillar: an "Integrations" capability (publish/sync to an LMS, pull
   // completion & assessment data back for impact reporting). Reintroduced as a

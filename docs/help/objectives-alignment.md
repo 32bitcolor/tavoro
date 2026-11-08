@@ -36,7 +36,7 @@ Once objectives exist, two things attach to them — and Tavoro shows you the ga
 
 1. Open a project and find **Learning objectives & alignment**. Add objectives — one per thing a learner should be able to do — and set each one’s Bloom level.
 2. In the project’s storyboards, expand a screen and use the **Teaches** chips (O1, O2, …) to mark which objectives that screen covers.
-3. Back on the project, add **assessment items** and toggle which objectives each one **Assesses:**.
+3. Back on the project, add **assessment items** and toggle which objectives each one **Assesses:**. Reuse a question with **Add from the question bank**, or share a good one with **Save to bank** (see [Question bank](question-bank.md)).
 4. Read the coverage summary at the top: any objective flagged **Not yet taught** or **Not yet assessed** — and any screens that teach nothing — are your gaps to close.
 
 ### Why it’s worth it

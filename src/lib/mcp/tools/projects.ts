@@ -78,7 +78,7 @@ export async function loadProject(projectId: string) {
         orderBy: { position: "asc" },
         select: { id: true, text: true, bloomLevel: true, _count: { select: { screens: true, assessments: true } } },
       },
-      assessmentItems: { orderBy: { position: "asc" }, select: { id: true, prompt: true, itemType: true, objectives: { select: { objectiveId: true } } } },
+      assessmentItems: { orderBy: { position: "asc" }, select: { id: true, prompt: true, itemType: true, sourceBankItemId: true, objectives: { select: { objectiveId: true } } } },
       boards: { select: { id: true, name: true } },
       timeEntries: { select: { minutes: true } },
     },
@@ -109,7 +109,7 @@ export async function loadProject(projectId: string) {
     }),
     milestones: p.milestones.map((m) => ({ id: m.id, name: m.name, due: day(m.dueDate), completed: !!m.completedAt })),
     objectives: p.objectives.map((o) => ({ id: o.id, text: o.text, bloomLevel: o.bloomLevel, taughtOnScreens: o._count.screens, assessedByItems: o._count.assessments })),
-    assessmentItems: p.assessmentItems.map((i) => ({ id: i.id, prompt: i.prompt, type: i.itemType, objectiveIds: i.objectives.map((o) => o.objectiveId) })),
+    assessmentItems: p.assessmentItems.map((i) => ({ id: i.id, prompt: i.prompt, type: i.itemType, objectiveIds: i.objectives.map((o) => o.objectiveId), fromBankItem: i.sourceBankItemId })),
     boards: p.boards.map((b) => ({ ...b, url: link(`/boards/${b.id}`) })),
     hoursLogged: Math.round((p.timeEntries.reduce((n, t) => n + t.minutes, 0) / 60) * 10) / 10,
   };

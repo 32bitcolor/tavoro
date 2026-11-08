@@ -35,6 +35,7 @@ const SEED = {
   needsInfoRequest: "Excel for analysts",
   content: "HIPAA Privacy & Security 2026",
   asset: "Clinic waiting room",
+  bankItem: "A caller says they're",
 };
 
 const browser = await chromium.launch();
@@ -327,6 +328,16 @@ if (want("assets-library")) {
 if (want("asset-item")) {
   await openLink("/assets", SEED.asset);
   await shot("asset-item");
+}
+
+if (want("question-bank")) {
+  await go("/bank");
+  await shot("question-bank");
+}
+
+if (want("bank-item")) {
+  await openLink("/bank", SEED.bankItem);
+  await shot("bank-item");
 }
 
 if (want("templates")) {

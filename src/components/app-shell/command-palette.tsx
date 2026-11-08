@@ -14,6 +14,7 @@ import {
   ListChecks,
   Library,
   Images,
+  BookCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -22,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
-type ResultType = "board" | "project" | "storyboard" | "whiteboard" | "content" | "asset" | "card" | "subtask";
+type ResultType = "board" | "project" | "storyboard" | "whiteboard" | "content" | "asset" | "bank" | "card" | "subtask";
 type SearchResult = { type: ResultType; id: string; label: string; href: string };
 type Row = { key: string; label: string; href: string; icon: LucideIcon; sub?: string };
 
@@ -33,6 +34,7 @@ const TYPE_ICON: Record<ResultType, LucideIcon> = {
   whiteboard: Shapes,
   content: Library,
   asset: Images,
+  bank: BookCheck,
   card: RectangleHorizontal,
   subtask: ListChecks,
 };
@@ -43,6 +45,7 @@ const TYPE_LABEL: Record<ResultType, string> = {
   whiteboard: "Whiteboard",
   content: "Content",
   asset: "Asset",
+  bank: "Question bank",
   card: "Card",
   subtask: "Subtask",
 };

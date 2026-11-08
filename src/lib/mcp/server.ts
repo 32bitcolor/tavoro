@@ -14,6 +14,7 @@ import { loadWhiteboard, registerWhiteboardTools } from "@/lib/mcp/tools/whitebo
 import { registerDocumentTools } from "@/lib/mcp/documents";
 import { registerContentTools } from "@/lib/mcp/tools/content";
 import { registerAssetTools } from "@/lib/mcp/tools/assets";
+import { registerBankTools } from "@/lib/mcp/tools/bank";
 import { registerTemplateTools } from "@/lib/mcp/tools/templates";
 
 // Tavoro's MCP server (docs/MCP.md): tools for reading and changing the workspace,
@@ -233,6 +234,7 @@ export function buildMcpServer(): McpServer {
   registerWhiteboardTools(server);
   registerContentTools(server);
   registerAssetTools(server);
+  registerBankTools(server);
   registerTemplateTools(server);
   registerResources(server);
   registerPrompts(server);

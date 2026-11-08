@@ -9,6 +9,7 @@ import {
   Shapes,
   Library,
   Images,
+  BookCheck,
   Inbox,
   ListChecks,
   Bell,
@@ -39,6 +40,7 @@ import Sso from "@/components/help/topics/sso";
 import Reports from "@/components/help/topics/reports";
 import Content from "@/components/help/topics/content";
 import Assets from "@/components/help/topics/assets";
+import QuestionBank from "@/components/help/topics/question-bank";
 import Templates from "@/components/help/topics/templates";
 
 export type HelpGroup = "Start here" | "Methodology" | "Modules";
@@ -133,6 +135,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     icon: Images,
     group: "Modules",
     Body: Assets,
+  },
+  {
+    slug: "question-bank",
+    title: "Question bank",
+    summary: "Reusable question stems and scenarios, copied into projects' assessment items.",
+    icon: BookCheck,
+    group: "Modules",
+    Body: QuestionBank,
   },
   {
     slug: "templates",

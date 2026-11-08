@@ -44,4 +44,4 @@ The **Templates** page (linked from the top of **Projects** and **Storyboards**)
 
 ---
 
-← [Asset library](assets.md) · [All guides](README.md) · [Intake](intake.md) →
+← [Question bank](question-bank.md) · [All guides](README.md) · [Intake](intake.md) →

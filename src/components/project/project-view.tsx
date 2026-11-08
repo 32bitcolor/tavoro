@@ -131,6 +131,7 @@ export function ProjectView({
   initialPhases,
   initialObjectives,
   initialAssessments,
+  bankOptions,
   coverage,
   initialDeliverables,
   initialMilestones,
@@ -144,6 +145,7 @@ export function ProjectView({
   initialPhases: Phase[];
   initialObjectives: ObjectiveInit[];
   initialAssessments: AssessmentInit[];
+  bankOptions: { id: string; label: string; hint?: string }[];
   coverage: { totalScreens: number; orphanScreens: number };
   initialDeliverables: DeliverableInit[];
   initialMilestones: MilestoneInit[];
@@ -361,6 +363,7 @@ export function ProjectView({
         projectId={project.id}
         initialObjectives={initialObjectives}
         initialAssessments={initialAssessments}
+        bankOptions={bankOptions}
         coverage={coverage}
       />
 

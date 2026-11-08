@@ -1,6 +1,6 @@
 # Content lifecycle & reusable asset library — design
 
-**Status:** phases 0–3 built (inventory, lifecycle, assets, templates); phases 4–5 (bank, impact) not started.
+**Status:** phases 0–4 built (inventory, lifecycle, assets, templates, question bank); phase 5 (impact) not started.
 **Owner:** @32bitcolor
 **Pillar:** 4 of 5 in [the vision](../README.md#the-vision). Pillars 1–3 are live; this and
 LMS integration remain.
@@ -101,6 +101,18 @@ for card attachments and should be revisited for video assets.
    bytes. On backup size: assets make the single-`.zip` backup grow with the library — fine for
    a team library of photos and sources, but a library full of video would want a streamed
    export; not built until someone hits it.
+   **Question bank, as built (2026-11-09):** `BankItem` as designed (kind question/scenario,
+   prompt, itemType, bloomLevel, notes) plus `archivedAt` and `createdById`, with
+   `AssessmentItem.sourceBankItemId` (SetNull) for provenance and a `BankItemLabel` junction.
+   Prompts share the assessment item's 500-character cap so every entry copies whole; the
+   answer and rationale go in `notes`, which stay in the bank (the boundary: stems and metadata,
+   not an exam builder). Two ways in: "New item" on /bank, and "Save to bank" on any project
+   assessment item (which then becomes a copy of the new entry; its Bloom level is taken from
+   the objectives it assesses when they agree). Two ways out: "Add from the question bank" on
+   the project and "Copy into a project" on the entry. "Where is this used" names copies in
+   projects the viewer can see and counts the rest. Templates carry the bank id per
+   assessment item and keep it on instantiation only if the entry still exists in the
+   workspace. Backups (format 16) export the bank before assessment items so provenance remaps.
 5. **Tagging reuses `Label`** — now workspace-level as of 2026-08-12 — rather than inventing a
    parallel "tag" vocabulary. One vocabulary the whole workspace shares was the entire point of
    that migration; a second one would undo it. Cost is a join table per taggable entity

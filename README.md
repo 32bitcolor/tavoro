@@ -145,6 +145,9 @@ review that.
   authoring-tool sources: upload them (or link to where they live), tag them with labels, and record
   which content uses each one, so a reshot photo or an expiring licence shows every course to update.
   Replacing a file keeps the asset's labels and links.
+- **Question bank**: reusable question stems and scenario patterns, with type, Bloom level, notes
+  and labels. Copy one into a project's assessment items (an independent copy that remembers its
+  source), or save a project's item to the bank; each bank entry lists the projects that use it.
 - **Templates**: save a project (phases, deliverables, milestones, storyboards, objectives,
   assessment items, boards and cards) or a storyboard as a template, then start new ones from it.
   Dates shift to the new start date; statuses, people and history start fresh.
@@ -163,7 +166,7 @@ review that.
   **Settings → Notifications**.
 - **Dashboard**: active projects with phase progress, reviews awaiting you, and upcoming milestones.
 - **Workspace admin**:
-  - **backup and restore**, including attachments, review files and library assets
+  - **backup and restore**, including attachments, review files, library assets and the question bank
   - workspace **labels**
   - a one-click **self-update** (pull, rebuild, migrate) from **Settings → Updates**
 - **Single sign-on and provisioning**: connect a SAML 2.0 identity provider (tested with JumpCloud) so
@@ -283,8 +286,8 @@ Three are live; two are next.
 3. **Objectives → content → assessment alignment spine** ✅: objectives threaded through storyboard
    screens and assessment items, with coverage and gap analysis.
 4. **Content lifecycle and a reusable asset library** (in progress): the content inventory with
-   review and expiry reminders ✅, project and storyboard templates ✅, and the asset library ✅.
-   Still planned: question banks, and impact analysis when a source changes. See
+   review and expiry reminders ✅, project and storyboard templates ✅, the asset library ✅ and the
+   question bank ✅. Still planned: impact analysis when a source changes. See
    [docs/CONTENT-LIFECYCLE-REUSE.md](docs/CONTENT-LIFECYCLE-REUSE.md).
 5. **LMS integration** (next): publish and sync courses to your LMS, and pull completion and
    assessment data back for impact reporting.

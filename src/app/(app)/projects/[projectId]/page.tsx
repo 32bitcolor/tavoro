@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ASSESSMENT_ITEM_TYPE_LABEL, BLOOM_LABEL, type AssessmentItemType, type BloomLevel } from "@/lib/methodology";
 import { prisma } from "@/lib/db";
 import { getProjectForUser, boardVisibilityWhere } from "@/lib/authz";
 import { ProjectView } from "@/components/project/project-view";
@@ -85,6 +86,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
           prompt: true,
           itemType: true,
           position: true,
+          sourceBankItemId: true,
           objectives: { select: { objectiveId: true } },
         },
       },
@@ -136,7 +138,23 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
     prompt: a.prompt,
     itemType: a.itemType,
     position: a.position,
+    sourceBankItemId: a.sourceBankItemId,
     objectiveIds: a.objectives.map((x) => x.objectiveId),
+  }));
+
+  // The question bank, for "Add from bank" (live entries only).
+  const bank = await prisma.bankItem.findMany({
+    where: { workspaceId: access.workspaceId, archivedAt: null },
+    select: { id: true, prompt: true, kind: true, itemType: true, bloomLevel: true },
+    orderBy: { updatedAt: "desc" },
+    take: 1000,
+  });
+  const bankOptions = bank.map((b) => ({
+    id: b.id,
+    label: b.prompt,
+    hint: [b.kind === "scenario" ? "Scenario" : "Question", ASSESSMENT_ITEM_TYPE_LABEL[b.itemType as AssessmentItemType], b.bloomLevel ? BLOOM_LABEL[b.bloomLevel as BloomLevel] : null]
+      .filter(Boolean)
+      .join(" · "),
   }));
 
   const phases = project.phases.map((p) => ({
@@ -217,6 +235,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
       initialPhases={phases}
       initialObjectives={objectives}
       initialAssessments={assessments}
+      bankOptions={bankOptions}
       coverage={coverage}
       initialDeliverables={deliverables}
       initialMilestones={milestones}

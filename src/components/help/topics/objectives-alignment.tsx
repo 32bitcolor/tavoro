@@ -64,7 +64,12 @@ export default function ObjectivesAlignment() {
         </>
         <>
           Back on the project, add <strong>assessment items</strong> and toggle which objectives each
-          one <UI>Assesses:</UI>.
+          one <UI>Assesses:</UI>. Reuse a question with <UI>Add from the question bank</UI>, or share
+          a good one with <UI>Save to bank</UI> (see{" "}
+          <Link href="/help/question-bank" className="font-medium text-accent underline underline-offset-2">
+            Question bank
+          </Link>
+          ).
         </>
         <>
           Read the coverage summary at the top: any objective flagged <UI>Not yet taught</UI> or{" "}

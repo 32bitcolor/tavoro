@@ -12,7 +12,7 @@ import { newGuestNonce } from "@/lib/review-guest-token";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 15; // bump when the shape changes
+export const BACKUP_FORMAT = 16; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -92,7 +92,9 @@ const SPECS: Spec[] = [
   { key: "deliverable", model: "deliverable", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", phaseId: "phase", cardId: "card" } },
   { key: "milestone", model: "milestone", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project" } },
   { key: "learningObjective", model: "learningObjective", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project" } },
-  { key: "assessmentItem", model: "assessmentItem", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project" } },
+  // The question bank comes before assessment items, which point back at it (provenance).
+  { key: "bankItem", model: "bankItem", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS, createdById: USER } },
+  { key: "assessmentItem", model: "assessmentItem", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", sourceBankItemId: "bankItem" } },
   { key: "storyboard", model: "storyboard", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS, deliverableId: "deliverable" } },
   { key: "screen", model: "screen", where: (w) => ({ storyboard: { workspaceId: w } }), fks: { storyboardId: "storyboard" } },
   { key: "whiteboard", model: "whiteboard", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS, storyboardId: "storyboard", cardId: "card", createdById: USER } },
@@ -180,6 +182,7 @@ const SPECS: Spec[] = [
   { key: null, model: "cardKeyAlias", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board", cardId: "card" } },
   { key: null, model: "cardLabel", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", labelId: "label" } },
   { key: null, model: "contentItemLabel", where: (w) => ({ contentItem: { workspaceId: w } }), fks: { contentItemId: "contentItem", labelId: "label" } },
+  { key: null, model: "bankItemLabel", where: (w) => ({ bankItem: { workspaceId: w } }), fks: { bankItemId: "bankItem", labelId: "label" } },
   { key: null, model: "assetLabel", where: (w) => ({ asset: { workspaceId: w } }), fks: { assetId: "asset", labelId: "label" }, prepare: async (d) => !!d.assetId && !!d.labelId },
   {
     key: null,

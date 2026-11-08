@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { ChevronUp, ChevronDown, X, Target, Plus } from "lucide-react";
+import { ChevronUp, ChevronDown, X, Target, Plus, BookCheck, BookmarkPlus } from "lucide-react";
 
 import {
   createObjective,
@@ -16,6 +16,8 @@ import {
   deleteAssessmentItem,
   toggleItemObjective,
 } from "@/app/actions/objectives";
+import { copyBankItemToProject, saveAssessmentItemToBank } from "@/app/actions/bank";
+import { PickDialog, type PickOption } from "@/components/assets/pick-dialog";
 import {
   BLOOM_LEVELS,
   BLOOM_LABEL,
@@ -45,6 +47,7 @@ export type AssessmentInit = {
   prompt: string;
   itemType: string;
   position: string;
+  sourceBankItemId: string | null;
   objectiveIds: string[];
 };
 type Coverage = { totalScreens: number; orphanScreens: number };
@@ -60,16 +63,20 @@ export function AlignmentSection({
   projectId,
   initialObjectives,
   initialAssessments,
+  bankOptions,
   coverage,
 }: {
   projectId: string;
   initialObjectives: ObjectiveInit[];
   initialAssessments: AssessmentInit[];
+  bankOptions: PickOption[];
   coverage: Coverage;
 }) {
   const [objectives, setObjectives] = useState<ObjectiveInit[]>(initialObjectives);
   const [items, setItems] = useState<AssessmentInit[]>(initialAssessments);
   const [, startTransition] = useTransition();
+  const [pickingBank, setPickingBank] = useState(false);
+  const [bankError, setBankError] = useState<string | null>(null);
 
   // "Assessed" counts derive from the items state so they update live as you link.
   const assessedCount = useMemo(() => {
@@ -110,8 +117,21 @@ export function AlignmentSection({
   async function addItem(prompt: string, type: string) {
     const res = await createAssessmentItem(projectId, prompt, type);
     if ("item" in res && res.item) {
-      setItems((prev) => [...prev, { ...res.item, objectiveIds: [] }]);
+      setItems((prev) => [...prev, { ...res.item, sourceBankItemId: null, objectiveIds: [] }]);
     }
+  }
+  async function addFromBank(bankItemId: string) {
+    setPickingBank(false);
+    setBankError(null);
+    const res = await copyBankItemToProject(bankItemId, projectId);
+    if ("error" in res) return setBankError(res.error ?? "Couldn't copy it.");
+    setItems((prev) => [...prev, { ...res.item, objectiveIds: [] }]);
+  }
+  async function saveToBank(id: string) {
+    setBankError(null);
+    const res = await saveAssessmentItemToBank(id);
+    if ("error" in res) return setBankError(res.error ?? "Couldn't save it.");
+    patchItem(id, { sourceBankItemId: res.id });
   }
   function removeItem(id: string) {
     setItems((prev) => prev.filter((it) => it.id !== id));
@@ -301,6 +321,24 @@ export function AlignmentSection({
                     <option key={t} value={t}>{ASSESSMENT_ITEM_TYPE_LABEL[t as AssessmentItemType]}</option>
                   ))}
                 </Select>
+                {it.sourceBankItemId ? (
+                  <Link
+                    href={`/bank/${it.sourceBankItemId}`}
+                    className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
+                    title="Copied from the question bank. Editing it here doesn't change the bank."
+                  >
+                    <BookCheck className="size-3" aria-hidden="true" /> From bank
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void saveToBank(it.id)}
+                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-hover hover:text-foreground"
+                    title="Add this to the question bank so other projects can reuse it"
+                  >
+                    <BookmarkPlus className="size-3" aria-hidden="true" /> Save to bank
+                  </button>
+                )}
                 {objectives.length === 0 ? (
                   <span className="text-xs text-muted-foreground">Add objectives to link this to.</span>
                 ) : (
@@ -332,7 +370,25 @@ export function AlignmentSection({
             </div>
           ))}
         </div>
-        <ItemComposer onAdd={addItem} />
+        <div className="flex flex-wrap items-center gap-1">
+          <ItemComposer onAdd={addItem} />
+          <button
+            type="button"
+            onClick={() => setPickingBank(true)}
+            className="mt-2 rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-hover"
+          >
+            <BookCheck className="mr-1 inline size-3.5" aria-hidden="true" /> Add from the question bank
+          </button>
+        </div>
+        {bankError && <p className="mt-1 text-sm text-destructive-ink">{bankError}</p>}
+        <PickDialog
+          open={pickingBank}
+          onOpenChange={setPickingBank}
+          title="Add from the question bank"
+          options={bankOptions}
+          empty="The question bank is empty. Save an item to it, or add some under Question bank."
+          onPick={(id) => void addFromBank(id)}
+        />
       </div>
     </section>
   );

@@ -69,7 +69,15 @@ const ProjectSnap = z.object({
     .max(LIMIT.deliverables),
   objectives: z.array(z.object({ key: z.string(), text: str(1000), bloomLevel: z.enum(BLOOM_LEVELS).catch("understand") })).max(LIMIT.objectives),
   assessments: z
-    .array(z.object({ prompt: str(5000), itemType: z.enum(ASSESSMENT_ITEM_TYPES).catch("other"), objectives: z.array(z.string()).catch([]) }))
+    .array(
+      z.object({
+        prompt: str(5000),
+        itemType: z.enum(ASSESSMENT_ITEM_TYPES).catch("other"),
+        objectives: z.array(z.string()).catch([]),
+        // The question-bank entry it was copied from, kept only if it still exists.
+        bankItem: z.string().nullable().catch(null).default(null),
+      }),
+    )
     .max(LIMIT.assessments),
   boards: z
     .array(
@@ -201,7 +209,7 @@ export async function snapshotProject(projectId: string): Promise<ProjectSnapsho
         },
       },
       objectives: { orderBy: { position: "asc" }, take: LIMIT.objectives, select: { id: true, text: true, bloomLevel: true } },
-      assessmentItems: { orderBy: { position: "asc" }, take: LIMIT.assessments, select: { prompt: true, itemType: true, objectives: { select: { objectiveId: true } } } },
+      assessmentItems: { orderBy: { position: "asc" }, take: LIMIT.assessments, select: { prompt: true, itemType: true, sourceBankItemId: true, objectives: { select: { objectiveId: true } } } },
       boards: {
         orderBy: { createdAt: "asc" },
         take: LIMIT.boards,
@@ -262,6 +270,7 @@ export async function snapshotProject(projectId: string): Promise<ProjectSnapsho
       prompt: a.prompt,
       itemType: (ASSESSMENT_ITEM_TYPES as readonly string[]).includes(a.itemType) ? (a.itemType as (typeof ASSESSMENT_ITEM_TYPES)[number]) : "other",
       objectives: keysOf(a.objectives),
+      bankItem: a.sourceBankItemId,
     })),
     boards: p.boards.map((b) => ({
       name: b.name,
@@ -348,11 +357,17 @@ export async function instantiateProject(workspaceId: string, snap: ProjectSnaps
         objectiveId.set(o.key, row.id);
       }
 
+      const bankIds = [...new Set(snap.assessments.map((a) => a.bankItem).filter((id): id is string => !!id))];
+      const liveBank = new Set(
+        bankIds.length
+          ? (await tx.bankItem.findMany({ where: { id: { in: bankIds }, workspaceId }, select: { id: true } })).map((b) => b.id)
+          : [],
+      );
       const aPos = positionsAfter(null, snap.assessments.length);
       for (const [i, a] of snap.assessments.entries()) {
         const links = [...new Set(a.objectives.map((k) => objectiveId.get(k)).filter((id): id is string => !!id))];
         await tx.assessmentItem.create({
-          data: { projectId, prompt: a.prompt, itemType: a.itemType, position: aPos[i], ...(links.length ? { objectives: { create: links.map((objectiveId) => ({ objectiveId })) } } : {}) },
+          data: { projectId, prompt: a.prompt, itemType: a.itemType, position: aPos[i], sourceBankItemId: a.bankItem && liveBank.has(a.bankItem) ? a.bankItem : null, ...(links.length ? { objectives: { create: links.map((objectiveId) => ({ objectiveId })) } } : {}) },
         });
       }
 
