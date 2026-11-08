@@ -174,10 +174,11 @@ comment authors, and its columns change with each Jira configuration. Jira Data 
 | Comments | Comments, with original author and date; ADF converted to text with @-mentions of matched members |
 | Attachments | Attachments (downloaded and stored; same 95 MB per-file limit as uploads) |
 | Watchers | Watchers (matched members) |
+| Components, fix versions | Labels (`component: X`, `version: Y`); can be switched off in the mapping step |
 | Change history | Not imported. One activity entry: "Imported from PROJ-123 on Jira" with a link. |
 
 **Not imported** (listed in the dry run): custom fields other than story points, worklogs,
-components and fix versions (offered as labels, opt-in), Jira automation and workflows,
+Jira automation and workflows,
 votes, and permission settings.
 
 ### People
@@ -225,10 +226,13 @@ the workspace backup (format bump). The import itself is admin-only and not expo
 
 Each phase ships to test, is checked end to end, and waits for approval before prod.
 
-## Open questions
+## Decisions (2026-11-08)
 
-1. **Jira Cloud or Data Center?** The design assumes Cloud (`*.atlassian.net`).
-2. **Which projects first?** A real (or sample) project to test the importer against would
-   catch mapping gaps that made-up data won't. A read-only API token for it would do.
-3. **Points or hours** as the default estimate unit for your workspace?
-4. **Components and fix versions:** bring them over as labels, or leave them?
+1. **Jira Cloud** (`*.atlassian.net`). Data Center later if needed.
+2. **Story points** are the default estimate unit.
+3. **Components and fix versions come over as labels** (`component: Onboarding`,
+   `version: 2.1`), on by default.
+4. **No real Jira data to test against.** The importer is tested against a local mock of
+   the Jira Cloud API serving fixtures in Jira's documented response shapes (rich ADF,
+   epics, subtasks, sprints, links, attachments, unmatched users, 429s, pagination).
+   A real site can be checked later with a free Atlassian Cloud account.
