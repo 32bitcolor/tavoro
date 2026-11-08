@@ -36,6 +36,7 @@ const SEED = {
   content: "HIPAA Privacy & Security 2026",
   asset: "Clinic waiting room",
   bankItem: "A caller says they're",
+  source: "Privacy policy 4.2",
 };
 
 const browser = await chromium.launch();
@@ -322,7 +323,11 @@ if (want("content-item")) {
 
 if (want("content-impact")) {
   await go("/content/sources");
-  await page.getByRole("button", { name: "This changed…" }).first().click();
+  await page
+    .locator("li")
+    .filter({ has: page.getByRole("heading", { name: SEED.source }) })
+    .getByRole("button", { name: "This changed…" })
+    .click();
   await page.getByRole("dialog").waitFor();
   await settle();
   await shot("content-impact");
