@@ -282,3 +282,121 @@ export async function loadTimeReport(workspaceId: string, since: Date, now: Date
       .sort((a, b) => b.count - a.count),
   };
 }
+
+// ─── Reviews (SME turnaround) ─────────────────────────────────────────────────
+
+/** How quickly reviewers (members and guests) turn reviews around: one row per reviewer
+ *  assignment (ReviewCycle), measured from when it was requested to the reviewer's
+ *  decision. A reviewer who changes their mind counts once, at their latest decision. */
+export async function loadReviewReport(workspaceId: string, since: Date, now: Date, rangeDays: number) {
+  const inWs = { deliverable: { project: { workspaceId } } };
+  const reviewer = { select: { id: true, name: true, email: true } } as const;
+  const guest = { select: { id: true, name: true, email: true } } as const;
+  const [decided, open, passedRounds] = await Promise.all([
+    prisma.reviewCycle.findMany({
+      where: { ...inWs, decidedAt: { gte: since }, status: { in: ["approved", "changes_requested"] } },
+      select: {
+        status: true,
+        createdAt: true,
+        decidedAt: true,
+        dueDate: true,
+        reviewRound: { select: { dueDate: true } },
+        reviewer,
+        guest,
+      },
+    }),
+    prisma.reviewCycle.findMany({
+      where: { ...inWs, decidedAt: null, status: { in: ["requested", "in_review"] }, reviewRound: { closedAt: null } },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        createdAt: true,
+        dueDate: true,
+        reviewRound: { select: { number: true, dueDate: true } },
+        deliverable: { select: { id: true, name: true, project: { select: { id: true, name: true } } } },
+        reviewer,
+        guest,
+      },
+    }),
+    prisma.reviewRound.findMany({
+      where: { ...inWs, outcome: "passed", closedAt: { gte: since } },
+      select: { number: true },
+    }),
+  ]);
+
+  const dueOf = (c: { dueDate: Date | null; reviewRound: { dueDate: Date | null } }) => c.dueDate ?? c.reviewRound.dueDate;
+  const dueEnd = (d: Date) => new Date(d.getTime() + DAY); // on time = by the end of the due day (UTC)
+  const startOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const who = (c: { reviewer: { id: string; name: string | null; email: string } | null; guest: { id: string; name: string; email: string } | null }) =>
+    c.reviewer
+      ? { key: `u:${c.reviewer.id}`, name: c.reviewer.name || c.reviewer.email, guest: false }
+      : { key: `g:${(c.guest?.email ?? c.guest?.id ?? "").toLowerCase()}`, name: c.guest?.name || c.guest?.email || "Guest", guest: true };
+
+  type Row = { name: string; guest: boolean; decided: number; turnaround: number[]; withDue: number; onTime: number; changes: number; open: number };
+  const rows = new Map<string, Row>();
+  const row = (w: ReturnType<typeof who>) => {
+    let r = rows.get(w.key);
+    if (!r) {
+      r = { name: w.name, guest: w.guest, decided: 0, turnaround: [], withDue: 0, onTime: 0, changes: 0, open: 0 };
+      rows.set(w.key, r);
+    }
+    return r;
+  };
+
+  let withDue = 0;
+  let onTime = 0;
+  for (const c of decided) {
+    const r = row(who(c));
+    r.decided++;
+    r.turnaround.push(days(c.createdAt, c.decidedAt!));
+    if (c.status === "changes_requested") r.changes++;
+    const due = dueOf(c);
+    if (due) {
+      withDue++;
+      r.withDue++;
+      if (c.decidedAt! < dueEnd(due)) {
+        onTime++;
+        r.onTime++;
+      }
+    }
+  }
+  for (const c of open) row(who(c)).open++;
+
+  return {
+    decidedCount: decided.length,
+    medianTurnaroundDays: median(decided.map((c) => days(c.createdAt, c.decidedAt!))),
+    onTimeRate: withDue ? onTime / withDue : null,
+    withDueCount: withDue,
+    waitingCount: open.length,
+    overdueCount: open.filter((c) => {
+      const due = dueOf(c);
+      return !!due && due < startOfToday;
+    }).length,
+    medianRoundsToPass: median(passedRounds.map((r) => r.number)),
+    passedCount: passedRounds.length,
+    perBucket: fill(makeBuckets(since, now, rangeDays), decided.map((c) => ({ at: c.decidedAt! }))),
+    waiting: open.map((c) => {
+      const due = dueOf(c);
+      return {
+        id: c.id,
+        reviewer: who(c),
+        deliverable: c.deliverable,
+        round: c.reviewRound.number,
+        ageDays: days(c.createdAt, now),
+        dueDate: due,
+        overdue: !!due && due < startOfToday,
+      };
+    }),
+    reviewers: [...rows.values()]
+      .map((r) => ({
+        name: r.name,
+        guest: r.guest,
+        decided: r.decided,
+        medianDays: median(r.turnaround),
+        onTimeRate: r.withDue ? r.onTime / r.withDue : null,
+        changesRate: r.decided ? r.changes / r.decided : null,
+        open: r.open,
+      }))
+      .sort((a, b) => b.decided - a.decided || b.open - a.open || a.name.localeCompare(b.name)),
+  };
+}

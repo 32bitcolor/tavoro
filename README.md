@@ -168,6 +168,9 @@ review that.
   Every email links back into the app. Admins can turn each category on or off in
   **Settings → Notifications**.
 - **Dashboard**: active projects with phase progress, reviews awaiting you, and upcoming milestones.
+- **Reports** (admins and managers): intake (time to decision, approval rate), delivery (cycle
+  time, milestones on time), reviews (SME turnaround, on-time decisions, rounds to approval, who's
+  waiting) and time logged.
 - **Workspace admin**:
   - **backup and restore**, including attachments, review files, library assets and the question bank
   - workspace **labels**
@@ -284,8 +287,8 @@ Four are live; LMS integration is next.
    and approve-to-project conversion.
 2. **SME review and approval** ✅: review rounds on frozen storyboards, PDFs and images, with
    anchored comments, guest links, an every-reviewer gate, email notifications, comments sent to
-   the board as cards, and Word/PDF export. Still planned: reviewing videos and reporting SME
-   turnaround times. See [docs/REVIEW-LINKS.md](docs/REVIEW-LINKS.md).
+   the board as cards, Word/PDF export, and SME turnaround reporting. Still planned: reviewing
+   videos. See [docs/REVIEW-LINKS.md](docs/REVIEW-LINKS.md).
 3. **Objectives → content → assessment alignment spine** ✅: objectives threaded through storyboard
    screens and assessment items, with coverage and gap analysis.
 4. **Content lifecycle and a reusable asset library** ✅: the content inventory with

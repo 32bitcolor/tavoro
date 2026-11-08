@@ -2,9 +2,9 @@
 
 # Reports
 
-> **Reports** show how work is flowing through your team — how quickly requests get a decision, how much the team finishes, whether milestones land on time, and where the hours go. They’re for **admins and managers**: open **Reports** in the sidebar (members don’t see it).
+> **Reports** show how work is flowing through your team — how quickly requests get a decision, how much the team finishes, whether milestones land on time, how fast reviewers respond, and where the hours go. They’re for **admins and managers**: open **Reports** in the sidebar (members don’t see it).
 
-Pick a report with the **Intake**, **Delivery** and **Time** tabs, and a window with **30 days**, **90 days**, **6 months** or **12 months**. Short windows chart by week, longer ones by month. Hover or tab to a bar for its exact value, or open **Show as table** under a chart for every number at once. Reports name individual people, so treat them like any other team data.
+Pick a report with the **Intake**, **Delivery**, **Reviews** and **Time** tabs, and a window with **30 days**, **90 days**, **6 months** or **12 months**. Short windows chart by week, longer ones by month. Hover or tab to a bar for its exact value, or open **Show as table** under a chart for every number at once. Reports name individual people, so treat them like any other team data.
 
 ## Intake
 
@@ -27,6 +27,20 @@ Pick a report with the **Intake**, **Delivery** and **Time** tabs, and a window 
 **By person** — Each person’s completed, in-progress, open and overdue cards. A card with several assignees counts for each of them. For the cards themselves, see **Team**.
 
 > **Faded bars.** Tavoro started recording exactly when cards are finished when Reports arrived. For work finished before then, it uses the card’s last edit as an estimate, and draws those bars faded.
+
+## Reviews
+
+How quickly SMEs and other reviewers, guests included, turn reviews around. Each reviewer on a review round counts as one review.
+
+**SME turnaround** — The median time from a reviewer being asked to their decision (approve or request changes), for decisions made in the window. If a reviewer changes their decision, the latest one counts.
+
+**Decided on time** — Of the decisions that had a due date (the reviewer’s own, or the round’s), how many came by the end of the due day.
+
+**Rounds to approval** — For deliverables that passed review in the window, the median round they passed on. 1 means most pass first time.
+
+**Waiting on reviewers** — Reviews still open, listed oldest first with any past their due date in red, so you know who to nudge.
+
+**By reviewer** — Each reviewer’s decisions, median turnaround, on-time rate, how often they ask for changes, and how many they have waiting.
 
 ## Time
 

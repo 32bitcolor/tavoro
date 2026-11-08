@@ -5,13 +5,13 @@ export default function Reports() {
     <>
       <Lead>
         <strong>Reports</strong> show how work is flowing through your team &mdash; how quickly
-        requests get a decision, how much the team finishes, whether milestones land on time, and
-        where the hours go. They&rsquo;re for <strong>admins and managers</strong>: open{" "}
+        requests get a decision, how much the team finishes, whether milestones land on time, how
+        fast reviewers respond, and where the hours go. They&rsquo;re for <strong>admins and managers</strong>: open{" "}
         <UI>Reports</UI> in the sidebar (members don&rsquo;t see it).
       </Lead>
 
       <P>
-        Pick a report with the <UI>Intake</UI>, <UI>Delivery</UI> and <UI>Time</UI> tabs, and a
+        Pick a report with the <UI>Intake</UI>, <UI>Delivery</UI>, <UI>Reviews</UI> and <UI>Time</UI> tabs, and a
         window with <UI>30 days</UI>, <UI>90 days</UI>, <UI>6 months</UI> or <UI>12 months</UI>. Short
         windows chart by week, longer ones by month. Hover or tab to a bar for its exact value, or
         open <UI>Show as table</UI> under a chart for every number at once. Reports name
@@ -53,6 +53,35 @@ export default function Reports() {
         finished before then, it uses the card&rsquo;s last edit as an estimate, and draws those
         bars faded.
       </Callout>
+
+      <H2>Reviews</H2>
+      <P>
+        How quickly SMEs and other reviewers, guests included, turn reviews around. Each reviewer on
+        a review round counts as one review.
+      </P>
+      <DefList>
+        <Def term="SME turnaround">
+          The median time from a reviewer being asked to their decision (approve or request
+          changes), for decisions made in the window. If a reviewer changes their decision, the
+          latest one counts.
+        </Def>
+        <Def term="Decided on time">
+          Of the decisions that had a due date (the reviewer&rsquo;s own, or the round&rsquo;s), how
+          many came by the end of the due day.
+        </Def>
+        <Def term="Rounds to approval">
+          For deliverables that passed review in the window, the median round they passed on. 1 means
+          most pass first time.
+        </Def>
+        <Def term="Waiting on reviewers">
+          Reviews still open, listed oldest first with any past their due date in red, so you know
+          who to nudge.
+        </Def>
+        <Def term="By reviewer">
+          Each reviewer&rsquo;s decisions, median turnaround, on-time rate, how often they ask for
+          changes, and how many they have waiting.
+        </Def>
+      </DefList>
 
       <H2>Time</H2>
       <P>

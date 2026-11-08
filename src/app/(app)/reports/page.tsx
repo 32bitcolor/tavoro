@@ -9,6 +9,7 @@ import {
   REPORT_RANGES,
   loadDeliveryReport,
   loadIntakeReport,
+  loadReviewReport,
   loadTimeReport,
   parseRange,
   type Bucket,
@@ -24,6 +25,7 @@ export const metadata = { title: "Reports · Tavoro" };
 const TABS = [
   { key: "intake", label: "Intake" },
   { key: "delivery", label: "Delivery" },
+  { key: "reviews", label: "Reviews" },
   { key: "time", label: "Time" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
@@ -110,6 +112,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <div className="mt-6">
         {tab === "intake" && <IntakeTab ws={ws} since={since} now={now} range={range} />}
         {tab === "delivery" && <DeliveryTab ws={ws} since={since} now={now} range={range} />}
+        {tab === "reviews" && <ReviewsTab ws={ws} since={since} now={now} range={range} />}
         {tab === "time" && <TimeTab ws={ws} since={since} now={now} range={range} />}
       </div>
     </PageContainer>
@@ -198,6 +201,72 @@ async function IntakeTab({ ws, since, now, range }: TabProps) {
           empty={`No requests were decided in the last ${RANGE_LABEL[range]}.`}
           rows={r.deciders.map((d) => [d.name, d.approved, d.rejected, fmtDays(d.medianDays)])}
         />
+      </section>
+    </div>
+  );
+}
+
+async function ReviewsTab({ ws, since, now, range }: TabProps) {
+  const r = await loadReviewReport(ws, since, now, range);
+  const rounds = r.medianRoundsToPass;
+  return (
+    <div className="flex flex-col gap-6">
+      <Stats
+        items={[
+          { label: "SME turnaround", value: fmtDays(r.medianTurnaroundDays), hint: `median of ${r.decidedCount} decision${r.decidedCount === 1 ? "" : "s"}` },
+          { label: "Decided on time", value: fmtPct(r.onTimeRate), hint: r.withDueCount ? `of ${r.withDueCount} with a due date` : "no due dates set" },
+          { label: "Rounds to approval", value: rounds === null ? "—" : String(Math.round(rounds * 10) / 10), hint: `median of ${r.passedCount} passed` },
+          { label: "Waiting on reviewers", value: String(r.waitingCount), hint: r.overdueCount ? `${r.overdueCount} overdue` : "none overdue" },
+        ]}
+      />
+      <ColumnChart title="Review decisions" buckets={chartBuckets(r.perBucket, now)} unit="decisions" />
+      <section>
+        <SectionHeader>Waiting on reviewers</SectionHeader>
+        <Table
+          head={[{ label: "Reviewer" }, { label: "Deliverable" }, { label: "Round", num: true }, { label: "Due", num: true }, { label: "Waiting", num: true }]}
+          empty="No one has a review waiting."
+          rows={r.waiting.map((w) => [
+            <span key="r">
+              {w.reviewer.name}
+              {w.reviewer.guest ? <span className="text-muted-foreground"> (guest)</span> : null}
+            </span>,
+            <Link key="d" href={`/projects/${w.deliverable.project.id}`} className="hover:underline">
+              {w.deliverable.name} <span className="text-muted-foreground">· {w.deliverable.project.name}</span>
+            </Link>,
+            w.round,
+            w.dueDate ? <span key="due" className={w.overdue ? "font-medium text-destructive-ink" : undefined}>{dateFmt(w.dueDate)}</span> : <span key="due" className="text-muted-foreground">—</span>,
+            fmtDays(w.ageDays),
+          ])}
+        />
+      </section>
+      <section>
+        <SectionHeader>By reviewer</SectionHeader>
+        <Table
+          head={[
+            { label: "Reviewer" },
+            { label: "Decided", num: true },
+            { label: "Median turnaround", num: true },
+            { label: "On time", num: true },
+            { label: "Asked for changes", num: true },
+            { label: "Waiting", num: true },
+          ]}
+          empty={`No reviews were decided in the last ${RANGE_LABEL[range]}, and none are waiting.`}
+          rows={r.reviewers.map((p) => [
+            <span key="n">
+              {p.name}
+              {p.guest ? <span className="text-muted-foreground"> (guest)</span> : null}
+            </span>,
+            p.decided,
+            fmtDays(p.medianDays),
+            fmtPct(p.onTimeRate),
+            fmtPct(p.changesRate),
+            p.open,
+          ])}
+        />
+        <p className="mt-2 text-xs text-muted-foreground">
+          Turnaround runs from when a reviewer was asked to their decision. On time means decided by the end of the due day (the
+          reviewer&apos;s own due date, or the round&apos;s). A reviewer who changes their decision counts once.
+        </p>
       </section>
     </div>
   );
