@@ -25,8 +25,8 @@ Images, video and audio play right on the page, and PDFs open in a new tab. Ever
 
 **Used in** — The content in the inventory that uses this asset.
 
-![An asset's page: the image preview with Download and Replace file buttons, its details, labels, and the content items that use it](../../public/help-shots/asset-item.png)
-*An asset, with the courses that use it.*
+![An asset's page: its type, file name, size and who added it, the image preview, and the Download and Replace file buttons](../../public/help-shots/asset-item.png)
+*An image asset, previewed on its page.*
 
 ## Replace a file
 

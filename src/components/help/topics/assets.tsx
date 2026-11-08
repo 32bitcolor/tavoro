@@ -57,8 +57,8 @@ export default function Assets() {
 
       <Screenshot
         name="asset-item"
-        alt="An asset's page: the image preview with Download and Replace file buttons, its details, labels, and the content items that use it"
-        caption="An asset, with the courses that use it."
+        alt="An asset's page: its type, file name, size and who added it, the image preview, and the Download and Replace file buttons"
+        caption="An image asset, previewed on its page."
       />
 
       <H2>Replace a file</H2>
