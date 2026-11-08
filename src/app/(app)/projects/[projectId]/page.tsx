@@ -152,7 +152,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
   const bankOptions = bank.map((b) => ({
     id: b.id,
     label: b.prompt,
-    hint: [b.kind === "scenario" ? "Scenario" : "Question", ASSESSMENT_ITEM_TYPE_LABEL[b.itemType as AssessmentItemType], b.bloomLevel ? BLOOM_LABEL[b.bloomLevel as BloomLevel] : null]
+    hint: [b.kind === "scenario" ? "Scenario" : "Question", b.kind === "scenario" && b.itemType === "scenario" ? null : ASSESSMENT_ITEM_TYPE_LABEL[b.itemType as AssessmentItemType], b.bloomLevel ? BLOOM_LABEL[b.bloomLevel as BloomLevel] : null]
       .filter(Boolean)
       .join(" · "),
   }));

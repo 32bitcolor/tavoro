@@ -30,7 +30,7 @@ On a project, under **Assessment items**, choose **Add from the question bank** 
 
 > **Note.** A copy is independent. Rewording the bank entry never changes a course that’s already shipped, and tailoring the copy for one project never changes the bank.
 
-![A bank item's page: the scenario text, its kind, item type and level, notes, labels, and the projects that use it](../../public/help-shots/bank-item.png)
+![A bank item's page: the scenario text, its kind, item type and level, notes with the answer and source, labels, and the start of its Used in list](../../public/help-shots/bank-item.png)
 *A scenario in the bank, and the projects that reuse it.*
 
 ## See where an item is used

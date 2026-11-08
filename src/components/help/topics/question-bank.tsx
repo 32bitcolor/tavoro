@@ -63,7 +63,7 @@ export default function QuestionBank() {
 
       <Screenshot
         name="bank-item"
-        alt="A bank item's page: the scenario text, its kind, item type and level, notes, labels, and the projects that use it"
+        alt="A bank item's page: the scenario text, its kind, item type and level, notes with the answer and source, labels, and the start of its Used in list"
         caption="A scenario in the bank, and the projects that reuse it."
       />
 

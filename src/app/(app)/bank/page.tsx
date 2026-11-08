@@ -75,7 +75,9 @@ export default async function BankPage({ searchParams }: { searchParams: Promise
                 </Link>
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                   <span>{BANK_KIND_LABEL[it.kind as BankKind] ?? it.kind}</span>
-                  <span>· {ASSESSMENT_ITEM_TYPE_LABEL[it.itemType as AssessmentItemType] ?? it.itemType}</span>
+                  {!(it.kind === "scenario" && it.itemType === "scenario") && (
+                    <span>· {ASSESSMENT_ITEM_TYPE_LABEL[it.itemType as AssessmentItemType] ?? it.itemType}</span>
+                  )}
                   {it.bloomLevel && <span>· {BLOOM_LABEL[it.bloomLevel as BloomLevel] ?? it.bloomLevel}</span>}
                   {it.labels.map((l) => (
                     <LabelPill key={l.id} label={l} />
