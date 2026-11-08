@@ -61,6 +61,7 @@ model User {
 model Workspace {
   id                   String              @id @default(cuid())
   name                 String
+  estimateUnit         String              @default("points") // points / hours — what Card.estimate counts
   slug                 String              @unique
   intakeEnabled        Boolean             @default(true) // admin on/off toggle for the public intake form
   // Extra questions on the intake form, set by admins (lib/intake-fields.ts).
@@ -202,6 +203,9 @@ model Card {
   dueDate        DateTime?
   done           Boolean          @default(false) // only meaningful for subtask-cards
   private        Boolean          @default(false) // never shown on the board's public link (top-level cards; subtasks follow their card)
+  type           String           @default("task") // task / bug / story / epic (lib/card-fields.ts); subtasks keep "task" and show as Subtask
+  priority       String? // highest / high / medium / low / lowest; null = none
+  estimate       Float? // story points or hours, per Workspace.estimateUnit
   keySeq         Int? // this card's number in its board's key sequence — null if the board has no cardKeyPrefix; display as "{board.cardKeyPrefix}-{keySeq}"
   statusId       String? // canonical status — source of truth for cross-board views; kept in sync with the card's column on move
   sprintId       String? // optional sprint assignment (independent of project); powers the team sprint board
@@ -229,6 +233,7 @@ model Card {
   @@index([statusId])
   @@index([sprintId])
   @@index([completedAt])
+  @@index([type])
 }
 
 // A key a card had on a board it has since been moved off (e.g. SEC-12 after moving to

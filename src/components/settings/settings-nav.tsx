@@ -12,7 +12,7 @@ export const SETTINGS_TABS = [
   { href: "/settings/members", label: "Members", group: "Workspace", adminOnly: true },
   { href: "/settings/groups", label: "Groups", group: "Workspace", adminOnly: true },
   { href: "/settings/sso", label: "Single sign-on", group: "Workspace", adminOnly: true },
-  { href: "/settings/labels", label: "Labels", group: "Workspace", adminOnly: true },
+  { href: "/settings/labels", label: "Cards & labels", group: "Workspace", adminOnly: true },
   { href: "/settings/intake", label: "Intake", group: "Workspace", adminOnly: true },
   { href: "/settings/sharing", label: "Sharing", group: "Workspace", adminOnly: true },
   { href: "/settings/notifications", label: "Notifications", group: "Workspace", adminOnly: true },

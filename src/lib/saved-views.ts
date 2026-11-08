@@ -18,6 +18,10 @@ export type DueFilter = (typeof DUE_FILTERS)[number];
 export const BoardFilters = z.object({
   labels: z.array(z.string()).default([]),
   assignees: z.array(z.string()).default([]),
+  /** Card types (task/bug/story/epic). */
+  types: z.array(z.string()).default([]),
+  /** Priorities, plus "none" for cards without one. */
+  priorities: z.array(z.string()).default([]),
   due: z.enum(DUE_FILTERS).default("any"),
   search: z.string().default(""),
 });
@@ -49,5 +53,12 @@ export function filtersAreActive(scope: string, f: BoardFilters | SprintFilters)
     return !!(s.project || s.assignee || s.label);
   }
   const b = f as BoardFilters;
-  return b.labels.length > 0 || b.assignees.length > 0 || b.due !== "any" || b.search.trim() !== "";
+  return (
+    b.labels.length > 0 ||
+    b.assignees.length > 0 ||
+    b.types.length > 0 ||
+    b.priorities.length > 0 ||
+    b.due !== "any" ||
+    b.search.trim() !== ""
+  );
 }

@@ -1,3 +1,4 @@
+import { CARD_TYPES, PRIORITIES, asCardType } from "@/lib/card-fields";
 import "server-only";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -20,6 +21,9 @@ import {
   deleteSubtask,
   getCardDetail,
   setCardDueDate,
+  setCardEstimate,
+  setCardPriority,
+  setCardType,
   toggleCardAssignee,
   toggleCardLabel,
   toggleCardSme,
@@ -125,6 +129,10 @@ export async function loadCard(ref: string) {
     isSubtask: d.isSubtask,
     parent: d.parent,
     private: d.card.private,
+    type: d.isSubtask ? "subtask" : d.card.type,
+    priority: d.card.priority,
+    estimate: d.card.estimate,
+    estimateUnit: d.estimateUnit,
     due: day(d.card.dueDate ? new Date(d.card.dueDate) : null),
     description: toMarkdown(d.card.description),
     labels: d.card.labelIds.map((id) => label.get(id)).filter(Boolean),
@@ -171,6 +179,9 @@ export async function loadBoard(boardId: string, includeDone: boolean) {
               title: true,
               keySeq: true,
               dueDate: true,
+              type: true,
+              priority: true,
+              estimate: true,
               status: { select: { category: true } },
               assignees: { select: { user: { select: { name: true, email: true } } } },
               labels: { select: { label: { select: { name: true } } } },
@@ -200,6 +211,9 @@ export async function loadBoard(boardId: string, includeDone: boolean) {
           id: k.id,
           key: keyOf(full.cardKeyPrefix, k.keySeq),
           title: k.title,
+          type: asCardType(k.type),
+          priority: k.priority ?? undefined,
+          estimate: k.estimate ?? undefined,
           due: day(k.dueDate),
           assignees: k.assignees.map((a) => a.user.name ?? a.user.email),
           labels: k.labels.map((l) => l.label.name),
@@ -244,7 +258,7 @@ export function registerCardTools(server: McpServer) {
     "get_board",
     {
       title: "Get a board",
-      description: "A board's columns and their cards (key, title, due date, assignees, labels, subtask progress, sprint).",
+      description: "A board's columns and their cards (key, title, type, priority, estimate, due date, assignees, labels, subtask progress, sprint).",
       input: {
         board_id: z.string().min(1),
         include_done: z.boolean().default(true).describe("Include columns whose status is done"),
@@ -260,7 +274,7 @@ export function registerCardTools(server: McpServer) {
     {
       title: "Get a card",
       description:
-        "Everything on a card: description (Markdown), status, due date, labels, assignees, SMEs, sprint, subtasks, comments, attachments, and any review comments it was made from.",
+        "Everything on a card: type, priority, estimate, description (Markdown), status, due date, labels, assignees, SMEs, sprint, subtasks, comments, attachments, and any review comments it was made from.",
       input: { card: cardRef },
       kind: "read",
     },
@@ -308,7 +322,7 @@ export function registerCardTools(server: McpServer) {
     {
       title: "Create a card",
       description:
-        "Add a card to a board. Optionally set its column (default: the first), description (Markdown), due date, assignees, SMEs, labels and sprint in the same call.",
+        "Add a card to a board. Optionally set its column (default: the first), type, priority, estimate, description (Markdown), due date, assignees, SMEs, labels and sprint in the same call.",
       input: {
         board_id: z.string().min(1),
         title: z.string().min(1).max(280),
@@ -319,12 +333,16 @@ export function registerCardTools(server: McpServer) {
         smes: z.array(z.string()).max(20).optional().describe("Subject-matter experts: member ids, emails or names"),
         labels: z.array(z.string()).max(20).optional().describe("Existing label names or ids"),
         sprint: z.string().optional().describe("Sprint name or id, or 'active'"),
+        type: z.enum(CARD_TYPES).optional().describe("task, bug, story or epic (top-level cards only; an epic can't be in a sprint)"),
+        priority: z.enum([...PRIORITIES, "none"]).optional().describe("highest, high, medium, low, lowest, or none"),
+        estimate: z.number().min(0).max(10000).nullable().optional().describe("Story points or hours (see estimateUnit on the card); null clears it"),
       },
       kind: "write",
     },
     async (a) => {
       if (!(await getBoardForUser(a.board_id))) throw new ToolError("Board not found, or you can't see it.");
       const column = await resolveColumn(a.board_id, a.column);
+      if (a.type === "epic" && a.sprint?.trim()) throw new ToolError("An epic can't be in a sprint; its cards are.");
       const { card } = check(await createCard(column.id, a.title));
       await applyCardChanges(card.id, a);
       return loadCard(card.id);
@@ -337,7 +355,7 @@ export function registerCardTools(server: McpServer) {
     {
       title: "Update a card",
       description:
-        "Change a card: title, description (Markdown, replaces the old one), due date (empty string clears it), column (moves it), board (moves it to another board, into \`column\` there or its first column; its key changes and the old key keeps resolving), assignees, SMEs, labels, sprint, private (true leaves it off the board's public link; top-level cards only). Lists add or remove people/labels; anything you leave out stays as it is.",
+        "Change a card: title, description (Markdown, replaces the old one), due date (empty string clears it), column (moves it), board (moves it to another board, into \`column\` there or its first column; its key changes and the old key keeps resolving), assignees, SMEs, labels, sprint, type, priority, estimate, private (true leaves it off the board's public link; top-level cards only). Lists add or remove people/labels; anything you leave out stays as it is.",
       input: {
         card: cardRef,
         title: z.string().min(1).max(280).optional(),
@@ -353,6 +371,9 @@ export function registerCardTools(server: McpServer) {
         remove_labels: z.array(z.string()).max(20).optional(),
         sprint: z.string().optional().describe("Sprint name or id, 'active', or empty to take it out of its sprint"),
         private: z.boolean().optional().describe("true hides the card from the board's public read-only link"),
+        type: z.enum(CARD_TYPES).optional().describe("task, bug, story or epic (top-level cards only; an epic can't be in a sprint)"),
+        priority: z.enum([...PRIORITIES, "none"]).optional().describe("highest, high, medium, low, lowest, or none"),
+        estimate: z.number().min(0).max(10000).nullable().optional().describe("Story points or hours (see estimateUnit on the card); null clears it"),
       },
       kind: "write",
       idempotent: true,
@@ -384,6 +405,9 @@ export function registerCardTools(server: McpServer) {
         labels: a.add_labels,
         removeLabels: a.remove_labels,
         sprint: a.sprint,
+        type: a.type,
+        priority: a.priority,
+        estimate: a.estimate,
       });
       return loadCard(cardId);
     },
@@ -469,9 +493,16 @@ type CardChanges = {
   labels?: string[];
   removeLabels?: string[];
   sprint?: string;
+  type?: string;
+  priority?: string;
+  estimate?: number | null;
 };
 
 async function applyCardChanges(cardId: string, c: CardChanges) {
+  // Type first: an epic leaves its sprint, and a sprint can't then be set on it.
+  if (c.type !== undefined) check(await setCardType(cardId, c.type));
+  if (c.priority !== undefined) check(await setCardPriority(cardId, c.priority === "none" ? null : c.priority));
+  if (c.estimate !== undefined) check(await setCardEstimate(cardId, c.estimate));
   if (c.description !== undefined) check(await updateCardDescription(cardId, fromMarkdown(c.description)));
   if (c.due !== undefined) check(await setCardDueDate(cardId, parseDate(c.due)));
   for (const r of c.assignees ?? []) check(await toggleCardAssignee(cardId, (await resolveMember(r)).id, true));

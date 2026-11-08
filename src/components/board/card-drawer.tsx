@@ -17,6 +17,9 @@ import {
   deleteSubtask,
   addComment,
   deleteComment,
+  setCardType,
+  setCardPriority,
+  setCardEstimate,
 } from "@/app/actions/cards";
 import { renameCard, deleteCard } from "@/app/actions/boards";
 import {
@@ -25,6 +28,8 @@ import {
 import { DescriptionEditor } from "@/components/board/description-editor";
 import { CommentComposer, CommentBody } from "@/components/board/comment-editor";
 import { assignCardToSprint } from "@/app/actions/sprints";
+import { CARD_TYPES, CARD_TYPE_LABEL, PRIORITIES, PRIORITY_LABEL, type CardType, type EstimateUnit, type Priority } from "@/lib/card-fields";
+import { PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
 import { setCardPrivate } from "@/app/actions/board-share";
 import { MoveCardDialog, type MoveResult } from "@/components/board/move-card-dialog";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
@@ -61,6 +66,9 @@ export type CardFacePatch = {
   smes?: { id: string; name: string | null; email: string }[];
   checklist?: { total: number; done: number };
   private?: boolean;
+  type?: CardType;
+  priority?: Priority | null;
+  estimate?: number | null;
   comments?: number;
   attachments?: number;
 };
@@ -109,6 +117,12 @@ export function CardDrawer({
   const [smeIds, setSmeIds] = useState<Set<string>>(new Set());
   const [sprintId, setSprintId] = useState<string | null>(null);
   const [isPrivate, setIsPrivate] = useState(false);
+  const [cardType, setCardTypeState] = useState<CardType>("task");
+  const [priority, setPriority] = useState<Priority | null>(null);
+  const [estimate, setEstimate] = useState<number | null>(null);
+  const [estimateDraft, setEstimateDraft] = useState("");
+  const [estimateError, setEstimateError] = useState<string | null>(null);
+  const [estimateUnit, setEstimateUnit] = useState<EstimateUnit>("points");
   const [statusId, setStatusId] = useState<string | null>(null);
   const [sprints, setSprints] = useState<{ id: string; name: string }[]>([]);
   const [sprintsEnabled, setSprintsEnabled] = useState(false);
@@ -146,6 +160,12 @@ export function CardDrawer({
       setSmeIds(new Set(d.card.smeIds));
       setSprintId(d.card.sprintId);
       setIsPrivate(d.card.private);
+      setCardTypeState(d.card.type);
+      setPriority(d.card.priority);
+      setEstimate(d.card.estimate);
+      setEstimateDraft(d.card.estimate == null ? "" : String(d.card.estimate));
+      setEstimateError(null);
+      setEstimateUnit(d.estimateUnit);
       setStatusId(d.card.statusId);
       setSprints(d.sprints);
       setSprintsEnabled(d.sprintsEnabled);
@@ -198,6 +218,56 @@ export function CardDrawer({
       if (res && "error" in res) {
         setIsPrivate(!next);
         onPatch(cardId, { private: !next });
+      }
+    });
+  }
+
+  function changeType(next: CardType) {
+    const prev = cardType;
+    setCardTypeState(next);
+    onPatch(cardId, { type: next });
+    setCardType(cardId, next).then((res) => {
+      if (res && "error" in res) {
+        setCardTypeState(prev);
+        onPatch(cardId, { type: prev });
+      } else if (res && res.sprintId === null) {
+        setSprintId(null);
+      }
+    });
+  }
+
+  function changePriority(next: Priority | null) {
+    const prev = priority;
+    setPriority(next);
+    onPatch(cardId, { priority: next });
+    setCardPriority(cardId, next).then((res) => {
+      if (res && "error" in res) {
+        setPriority(prev);
+        onPatch(cardId, { priority: prev });
+      }
+    });
+  }
+
+  function saveEstimate() {
+    const raw = estimateDraft.trim();
+    const next = raw === "" ? null : Number(raw);
+    if (next !== null && (!Number.isFinite(next) || next < 0 || next > 10000)) {
+      setEstimateError("Enter a number from 0 to 10,000.");
+      return;
+    }
+    setEstimateError(null);
+    if (next === estimate) return;
+    const prev = estimate;
+    setEstimate(next);
+    onPatch(cardId, { estimate: next });
+    setCardEstimate(cardId, next).then((res) => {
+      if (res && "error" in res) {
+        setEstimate(prev);
+        setEstimateDraft(prev == null ? "" : String(prev));
+        setEstimateError(res.error ?? "Couldn\u2019t save the estimate.");
+        onPatch(cardId, { estimate: prev });
+      } else if (res && "estimate" in res) {
+        setEstimateDraft(res.estimate == null ? "" : String(res.estimate));
       }
     });
   }
@@ -521,6 +591,65 @@ export function CardDrawer({
                   </Field>
                 )}
 
+                {!isSubtask && (
+                  <Field label="Type">
+                    <div className="flex items-center gap-2">
+                      <TypeIcon type={cardType} />
+                      <Select
+                        value={cardType}
+                        onChange={(e) => changeType(e.target.value as CardType)}
+                        className="h-8 w-full py-1 text-sm"
+                        aria-label="Type"
+                      >
+                        {CARD_TYPES.map((t) => (
+                          <option key={t} value={t}>{CARD_TYPE_LABEL[t]}</option>
+                        ))}
+                      </Select>
+                    </div>
+                  </Field>
+                )}
+
+                <Field label="Priority">
+                  <div className="flex items-center gap-2">
+                    {priority && <PriorityIcon priority={priority} />}
+                    <Select
+                      value={priority ?? ""}
+                      onChange={(e) => changePriority((e.target.value || null) as Priority | null)}
+                      className="h-8 w-full py-1 text-sm"
+                      aria-label="Priority"
+                    >
+                      <option value="">None</option>
+                      {PRIORITIES.map((p) => (
+                        <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>
+                      ))}
+                    </Select>
+                  </div>
+                </Field>
+
+                <Field label={estimateUnit === "hours" ? "Estimate (hours)" : "Estimate (story points)"}>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    max={10000}
+                    step="any"
+                    value={estimateDraft}
+                    onChange={(e) => setEstimateDraft(e.target.value)}
+                    onBlur={saveEstimate}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                    }}
+                    placeholder="None"
+                    aria-label={estimateUnit === "hours" ? "Estimate in hours" : "Estimate in story points"}
+                    aria-invalid={estimateError ? true : undefined}
+                    aria-describedby={estimateError ? "estimate-error" : undefined}
+                    className="h-8 w-28"
+                  />
+                  {estimateError && (
+                    <p id="estimate-error" role="alert" className="mt-1 text-xs text-destructive-ink">{estimateError}</p>
+                  )}
+                </Field>
+
                 <Field label="Due date">
                   <div className="flex items-center gap-2">
                     <Input
@@ -537,7 +666,7 @@ export function CardDrawer({
                   </div>
                 </Field>
 
-                {!isSubtask && sprintsEnabled && (
+                {!isSubtask && sprintsEnabled && cardType !== "epic" && (
                   <Field label="Sprint">
                     <Select
                       value={sprintId ?? ""}

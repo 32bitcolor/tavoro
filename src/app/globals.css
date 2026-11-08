@@ -54,6 +54,7 @@
   --color-warning-ink: var(--warning-ink, var(--warning));
   --color-success-ink: var(--success-ink, var(--success));
   --color-info-ink: var(--info-ink, var(--info));
+  --color-epic-ink: var(--epic-ink);
   --color-input: var(--border);
   --color-ring: var(--accent);
   --radius-xl: 0.5rem;
@@ -118,6 +119,7 @@
   --shadow-tint: 32 45 56;
   --destructive-ink: #b42330;
   --info-ink: #2f5aa8;
+  --epic-ink: #6b3fbf;
   --warning-ink: #a14800;
   --success-ink: #0d7a52;
   --sidebar-fg: #4a5662;
@@ -142,6 +144,7 @@
     --success: #2cc692;
     --warning: #ff7d00;
     --info: #6fa8e0;
+    --epic-ink: #c0a4f5;
     --shadow-tint: 32 45 56;
     --destructive-ink: #ff8f97;
     --warning-ink: #ffb066;
@@ -183,6 +186,7 @@
   --success: #2cc692;
   --warning: #ff7d00;
   --info: #6fa8e0;
+  --epic-ink: #c0a4f5;
   --shadow-tint: 32 45 56;
   --destructive-ink: #ff8f97;
   --warning-ink: #ffb066;

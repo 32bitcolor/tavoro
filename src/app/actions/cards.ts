@@ -15,6 +15,7 @@ import { appUrl } from "@/lib/app-url";
 import { extractMentionIds, extractText } from "@/lib/mentions";
 import { notificationsEnabled, notifySubtaskStatusChange } from "@/lib/notify";
 import { nextCardKeySeq } from "@/lib/card-keys";
+import { CardTypeSchema, EstimateSchema, EstimateUnitSchema, PrioritySchema, asCardType, asPriority, type EstimateUnit } from "@/lib/card-fields";
 
 const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid color");
 const LabelName = z.string().trim().min(1).max(60);
@@ -41,6 +42,7 @@ export async function getCardDetail(cardId: string) {
     select: {
       workspaceId: true,
       cardKeyPrefix: true,
+      workspace: { select: { estimateUnit: true } },
       project: { select: { sprintsEnabled: true } },
       groupAccess: { select: { groupId: true } },
     },
@@ -62,6 +64,9 @@ export async function getCardDetail(cardId: string) {
         sprintId: true,
         done: true,
         private: true,
+        type: true,
+        priority: true,
+        estimate: true,
         statusId: true,
         status: { select: { category: true } },
         parentCardId: true,
@@ -163,6 +168,7 @@ export async function getCardDetail(cardId: string) {
   return {
     boardId,
     boardCardKeyPrefix: board.cardKeyPrefix,
+    estimateUnit: (board.workspace.estimateUnit === "hours" ? "hours" : "points") as EstimateUnit,
     card: {
       id: card.id,
       title: card.title,
@@ -171,6 +177,9 @@ export async function getCardDetail(cardId: string) {
       keySeq: card.keySeq,
       sprintId: card.sprintId,
       private: card.private,
+      type: asCardType(card.type),
+      priority: asPriority(card.priority),
+      estimate: card.estimate,
       statusId: card.statusId,
       labelIds: card.labels.map((l) => l.labelId),
       assigneeIds: card.assignees.map((a) => a.userId),
@@ -276,6 +285,63 @@ export async function setCardDueDate(cardId: string, iso: string | null) {
   if (iso && Number.isNaN(dueDate!.getTime())) return { error: "Invalid date." };
   await prisma.card.update({ where: { id: cardId }, data: { dueDate } });
   revalidatePath(boardPath(card.boardId));
+}
+
+// ── Type, priority, estimate (docs/JIRA-PARITY.md) ──────────────────────────
+
+/** Change a card's type. Subtasks have no type of their own; an epic holds work rather
+ *  than being planned, so making a card an epic takes it out of its sprint. */
+export async function setCardType(cardId: string, type: string) {
+  const card = await getCardForUser(cardId);
+  if (!card) return { error: "Card not found." };
+  if (card.parentCardId) return { error: "A subtask doesn’t have a type." };
+  const parsed = CardTypeSchema.safeParse(type);
+  if (!parsed.success) return { error: "Unknown type." };
+  const row = await prisma.card.update({
+    where: { id: cardId },
+    data: { type: parsed.data, ...(parsed.data === "epic" ? { sprintId: null } : {}) },
+    select: { type: true, sprintId: true },
+  });
+  revalidatePath(boardPath(card.boardId));
+  revalidatePath("/sprints");
+  return { type: asCardType(row.type), sprintId: row.sprintId };
+}
+
+export async function setCardPriority(cardId: string, priority: string | null) {
+  const card = await getCardForUser(cardId);
+  if (!card) return { error: "Card not found." };
+  const parsed = PrioritySchema.safeParse(priority || null);
+  if (!parsed.success) return { error: "Unknown priority." };
+  await prisma.card.update({ where: { id: cardId }, data: { priority: parsed.data } });
+  revalidatePath(boardPath(card.boardId));
+  revalidatePath("/sprints");
+  return { priority: asPriority(parsed.data) };
+}
+
+export async function setCardEstimate(cardId: string, estimate: number | null) {
+  const card = await getCardForUser(cardId);
+  if (!card) return { error: "Card not found." };
+  const parsed = EstimateSchema.safeParse(estimate);
+  if (!parsed.success) return { error: "An estimate is a number from 0 to 10,000." };
+  await prisma.card.update({ where: { id: cardId }, data: { estimate: parsed.data } });
+  revalidatePath(boardPath(card.boardId));
+  revalidatePath("/sprints");
+  return { estimate: parsed.data };
+}
+
+/** What estimates count in this workspace: story points or hours. Admin-only, since it
+ *  changes how every card's number reads. Existing numbers are kept as they are. */
+export async function setEstimateUnit(unit: string) {
+  const membership = await getActiveMembership();
+  if (!membership) return { error: "Unauthorized." };
+  if (membership.role !== Role.ADMIN) return { error: "Only workspace admins can change this." };
+  const parsed = EstimateUnitSchema.safeParse(unit);
+  if (!parsed.success) return { error: "Unknown unit." };
+  await prisma.workspace.update({ where: { id: membership.workspaceId }, data: { estimateUnit: parsed.data } });
+  revalidatePath("/boards", "layout");
+  revalidatePath("/sprints", "layout");
+  revalidatePath("/settings/labels");
+  return { unit: parsed.data as EstimateUnit };
 }
 
 // ── Labels ───────────────────────────────────────────────────────────────────

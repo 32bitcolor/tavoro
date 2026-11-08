@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { createContext, useContext, useId, useState, useTransition, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   DndContext,
@@ -85,6 +85,11 @@ import {
 import { REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/methodology";
 import { AvatarStack, DueChip, LabelPill, StatusDot, type StatusCategory } from "@/components/shared/work-item";
 import { cn } from "@/lib/utils";
+import { EstimateChip, PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
+import { PRIORITY_LABEL, priorityRank, type CardType, type EstimateUnit, type Priority } from "@/lib/card-fields";
+
+/** What card estimates count in this workspace, for every card face on the board. */
+const EstimateUnitContext = createContext<EstimateUnit>("points");
 
 type Label = { id: string; name: string; color: string };
 type Member = { id: string; name: string | null; email: string };
@@ -96,6 +101,9 @@ type Card = {
   dueDate: string | null;
   keySeq: number | null;
   private: boolean;
+  type: CardType;
+  priority: Priority | null;
+  estimate: number | null;
   labels: Label[];
   assignees: Member[];
   smes: Member[];
@@ -106,6 +114,7 @@ type Card = {
 };
 type Column = { id: string; name: string; position: string; category: StatusCategory; cards: Card[] };
 type ViewMode = "board" | "list";
+type ListSort = "board" | "priority" | "estimate" | "due";
 
 export function BoardView({
   boardId,
@@ -115,7 +124,9 @@ export function BoardView({
   project,
   context,
   initialColumns,
+  estimateUnit = "points",
 }: {
+  estimateUnit?: EstimateUnit;
   boardId: string;
   boardName: string;
   cardKeyPrefix: string | null;
@@ -125,6 +136,8 @@ export function BoardView({
   initialColumns: Column[];
 }) {
   const [columns, setColumns] = useState<Column[]>(initialColumns);
+  // A stable id for dnd-kit's accessibility ids, so the server and client render match.
+  const dndId = useId();
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -178,6 +191,8 @@ export function BoardView({
   const [fLabels, setFLabels] = useState<Set<string>>(new Set());
   const [fAssignees, setFAssignees] = useState<Set<string>>(new Set());
   const [fDue, setFDue] = useState<DueFilter>("any");
+  const [fTypes, setFTypes] = useState<Set<string>>(new Set());
+  const [fPriorities, setFPriorities] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   // Which saved view (if any) produced the filters currently applied. Cleared the
   // moment the user hand-edits a filter, so the menu never claims a view is active
@@ -196,7 +211,8 @@ export function BoardView({
     return [...map.values()].sort((a, b) => (a.name ?? a.email).localeCompare(b.name ?? b.email));
   }, [columns]);
 
-  const filtersActive = fLabels.size > 0 || fAssignees.size > 0 || fDue !== "any" || search.trim() !== "";
+  const filtersActive =
+    fLabels.size > 0 || fAssignees.size > 0 || fTypes.size > 0 || fPriorities.size > 0 || fDue !== "any" || search.trim() !== "";
 
   const filteredColumns = useMemo(() => {
     if (!filtersActive) return columns;
@@ -210,6 +226,8 @@ export function BoardView({
     const match = (card: Card) => {
       if (fLabels.size > 0 && !card.labels.some((l) => fLabels.has(l.id))) return false;
       if (fAssignees.size > 0 && !card.assignees.some((a) => fAssignees.has(a.id))) return false;
+      if (fTypes.size > 0 && !fTypes.has(card.type)) return false;
+      if (fPriorities.size > 0 && !fPriorities.has(card.priority ?? "none")) return false;
       if (fDue !== "any") {
         const ymd = card.dueDate ? card.dueDate.slice(0, 10) : null;
         if (fDue === "none" && ymd) return false;
@@ -220,7 +238,7 @@ export function BoardView({
       return true;
     };
     return columns.map((c) => ({ ...c, cards: c.cards.filter(match) }));
-  }, [columns, fLabels, fAssignees, fDue, search, filtersActive]);
+  }, [columns, fLabels, fAssignees, fTypes, fPriorities, fDue, search, filtersActive]);
 
   const totalCount = useMemo(() => columns.reduce((n, c) => n + c.cards.length, 0), [columns]);
   const visibleCount = useMemo(
@@ -242,6 +260,8 @@ export function BoardView({
   function clearFilters() {
     setFLabels(new Set());
     setFAssignees(new Set());
+    setFTypes(new Set());
+    setFPriorities(new Set());
     setFDue("any");
     setSearch("");
     setActiveViewId(null);
@@ -251,6 +271,8 @@ export function BoardView({
     return {
       labels: [...fLabels],
       assignees: [...fAssignees],
+      types: [...fTypes],
+      priorities: [...fPriorities],
       due: fDue,
       search,
     };
@@ -264,6 +286,8 @@ export function BoardView({
     const f = view.filters as BoardFilters;
     setFLabels(new Set(f.labels));
     setFAssignees(new Set(f.assignees));
+    setFTypes(new Set(f.types ?? []));
+    setFPriorities(new Set(f.priorities ?? []));
     setFDue(f.due);
     setSearch(f.search);
     setActiveViewId(view.id);
@@ -348,6 +372,9 @@ export function BoardView({
         dueDate: null,
         keySeq: res.card.keySeq,
         private: false,
+        type: "task",
+        priority: null,
+        estimate: null,
         labels: [],
         assignees: [],
         smes: [],
@@ -440,6 +467,7 @@ export function BoardView({
   const navIndex = openCardId ? navIds.indexOf(openCardId) : -1;
 
   return (
+    <EstimateUnitContext value={estimateUnit}>
     <div className="flex h-full min-h-screen min-w-0 flex-col gap-4 px-6 pt-5 pb-10">
       <BoardHeader
         boardId={boardId}
@@ -479,6 +507,10 @@ export function BoardView({
         onToggleLabel={(id) => { setActiveViewId(null); toggleSet(setFLabels, id); }}
         selectedAssignees={fAssignees}
         onToggleAssignee={(id) => { setActiveViewId(null); toggleSet(setFAssignees, id); }}
+        selectedTypes={fTypes}
+        onToggleType={(t) => { setActiveViewId(null); toggleSet(setFTypes, t); }}
+        selectedPriorities={fPriorities}
+        onTogglePriority={(p) => { setActiveViewId(null); toggleSet(setFPriorities, p); }}
         due={fDue}
         onDue={(d) => { setActiveViewId(null); setFDue(d); }}
         search={search}
@@ -497,6 +529,7 @@ export function BoardView({
         <ListView columns={filteredColumns} cardKeyPrefix={cardKeyPrefix} openCardId={openCardId} onOpen={openCard} />
       ) : (
         <DndContext
+          id={dndId}
           sensors={sensors}
           collisionDetection={closestCorners}
           onDragStart={onDragStart}
@@ -555,6 +588,7 @@ export function BoardView({
         />
       )}
     </div>
+    </EstimateUnitContext>
   );
 }
 
@@ -943,9 +977,11 @@ function CardShell({
   onOpen?: () => void;
   dragging?: boolean;
 }) {
+  const estimateUnit = useContext(EstimateUnitContext);
   const key = cardKeyPrefix && card.keySeq != null ? `${cardKeyPrefix}-${card.keySeq}` : null;
   const hasPeople = card.assignees.length > 0 || card.smes.length > 0;
-  const hasMeta = card.dueDate || card.checklist.total > 0 || card.comments > 0 || card.attachments > 0 || hasPeople;
+  const hasMeta =
+    card.dueDate || card.estimate != null || card.checklist.total > 0 || card.comments > 0 || card.attachments > 0 || hasPeople;
 
   return (
     <div
@@ -956,10 +992,11 @@ function CardShell({
         dragging ? "rotate-1 shadow-md" : "cursor-pointer active:cursor-grabbing",
       )}
     >
-      {(key || onDelete || card.private) && (
-        <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-1.5">
+            <TypeIcon type={card.type} />
             {key && <span className="font-mono text-[11px] font-medium text-muted-foreground">{key}</span>}
+            {card.priority && <PriorityIcon priority={card.priority} />}
             {card.private && <PrivateTag />}
           </span>
           {onDelete && (
@@ -982,7 +1019,6 @@ function CardShell({
             />
           )}
         </div>
-      )}
 
       {/* The title is the card's keyboard-reachable "open" control — Enter on the
           outer draggable starts a keyboard drag instead. */}
@@ -1018,6 +1054,7 @@ function CardShell({
 
       {hasMeta && (
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs font-medium text-muted-foreground">
+          {card.estimate != null && <EstimateChip estimate={card.estimate} unit={estimateUnit} />}
           {card.dueDate && <DueChip iso={card.dueDate} />}
           {card.checklist.total > 0 && (
             <span
@@ -1066,23 +1103,53 @@ function ListView({
   openCardId: string | null;
   onOpen: (id: string) => void;
 }) {
+  const estimateUnit = useContext(EstimateUnitContext);
+  const span = cardKeyPrefix ? 7 : 6;
+  // Sorting reorders the rows within each column group; "board" keeps the board's order.
+  const [sort, setSort] = useState<ListSort>("board");
+  const sorted = useMemo(() => {
+    if (sort === "board") return columns;
+    const cmp = (a: Card, b: Card) => {
+      if (sort === "priority") return priorityRank(a.priority) - priorityRank(b.priority);
+      if (sort === "estimate") return (b.estimate ?? -1) - (a.estimate ?? -1);
+      const ad = a.dueDate ?? "9999";
+      const bd = b.dueDate ?? "9999";
+      return ad < bd ? -1 : ad > bd ? 1 : 0;
+    };
+    return columns.map((c) => ({ ...c, cards: [...c.cards].sort(cmp) }));
+  }, [columns, sort]);
+  const sortHeader = (key: Exclude<ListSort, "board">, label: string, className: string) => (
+    <th scope="col" className={cn("px-4 py-2 font-medium", className)} aria-sort={sort === key ? (key === "estimate" ? "descending" : "ascending") : undefined}>
+      <button
+        type="button"
+        onClick={() => setSort(sort === key ? "board" : key)}
+        className="-mx-1 rounded px-1 outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        title={sort === key ? "Back to board order" : `Sort by ${label.toLowerCase()}`}
+      >
+        {label}
+        {sort === key && <span aria-hidden="true"> {key === "estimate" ? "↓" : "↑"}</span>}
+      </button>
+    </th>
+  );
   return (
     <div className="relative overflow-x-auto rounded-lg border border-border bg-surface">
-      <table className="w-full min-w-[44rem] table-fixed border-collapse text-sm">
+      <table className="w-full min-w-[52rem] table-fixed border-collapse text-sm">
         <caption className="sr-only">Cards grouped by column</caption>
         <thead>
           <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
-            {cardKeyPrefix && <th scope="col" className="w-24 px-4 py-2 font-medium">Key</th>}
+            {cardKeyPrefix && <th scope="col" className="w-28 px-4 py-2 font-medium">Key</th>}
             <th scope="col" className="px-4 py-2 font-medium">Title</th>
+            {sortHeader("priority", "Priority", "w-24")}
+            {sortHeader("estimate", estimateUnit === "hours" ? "Hours" : "Points", "w-20")}
             <th scope="col" className="w-72 px-4 py-2 font-medium">Labels</th>
-            <th scope="col" className="w-28 px-4 py-2 font-medium">Due</th>
+            {sortHeader("due", "Due", "w-28")}
             <th scope="col" className="w-28 px-4 py-2 font-medium">People</th>
           </tr>
         </thead>
-        {columns.map((col) => (
+        {sorted.map((col) => (
           <tbody key={col.id}>
             <tr className="bg-surface-muted">
-              <th scope="rowgroup" colSpan={cardKeyPrefix ? 5 : 4} className="px-4 py-1.5 text-left text-xs font-semibold">
+              <th scope="rowgroup" colSpan={span} className="px-4 py-1.5 text-left text-xs font-semibold">
                 <span className="inline-flex items-center gap-2">
                   <StatusDot category={col.category} />
                   {col.name}
@@ -1092,7 +1159,7 @@ function ListView({
             </tr>
             {col.cards.length === 0 && (
               <tr>
-                <td colSpan={cardKeyPrefix ? 5 : 4} className="px-4 py-2 text-xs text-muted-foreground">No cards</td>
+                <td colSpan={span} className="px-4 py-2 text-xs text-muted-foreground">No cards</td>
               </tr>
             )}
             {col.cards.map((card) => {
@@ -1118,11 +1185,21 @@ function ListView({
                         e.stopPropagation();
                         onOpen(card.id);
                       }}
-                      className="block w-full truncate rounded text-left font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                      className="flex w-full items-center gap-1.5 rounded text-left font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                     >
-                      {card.title}
+                      <TypeIcon type={card.type} />
+                      <span className="truncate">{card.title}</span>
                     </button>
                   </td>
+                  <td className="px-4 py-2 text-xs">
+                    {card.priority && (
+                      <span className="inline-flex items-center gap-1">
+                        <PriorityIcon priority={card.priority} />
+                        <span aria-hidden="true">{PRIORITY_LABEL[card.priority]}</span>
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-xs tabular-nums">{card.estimate ?? ""}</td>
                   <td className="px-4 py-2">
                     <span className="flex flex-wrap gap-1 overflow-hidden">
                       {card.private && <PrivateTag />}

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getBoardForUser } from "@/lib/authz";
 import { BoardView } from "@/components/board/board-view";
 import { loadProjectContext } from "@/lib/project-context";
+import { asCardType, asPriority } from "@/lib/card-fields";
 
 export const metadata = { title: "Board · Tavoro" };
 
@@ -14,7 +15,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
 
   const meta = await prisma.board.findUnique({
     where: { id: boardId },
-    select: { publicNonce: true, project: { select: { id: true, name: true } } },
+    select: { publicNonce: true, project: { select: { id: true, name: true } }, workspace: { select: { estimateUnit: true } } },
   });
 
   const raw = await prisma.column.findMany({
@@ -35,6 +36,9 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
           dueDate: true,
           keySeq: true,
           private: true,
+          type: true,
+          priority: true,
+          estimate: true,
           labels: { select: { label: { select: { id: true, name: true, color: true } } } },
           assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
           smes: { select: { user: { select: { id: true, name: true, email: true } } } },
@@ -70,6 +74,9 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
         dueDate: card.dueDate ? card.dueDate.toISOString() : null,
         keySeq: card.keySeq,
         private: card.private,
+        type: asCardType(card.type),
+        priority: asPriority(card.priority),
+        estimate: card.estimate,
         labels: card.labels.map((l) => l.label),
         assignees: card.assignees.map((a) => a.user),
         smes: card.smes.map((s) => s.user),
@@ -93,6 +100,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
       project={project}
       context={context}
       initialColumns={columns}
+      estimateUnit={meta?.workspace.estimateUnit === "hours" ? "hours" : "points"}
     />
   );
 }

@@ -1,3 +1,4 @@
+import { CardTypeSchema, EstimateSchema, PrioritySchema, asCardType, asPriority } from "@/lib/card-fields";
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -95,6 +96,10 @@ const ProjectSnap = z.object({
                     description: optText,
                     labels: z.array(z.string()).catch([]),
                     subtasks: z.array(str(500)).max(LIMIT.subtasks).catch([]),
+                    // Added with Jira parity; older templates don't have them.
+                    type: CardTypeSchema.catch("task"),
+                    priority: PrioritySchema.catch(null),
+                    estimate: EstimateSchema.catch(null),
                   }),
                 )
                 .max(LIMIT.cards),
@@ -227,6 +232,9 @@ export async function snapshotProject(projectId: string): Promise<ProjectSnapsho
                 select: {
                   title: true,
                   description: true,
+                  type: true,
+                  priority: true,
+                  estimate: true,
                   labels: { select: { label: { select: { name: true } } } },
                   subtasks: { orderBy: { position: "asc" }, take: LIMIT.subtasks, select: { title: true } },
                 },
@@ -282,6 +290,9 @@ export async function snapshotProject(projectId: string): Promise<ProjectSnapsho
           description: card.description,
           labels: card.labels.map((l) => l.label.name),
           subtasks: card.subtasks.map((s) => s.title),
+          type: asCardType(card.type),
+          priority: asPriority(card.priority),
+          estimate: card.estimate,
         })),
       })),
     })),
@@ -407,6 +418,9 @@ export async function instantiateProject(workspaceId: string, snap: ProjectSnaps
               description: card.description,
               statusId: target.statusId,
               position: cardPos[k],
+              type: card.type,
+              priority: card.priority,
+              estimate: card.estimate,
               ...(ids.length ? { labels: { create: ids.map((labelId) => ({ labelId })) } } : {}),
             },
             select: { id: true },

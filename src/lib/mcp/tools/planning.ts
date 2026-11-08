@@ -176,7 +176,7 @@ export function registerPlanningTools(server: McpServer) {
     "get_sprint",
     {
       title: "Get a sprint",
-      description: "A sprint's goal, dates and every card in it across all boards, grouped by status. sprint = name, id, or 'active'.",
+      description: "A sprint's goal, dates, estimate totals (planned and done) and every card in it across all boards, grouped by status. sprint = name, id, or 'active'.",
       input: { sprint: z.string().min(1).default("active") },
       kind: "read",
     },
@@ -191,7 +191,10 @@ export function registerPlanningTools(server: McpServer) {
           title: true,
           keySeq: true,
           dueDate: true,
-          status: { select: { name: true } },
+          type: true,
+          priority: true,
+          estimate: true,
+          status: { select: { name: true, category: true } },
           column: { select: { board: { select: { id: true, name: true, cardKeyPrefix: true } } } },
           assignees: { select: { user: { select: { name: true, email: true } } } },
         },
@@ -203,13 +206,26 @@ export function registerPlanningTools(server: McpServer) {
           id: c.id,
           key: c.column?.board.cardKeyPrefix && c.keySeq ? `${c.column.board.cardKeyPrefix}-${c.keySeq}` : null,
           title: c.title,
+          type: c.type,
+          priority: c.priority ?? undefined,
+          estimate: c.estimate ?? undefined,
           board: c.column?.board.name,
           due: day(c.dueDate),
           assignees: c.assignees.map((x) => x.user.name ?? x.user.email),
           url: cardHref(c.column!.board.id, c.id),
         });
       }
-      return { ...full, startDate: day(full.startDate), endDate: day(full.endDate), url: link("/sprints"), cardsByStatus: byStatus };
+      const ws = await prisma.workspace.findUniqueOrThrow({ where: { id: principal().workspaceId }, select: { estimateUnit: true } });
+      const total = cards.reduce((n, c) => n + (c.estimate ?? 0), 0);
+      const done = cards.filter((c) => c.status?.category === "done").reduce((n, c) => n + (c.estimate ?? 0), 0);
+      return {
+        ...full,
+        startDate: day(full.startDate),
+        endDate: day(full.endDate),
+        url: link("/sprints"),
+        estimate: { unit: ws.estimateUnit, total, done },
+        cardsByStatus: byStatus,
+      };
     },
   );
 

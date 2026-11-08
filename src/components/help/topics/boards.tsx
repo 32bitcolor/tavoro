@@ -66,8 +66,10 @@ export default function Boards() {
       <Screenshot name="board-list" alt="The same board shown as a list grouped by column, with key, title, labels, people and due date" caption="List view: the same cards as a table, grouped by column." />
       <P>
         The <UI>Board</UI> / <UI>List</UI> switch in the header changes how the same cards are shown:
-        columns you drag between, or a table grouped by column with key, title, labels, people, and due
-        date. Filters apply to both.
+        columns you drag between, or a table grouped by column with key, title, priority, estimate,
+        labels, due date and people. Filters apply to both. In the list, click the <UI>Priority</UI>,{" "}
+        <UI>Points</UI> (or <UI>Hours</UI>) or <UI>Due</UI> heading to sort each column&rsquo;s cards by it;
+        click it again to go back to the board&rsquo;s order.
       </P>
 
       <H2>The card drawer, in depth</H2>
@@ -95,6 +97,21 @@ export default function Boards() {
           feedback view), the card lists them here with where they were left, so the fix and the comment
           stay together.
         </Def>
+        <Def term="Type">
+          <UI>Task</UI>, <UI>Bug</UI>, <UI>Story</UI> or <UI>Epic</UI>, shown as an icon before the
+          card&rsquo;s key. New cards are tasks. An epic is a big piece of work that groups other cards, so it
+          isn&rsquo;t planned in a sprint: making a card an epic takes it out of its sprint. Subtasks
+          don&rsquo;t have a type.
+        </Def>
+        <Def term="Priority">
+          <UI>Highest</UI>, <UI>High</UI>, <UI>Medium</UI>, <UI>Low</UI>, <UI>Lowest</UI>, or <UI>None</UI>.
+          Shown as an arrow icon next to the key.
+        </Def>
+        <Def term="Estimate">
+          How big the work is, in story points or hours (an admin picks which in{" "}
+          <UI>Settings → Cards &amp; labels</UI>). Shown as a chip on the card, and totalled on the sprint
+          board.
+        </Def>
         <Def term="Status">
           The column the card is in. Changing it here moves the card. Each column maps to one of the
           workspace&rsquo;s statuses (to do, in progress, done and so on), which drive the sprint board and
@@ -116,7 +133,7 @@ export default function Boards() {
         <Def term="Labels">
           Toggle any of the workspace&rsquo;s labels. Create one by typing in <UI>New label…</UI>, picking
           a color, and choosing <UI>Add</UI>. Labels are shared across the workspace; admins rename,
-          recolor, and delete them in <UI>Settings → Labels</UI>.
+          recolor, and delete them in <UI>Settings → Cards &amp; labels</UI>.
         </Def>
         <Def term="Assignees and SMEs">
           <UI>+ Assign</UI> adds workspace members as assignees (who&rsquo;s doing it) or SMEs (who
@@ -185,6 +202,10 @@ export default function Boards() {
         <LI>
           <strong>Label</strong> and <strong>Assignee</strong> — open each and check the ones to filter
           by; the button shows what&rsquo;s selected.
+        </LI>
+        <LI>
+          <strong>Type</strong> and <strong>Priority</strong> — for example, only bugs, or only{" "}
+          <UI>Highest</UI> and <UI>High</UI>. <UI>No priority</UI> finds cards nobody has prioritised yet.
         </LI>
         <LI>
           <strong>Due date</strong> — <UI>Any due date</UI>, <UI>Overdue</UI>, <UI>Due this week</UI>, or{" "}

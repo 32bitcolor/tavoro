@@ -31,7 +31,7 @@ The card face shows its state at a glance: key, labels, a due-date chip (red whe
 ![The same board shown as a list grouped by column, with key, title, labels, people and due date](../../public/help-shots/board-list.png)
 *List view: the same cards as a table, grouped by column.*
 
-The **Board** / **List** switch in the header changes how the same cards are shown: columns you drag between, or a table grouped by column with key, title, labels, people, and due date. Filters apply to both.
+The **Board** / **List** switch in the header changes how the same cards are shown: columns you drag between, or a table grouped by column with key, title, priority, estimate, labels, due date and people. Filters apply to both. In the list, click the **Priority**, **Points** (or **Hours**) or **Due** heading to sort each column’s cards by it; click it again to go back to the board’s order.
 
 ## The card drawer, in depth
 
@@ -48,6 +48,12 @@ Opening a card slides in a drawer with everything about it. Changes save as you 
 
 **Review feedback** — When review comments are sent to a board as cards (from a review round or a deliverable’s feedback view), the card lists them here with where they were left, so the fix and the comment stay together.
 
+**Type** — **Task**, **Bug**, **Story** or **Epic**, shown as an icon before the card’s key. New cards are tasks. An epic is a big piece of work that groups other cards, so it isn’t planned in a sprint: making a card an epic takes it out of its sprint. Subtasks don’t have a type.
+
+**Priority** — **Highest**, **High**, **Medium**, **Low**, **Lowest**, or **None**. Shown as an arrow icon next to the key.
+
+**Estimate** — How big the work is, in story points or hours (an admin picks which in **Settings → Cards & labels**). Shown as a chip on the card, and totalled on the sprint board.
+
 **Status** — The column the card is in. Changing it here moves the card. Each column maps to one of the workspace’s statuses (to do, in progress, done and so on), which drive the sprint board and cross-board views; a status change notifies the card’s assignees and SMEs.
 
 **Visibility** — **Private** leaves the card off the board’s public link, if it has one. A private card shows a **Private** tag on the board; members still see it as usual. Subtasks follow their card.
@@ -56,7 +62,7 @@ Opening a card slides in a drawer with everything about it. Changes save as you 
 
 **Sprint** — On boards in a sprint-enabled project, assign the card to a **Sprint** to put it on that sprint’s board (**No sprint** takes it off). See the Sprints guide.
 
-**Labels** — Toggle any of the workspace’s labels. Create one by typing in **New label…**, picking a color, and choosing **Add**. Labels are shared across the workspace; admins rename, recolor, and delete them in **Settings → Labels**.
+**Labels** — Toggle any of the workspace’s labels. Create one by typing in **New label…**, picking a color, and choosing **Add**. Labels are shared across the workspace; admins rename, recolor, and delete them in **Settings → Cards & labels**.
 
 **Assignees and SMEs** — **+ Assign** adds workspace members as assignees (who’s doing it) or SMEs (who checks it for accuracy). Both are emailed when added and notified of comments, and assigned cards show in each person’s My Work.
 
@@ -83,6 +89,7 @@ The filter bar above the columns narrows what’s visible without changing anyth
 
 - **Search** — type in **Search cards** to match card titles. (To jump to a card by its key, use the header’s **Search**.)
 - **Label** and **Assignee** — open each and check the ones to filter by; the button shows what’s selected.
+- **Type** and **Priority** — for example, only bugs, or only **Highest** and **High**. **No priority** finds cards nobody has prioritised yet.
 - **Due date** — **Any due date**, **Overdue**, **Due this week**, or **No due date**.
 
 ### Saved views

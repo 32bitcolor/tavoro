@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
 import { boardVisibilityWhere } from "@/lib/authz";
 import { SprintBoard } from "@/components/sprint/sprint-board";
+import { asCardType, asPriority } from "@/lib/card-fields";
 
 export const metadata = { title: "Sprint board · Tavoro" };
 
@@ -18,7 +19,7 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
   });
   if (!sprint) notFound();
 
-  const [statuses, cards] = await Promise.all([
+  const [statuses, cards, workspace] = await Promise.all([
     prisma.workspaceStatus.findMany({
       where: { workspaceId: wsId },
       orderBy: { position: "asc" },
@@ -39,6 +40,9 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
         keySeq: true,
         statusId: true,
         dueDate: true,
+        type: true,
+        priority: true,
+        estimate: true,
         assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
         smes: { select: { user: { select: { id: true, name: true, email: true } } } },
         labels: { select: { label: { select: { id: true, name: true, color: true } } } },
@@ -55,6 +59,7 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
         },
       },
     }),
+    prisma.workspace.findUnique({ where: { id: wsId }, select: { estimateUnit: true } }),
   ]);
 
   const items = cards.map((c) => ({
@@ -63,6 +68,9 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
     keySeq: c.keySeq,
     statusId: c.statusId,
     dueDate: c.dueDate ? c.dueDate.toISOString() : null,
+    type: asCardType(c.type),
+    priority: asPriority(c.priority),
+    estimate: c.estimate,
     boardId: c.column!.board.id,
     cardKeyPrefix: c.column!.board.cardKeyPrefix,
     project: c.column!.board.project,
@@ -83,6 +91,7 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
       }}
       statuses={statuses.map((s) => ({ ...s, category: s.category as "todo" | "active" | "done" }))}
       initialCards={items}
+      estimateUnit={workspace?.estimateUnit === "hours" ? "hours" : "points"}
     />
   );
 }

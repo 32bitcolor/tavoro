@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode, useId } from "react";
 import { FolderKanban, Tag, User, X } from "lucide-react";
 import {
   DndContext,
@@ -23,6 +23,8 @@ import { SavedViewsMenu } from "@/components/shared/saved-views-menu";
 import { FilterChip } from "@/components/board/filter-bar";
 import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
 import { AvatarStack, DueChip, LabelPill, StatusDot, type StatusCategory } from "@/components/shared/work-item";
+import { EstimateChip, PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
+import { formatEstimate, type CardType, type EstimateUnit, type Priority } from "@/lib/card-fields";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -43,6 +45,9 @@ export type SprintCard = {
   keySeq: number | null;
   statusId: string | null;
   dueDate: string | null;
+  type: CardType;
+  priority: Priority | null;
+  estimate: number | null;
   boardId: string;
   cardKeyPrefix: string | null;
   project: { id: string; name: string } | null;
@@ -62,7 +67,9 @@ export function SprintBoard({
   sprint,
   statuses,
   initialCards,
+  estimateUnit = "points",
 }: {
+  estimateUnit?: EstimateUnit;
   sprint: {
     id: string;
     name: string;
@@ -77,6 +84,7 @@ export function SprintBoard({
   initialCards: SprintCard[];
 }) {
   const [cards, setCards] = useState<SprintCard[]>(initialCards);
+  const dndId = useId();
   const [projectFilter, setProjectFilter] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState("");
   const [labelFilter, setLabelFilter] = useState("");
@@ -89,6 +97,11 @@ export function SprintBoard({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   function handleCardPatch(cardId: string, patch: CardFacePatch) {
+    // An epic isn't planned in a sprint: making one leaves the sprint.
+    if (patch.type === "epic") {
+      setCards((cs) => cs.filter((c) => c.id !== cardId));
+      return;
+    }
     setCards((cs) =>
       cs.map((c) =>
         c.id === cardId
@@ -97,6 +110,9 @@ export function SprintBoard({
               ...(patch.title !== undefined ? { title: patch.title } : {}),
               ...(patch.dueDate !== undefined ? { dueDate: patch.dueDate } : {}),
               ...(patch.assignees !== undefined ? { assignees: patch.assignees } : {}),
+              ...(patch.type !== undefined ? { type: patch.type } : {}),
+              ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
+              ...(patch.estimate !== undefined ? { estimate: patch.estimate } : {}),
             }
           : c,
       ),
@@ -175,6 +191,12 @@ export function SprintBoard({
     ...(needsNoStatus ? [{ id: NO_STATUS, name: "No status", droppable: false }] : []),
   ];
 
+  const sum = (list: SprintCard[]) => list.reduce((n, c) => n + (c.estimate ?? 0), 0);
+  const doneIds = useMemo(() => new Set(statuses.filter((s) => s.category === "done").map((s) => s.id)), [statuses]);
+  const estimated = visible.some((c) => c.estimate != null);
+  const totalEstimate = sum(visible);
+  const doneEstimate = sum(visible.filter((c) => c.statusId && doneIds.has(c.statusId)));
+
   function cardsFor(statusId: string) {
     if (statusId === NO_STATUS) return visible.filter((c) => !c.statusId || !statusIds.has(c.statusId));
     return visible.filter((c) => c.statusId === statusId);
@@ -227,6 +249,11 @@ export function SprintBoard({
             <StatusBadge tone={SPRINT_TONE[sprint.status] ?? "neutral"}>{SPRINT_LABEL[sprint.status] ?? sprint.status}</StatusBadge>
           </div>
           <SprintMeta goal={sprint.goal} startDate={sprint.startDate ?? null} endDate={sprint.endDate ?? null} progress={sprint.progress ?? null} />
+          {estimated && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {Math.round(doneEstimate * 100) / 100} of {formatEstimate(totalEstimate, estimateUnit)} done
+            </p>
+          )}
         </div>
         <AddCardsDialog sprintId={sprint.id} onAdded={(card) => setCards((cs) => [card, ...cs])} />
       </header>
@@ -292,7 +319,7 @@ export function SprintBoard({
       )}
 
       {columns.length > 0 && (
-        <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+        <DndContext id={dndId} sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragEnd={onDragEnd}>
           {/* `relative`: keeps the cards' sr-only text from widening the page (see board-view). */}
           <div className="relative -mx-6 flex min-w-0 flex-1 items-start gap-3 overflow-x-auto px-6 pb-2">
             {columns.map((col) => (
@@ -303,9 +330,10 @@ export function SprintBoard({
                 category={statuses.find((s) => s.id === col.id)?.category ?? null}
                 droppable={col.droppable}
                 count={cardsFor(col.id).length}
+                estimate={estimated ? formatEstimate(sum(cardsFor(col.id)), estimateUnit) : null}
               >
                 {cardsFor(col.id).map((c) => (
-                  <SprintCardCell key={c.id} card={c} selected={c.id === openCardId} onOpen={() => setOpenCardId(c.id)} />
+                  <SprintCardCell key={c.id} card={c} estimateUnit={estimateUnit} selected={c.id === openCardId} onOpen={() => setOpenCardId(c.id)} />
                 ))}
                 {cardsFor(col.id).length === 0 && <p className="px-1.5 py-2 text-xs text-muted-foreground">No cards</p>}
               </StatusColumn>
@@ -417,6 +445,7 @@ function StatusColumn({
   category,
   droppable,
   count,
+  estimate,
   children,
 }: {
   id: string;
@@ -424,6 +453,8 @@ function StatusColumn({
   category: StatusCategory;
   droppable: boolean;
   count: number;
+  /** The column's estimate total ("8 pts"), when any card in the sprint has one. */
+  estimate: string | null;
   children: ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id, disabled: !droppable });
@@ -439,7 +470,10 @@ function StatusColumn({
       <div className="flex items-center gap-2 px-1.5 py-1">
         <StatusDot category={category} />
         <h2 className="flex-1 text-sm font-semibold">{name}</h2>
-        <span className="text-xs font-medium text-muted-foreground">{count}</span>
+        <span className="text-xs font-medium text-muted-foreground">
+          {count}
+          {estimate && <> · {estimate}</>}
+        </span>
       </div>
       {children}
     </section>
@@ -448,10 +482,12 @@ function StatusColumn({
 
 function SprintCardCell({
   card,
+  estimateUnit,
   selected,
   onOpen,
 }: {
   card: SprintCard;
+  estimateUnit: EstimateUnit;
   selected: boolean;
   onOpen: () => void;
 }) {
@@ -471,12 +507,12 @@ function SprintCardCell({
         isDragging ? "opacity-40" : "cursor-pointer active:cursor-grabbing",
       )}
     >
-      {(key || card.project) && (
-        <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+      <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+          <TypeIcon type={card.type} />
           {key && <span className="shrink-0 font-mono font-medium">{key}</span>}
+          {card.priority && <PriorityIcon priority={card.priority} />}
           {card.project && <span className="truncate" title={`Project: ${card.project.name}`}>{card.project.name}</span>}
         </div>
-      )}
       <button
         type="button"
         onClick={(e) => {
@@ -495,8 +531,9 @@ function SprintCardCell({
           ))}
         </div>
       )}
-      {(card.dueDate || hasPeople) && (
+      {(card.dueDate || card.estimate != null || hasPeople) && (
         <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+          {card.estimate != null && <EstimateChip estimate={card.estimate} unit={estimateUnit} />}
           {card.dueDate && <DueChip iso={card.dueDate} />}
           {hasPeople && (
             <span className="ml-auto">

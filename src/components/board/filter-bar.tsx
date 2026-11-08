@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { CalendarClock, ChevronDown, Search, Tag, User, X } from "lucide-react";
+import { CalendarClock, ChevronDown, Flag, Layers, Search, Tag, User, X } from "lucide-react";
+import { CARD_TYPES, CARD_TYPE_LABEL, PRIORITIES, PRIORITY_LABEL } from "@/lib/card-fields";
+import { PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
 
 import { SavedViewsMenu } from "@/components/shared/saved-views-menu";
 import type { SavedViewDTO } from "@/app/actions/saved-views";
@@ -36,6 +38,10 @@ export function FilterBar({
   onToggleLabel,
   selectedAssignees,
   onToggleAssignee,
+  selectedTypes,
+  onToggleType,
+  selectedPriorities,
+  onTogglePriority,
   due,
   onDue,
   search,
@@ -55,6 +61,10 @@ export function FilterBar({
   onToggleLabel: (id: string) => void;
   selectedAssignees: Set<string>;
   onToggleAssignee: (id: string) => void;
+  selectedTypes: Set<string>;
+  onToggleType: (type: string) => void;
+  selectedPriorities: Set<string>;
+  onTogglePriority: (priority: string) => void;
   due: DueFilter;
   onDue: (d: DueFilter) => void;
   search: string;
@@ -87,6 +97,13 @@ export function FilterBar({
   const labelSummary = summarize(labels.filter((l) => selectedLabels.has(l.id)).map((l) => l.name));
   const assigneeSummary = summarize(
     members.filter((m) => selectedAssignees.has(m.id)).map((m) => m.name ?? m.email),
+  );
+
+  const typeSummary = summarize(CARD_TYPES.filter((t) => selectedTypes.has(t)).map((t) => CARD_TYPE_LABEL[t]));
+  const prioritySummary = summarize(
+    [...PRIORITIES, "none" as const]
+      .filter((p) => selectedPriorities.has(p))
+      .map((p) => (p === "none" ? "No priority" : PRIORITY_LABEL[p])),
   );
 
   return (
@@ -141,6 +158,54 @@ export function FilterBar({
               <span className="truncate">{m.name ?? m.email}</span>
             </DropdownMenuCheckboxItem>
           ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <FilterChip icon={<Layers className="size-3.5" />} label="Type" current={typeSummary} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuLabel>Types</DropdownMenuLabel>
+          {CARD_TYPES.map((t) => (
+            <DropdownMenuCheckboxItem
+              key={t}
+              checked={selectedTypes.has(t)}
+              onCheckedChange={() => onToggleType(t)}
+              onSelect={(e) => e.preventDefault()}
+            >
+              <TypeIcon type={t} />
+              <span aria-hidden="true">{CARD_TYPE_LABEL[t]}</span>
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <FilterChip icon={<Flag className="size-3.5" />} label="Priority" current={prioritySummary} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuLabel>Priorities</DropdownMenuLabel>
+          {PRIORITIES.map((p) => (
+            <DropdownMenuCheckboxItem
+              key={p}
+              checked={selectedPriorities.has(p)}
+              onCheckedChange={() => onTogglePriority(p)}
+              onSelect={(e) => e.preventDefault()}
+            >
+              <PriorityIcon priority={p} />
+              <span aria-hidden="true">{PRIORITY_LABEL[p]}</span>
+            </DropdownMenuCheckboxItem>
+          ))}
+          <DropdownMenuCheckboxItem
+            checked={selectedPriorities.has("none")}
+            onCheckedChange={() => onTogglePriority("none")}
+            onSelect={(e) => e.preventDefault()}
+          >
+            <span className="size-3.5 shrink-0" aria-hidden="true" />
+            No priority
+          </DropdownMenuCheckboxItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

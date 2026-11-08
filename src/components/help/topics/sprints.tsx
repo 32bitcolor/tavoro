@@ -69,7 +69,9 @@ export default function Sprints() {
         different boards reads as one shared picture of progress.
       </P>
       <P>
-        Each card shows its key, title, home project, labels, due date, and assignees. Click a card
+        Each card shows its type, key, priority, home project, labels, estimate, due date, and
+        assignees. If any card has an estimate, each column shows its total next to the card count, and
+        the header shows how much of the sprint is done (for example, <em>13 of 21 pts done</em>). Click a card
         to open the same full card drawer you use on a board &mdash; description, subtasks,
         comments, attachments, and all. Filter the view with the <UI>Project</UI>,{" "}
         <UI>Assignee</UI>, and <UI>Label</UI> pickers at the top; while a filter is on, the bar shows{" "}

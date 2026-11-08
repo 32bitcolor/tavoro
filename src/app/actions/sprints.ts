@@ -1,5 +1,6 @@
 "use server";
 
+import { asCardType, asPriority } from "@/lib/card-fields";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -87,6 +88,7 @@ export async function listAssignableCards(sprintId: string) {
     where: {
       sprintId: null,
       columnId: { not: null },
+      type: { not: "epic" },
       column: { board: { workspaceId: m.workspaceId, ...(await boardVisibilityWhere()) } },
     },
     orderBy: { updatedAt: "desc" },
@@ -97,6 +99,9 @@ export async function listAssignableCards(sprintId: string) {
       keySeq: true,
       statusId: true,
       dueDate: true,
+      type: true,
+      priority: true,
+      estimate: true,
       assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
       labels: { select: { label: { select: { id: true, name: true, color: true } } } },
       column: { select: { board: { select: { id: true, cardKeyPrefix: true, project: { select: { id: true, name: true } } } } } },
@@ -109,6 +114,9 @@ export async function listAssignableCards(sprintId: string) {
       keySeq: c.keySeq,
       statusId: c.statusId,
       dueDate: c.dueDate ? c.dueDate.toISOString() : null,
+      type: asCardType(c.type),
+      priority: asPriority(c.priority),
+      estimate: c.estimate,
       boardId: c.column!.board.id,
       cardKeyPrefix: c.column!.board.cardKeyPrefix,
       project: c.column!.board.project,
@@ -123,6 +131,10 @@ export async function assignCardToSprint(cardId: string, sprintId: string | null
   const card = await getCardForUser(cardId);
   if (!card) return { error: "Card not found." };
   if (sprintId && !(await sprintInWorkspace(sprintId))) return { error: "Sprint not found." };
+  if (sprintId) {
+    const row = await prisma.card.findUnique({ where: { id: cardId }, select: { type: true } });
+    if (row?.type === "epic") return { error: "Epics aren\u2019t planned in sprints; their cards are." };
+  }
   await prisma.card.update({ where: { id: cardId }, data: { sprintId } });
   revalidatePath(`/boards/${card.boardId}`);
   revalidatePath("/sprints");
