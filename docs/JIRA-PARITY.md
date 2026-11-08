@@ -1,6 +1,6 @@
 # Jira parity: boards that can replace Jira for an ID team
 
-**Status:** Design. Nothing built yet.
+**Status:** In progress. Phase 1 shipped to prod 2026-11-08; phase 2 (epics) built.
 **Owner:** @32bitcolor
 
 ## Why

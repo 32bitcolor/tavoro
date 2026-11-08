@@ -48,7 +48,9 @@ Opening a card slides in a drawer with everything about it. Changes save as you 
 
 **Review feedback** — When review comments are sent to a board as cards (from a review round or a deliverable’s feedback view), the card lists them here with where they were left, so the fix and the comment stay together.
 
-**Type** — **Task**, **Bug**, **Story** or **Epic**, shown as an icon before the card’s key. New cards are tasks. An epic is a big piece of work that groups other cards, so it isn’t planned in a sprint: making a card an epic takes it out of its sprint. Subtasks don’t have a type.
+**Type** — **Task**, **Bug**, **Story** or **Epic**, shown as an icon before the card’s key. New cards are tasks. An epic is a big piece of work that groups other cards (see *Epics* below), so it isn’t planned in a sprint: making a card an epic takes it out of its sprint. Subtasks don’t have a type.
+
+**Epic** — The epic this card belongs to. Pick one from the list (any open epic in the workspace, from any board), or **No epic**. The card shows the epic’s name in purple; click it in the drawer to open the epic. Subtasks belong to their card’s epic.
 
 **Priority** — **Highest**, **High**, **Medium**, **Low**, **Lowest**, or **None**. Shown as an arrow icon next to the key.
 
@@ -83,6 +85,15 @@ Work sometimes lands on the wrong board, or moves to another team. Choose **Move
 - **Its status** becomes the column’s, and assignees and SMEs are told if that changes it. If the new board belongs to a project that doesn’t plan in sprints, the card leaves its sprint.
 - You can move a card to any board in the workspace you can see. Subtasks move with their card, not on their own.
 
+## Epics
+
+An **epic** is a big piece of work, like “Q1 onboarding refresh”, that collects cards from any board in the workspace. To make one, open a card and set its **Type** to **Epic**.
+
+- On an epic, **Cards in this epic** lists its cards with their status and a progress bar (how many are in a done column). **Add cards** finds cards by title or key; the **×** takes one out. Cards on boards you can’t see are counted but not listed.
+- On any other card, choose its epic under **Epic** in the details.
+- The epic’s card on the board shows the same progress bar, and each card in it shows the epic’s name.
+- An epic can’t be in a sprint or in another epic. If you change an epic that has cards into another type, Tavoro asks first, then takes the cards out of it. Deleting an epic leaves its cards where they are, in no epic.
+
 ## Filtering the board
 
 The filter bar above the columns narrows what’s visible without changing anything. Filters stack, so you can answer questions like “overdue cards assigned to me with the *Compliance* label”. While any filter is on, the bar shows *N of M cards*; **Clear** resets them all.
@@ -90,6 +101,7 @@ The filter bar above the columns narrows what’s visible without changing anyth
 - **Search** — type in **Search cards** to match card titles. (To jump to a card by its key, use the header’s **Search**.)
 - **Label** and **Assignee** — open each and check the ones to filter by; the button shows what’s selected.
 - **Type** and **Priority** — for example, only bugs, or only **Highest** and **High**. **No priority** finds cards nobody has prioritised yet.
+- **Epic** — the cards in one or more epics (each epic shows too), or **No epic** for cards that aren’t in one yet.
 - **Due date** — **Any due date**, **Overdue**, **Due this week**, or **No due date**.
 
 ### Saved views

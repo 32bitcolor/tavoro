@@ -1,3 +1,5 @@
+import { epicChildren, listEpics } from "@/lib/epics";
+import { setCardEpic } from "@/app/actions/epics";
 import { CARD_TYPES, PRIORITIES, asCardType } from "@/lib/card-fields";
 import "server-only";
 import { z } from "zod";
@@ -133,6 +135,7 @@ export async function loadCard(ref: string) {
     priority: d.card.priority,
     estimate: d.card.estimate,
     estimateUnit: d.estimateUnit,
+    epic: d.card.epic ? { id: d.card.epic.id, key: d.card.epic.key, title: d.card.epic.title } : null,
     due: day(d.card.dueDate ? new Date(d.card.dueDate) : null),
     description: toMarkdown(d.card.description),
     labels: d.card.labelIds.map((id) => label.get(id)).filter(Boolean),
@@ -151,7 +154,31 @@ export async function loadCard(ref: string) {
     attachments: d.attachments.map((a) => ({ id: a.id, fileName: a.fileName, mimeType: a.mimeType, sizeBytes: a.sizeBytes })),
     whiteboards: d.whiteboards.map((w) => ({ ...w, url: link(`/whiteboards/${w.id}`) })),
     reviewFeedback: d.reviewFeedback,
+    ...(d.card.type === "epic" && !d.isSubtask ? { epicCards: await epicCardsFor(d.card.id) } : {}),
   };
+}
+
+/** An epic's cards (those the caller can see) and its progress. */
+async function epicCardsFor(epicId: string) {
+  const r = await epicChildren(epicId);
+  return {
+    progress: r.progress,
+    cards: r.cards.map((c) => ({ id: c.id, key: c.key, title: c.title, type: c.type, status: c.status, done: c.done, board: c.boardName })),
+    ...(r.hidden ? { hiddenCards: r.hidden } : {}),
+  };
+}
+
+/** An epic by key, id or exact title. */
+async function resolveEpicId(ref: string): Promise<string> {
+  const r = ref.trim();
+  const epics = await listEpics({ includeDone: true });
+  const byTitle = epics.filter((e) => e.title.toLowerCase() === r.toLowerCase());
+  if (byTitle.length === 1) return byTitle[0].id;
+  if (byTitle.length > 1) throw new ToolError(`More than one epic is called "${r}"; use its key: ${byTitle.map((e) => e.key ?? e.id).join(", ")}.`);
+  const id = await resolveCardId(r).catch(() => null);
+  const hit = id ? epics.find((e) => e.id === id) : undefined;
+  if (!hit) throw new ToolError(`No epic "${r}". Open epics: ${epics.filter((e) => !e.done).slice(0, 20).map((e) => e.key ? `${e.key} ${e.title}` : e.title).join("; ") || "none"}.`);
+  return hit.id;
 }
 
 export async function loadBoard(boardId: string, includeDone: boolean) {
@@ -182,6 +209,7 @@ export async function loadBoard(boardId: string, includeDone: boolean) {
               type: true,
               priority: true,
               estimate: true,
+              epic: { select: { title: true } },
               status: { select: { category: true } },
               assignees: { select: { user: { select: { name: true, email: true } } } },
               labels: { select: { label: { select: { name: true } } } },
@@ -214,6 +242,7 @@ export async function loadBoard(boardId: string, includeDone: boolean) {
           type: asCardType(k.type),
           priority: k.priority ?? undefined,
           estimate: k.estimate ?? undefined,
+          epic: k.epic?.title,
           due: day(k.dueDate),
           assignees: k.assignees.map((a) => a.user.name ?? a.user.email),
           labels: k.labels.map((l) => l.label.name),
@@ -226,6 +255,29 @@ export async function loadBoard(boardId: string, includeDone: boolean) {
 }
 
 export function registerCardTools(server: McpServer) {
+  tool(
+    server,
+    "list_epics",
+    {
+      title: "List epics",
+      description:
+        "Epics in the workspace: big pieces of work that group cards from any board. Each has a key, title, home board, status and progress (done / total cards). Done epics are left out unless include_done is true. Put a card in an epic with update_card (epic).",
+      input: { include_done: z.boolean().default(false) },
+      kind: "read",
+    },
+    async ({ include_done }) => ({
+      epics: (await listEpics({ includeDone: include_done })).map((e) => ({
+        id: e.id,
+        key: e.key,
+        title: e.title,
+        board: e.boardName,
+        status: e.status,
+        progress: e.progress,
+        url: cardHref(e.boardId, e.id),
+      })),
+    }),
+  );
+
   tool(
     server,
     "list_boards",
@@ -258,7 +310,7 @@ export function registerCardTools(server: McpServer) {
     "get_board",
     {
       title: "Get a board",
-      description: "A board's columns and their cards (key, title, type, priority, estimate, due date, assignees, labels, subtask progress, sprint).",
+      description: "A board's columns and their cards (key, title, type, priority, estimate, epic, due date, assignees, labels, subtask progress, sprint).",
       input: {
         board_id: z.string().min(1),
         include_done: z.boolean().default(true).describe("Include columns whose status is done"),
@@ -274,7 +326,7 @@ export function registerCardTools(server: McpServer) {
     {
       title: "Get a card",
       description:
-        "Everything on a card: type, priority, estimate, description (Markdown), status, due date, labels, assignees, SMEs, sprint, subtasks, comments, attachments, and any review comments it was made from.",
+        "Everything on a card: type, priority, estimate, epic (and, on an epic, its cards and progress), description (Markdown), status, due date, labels, assignees, SMEs, sprint, subtasks, comments, attachments, and any review comments it was made from.",
       input: { card: cardRef },
       kind: "read",
     },
@@ -322,7 +374,7 @@ export function registerCardTools(server: McpServer) {
     {
       title: "Create a card",
       description:
-        "Add a card to a board. Optionally set its column (default: the first), type, priority, estimate, description (Markdown), due date, assignees, SMEs, labels and sprint in the same call.",
+        "Add a card to a board. Optionally set its column (default: the first), type, priority, estimate, epic, description (Markdown), due date, assignees, SMEs, labels and sprint in the same call.",
       input: {
         board_id: z.string().min(1),
         title: z.string().min(1).max(280),
@@ -336,6 +388,7 @@ export function registerCardTools(server: McpServer) {
         type: z.enum(CARD_TYPES).optional().describe("task, bug, story or epic (top-level cards only; an epic can't be in a sprint)"),
         priority: z.enum([...PRIORITIES, "none"]).optional().describe("highest, high, medium, low, lowest, or none"),
         estimate: z.number().min(0).max(10000).nullable().optional().describe("Story points or hours (see estimateUnit on the card); null clears it"),
+        epic: z.string().optional().describe("The epic this card belongs to: its key, id or exact title; empty string takes it out of its epic"),
       },
       kind: "write",
     },
@@ -343,8 +396,13 @@ export function registerCardTools(server: McpServer) {
       if (!(await getBoardForUser(a.board_id))) throw new ToolError("Board not found, or you can't see it.");
       const column = await resolveColumn(a.board_id, a.column);
       if (a.type === "epic" && a.sprint?.trim()) throw new ToolError("An epic can't be in a sprint; its cards are.");
+      if (a.type === "epic" && a.epic?.trim()) throw new ToolError("An epic can't be in another epic.");
+      // Resolve the epic before creating anything, so a bad reference leaves nothing behind.
+      const epicId = a.epic?.trim() ? await resolveEpicId(a.epic) : undefined;
       const { card } = check(await createCard(column.id, a.title));
-      await applyCardChanges(card.id, a);
+      const { epic: _epic, ...rest } = a;
+      void _epic;
+      await applyCardChanges(card.id, { ...rest, epicId });
       return loadCard(card.id);
     },
   );
@@ -355,7 +413,7 @@ export function registerCardTools(server: McpServer) {
     {
       title: "Update a card",
       description:
-        "Change a card: title, description (Markdown, replaces the old one), due date (empty string clears it), column (moves it), board (moves it to another board, into \`column\` there or its first column; its key changes and the old key keeps resolving), assignees, SMEs, labels, sprint, type, priority, estimate, private (true leaves it off the board's public link; top-level cards only). Lists add or remove people/labels; anything you leave out stays as it is.",
+        "Change a card: title, description (Markdown, replaces the old one), due date (empty string clears it), column (moves it), board (moves it to another board, into \`column\` there or its first column; its key changes and the old key keeps resolving), assignees, SMEs, labels, sprint, type, priority, estimate, epic, private (true leaves it off the board's public link; top-level cards only). Lists add or remove people/labels; anything you leave out stays as it is.",
       input: {
         card: cardRef,
         title: z.string().min(1).max(280).optional(),
@@ -374,6 +432,7 @@ export function registerCardTools(server: McpServer) {
         type: z.enum(CARD_TYPES).optional().describe("task, bug, story or epic (top-level cards only; an epic can't be in a sprint)"),
         priority: z.enum([...PRIORITIES, "none"]).optional().describe("highest, high, medium, low, lowest, or none"),
         estimate: z.number().min(0).max(10000).nullable().optional().describe("Story points or hours (see estimateUnit on the card); null clears it"),
+        epic: z.string().optional().describe("The epic this card belongs to: its key, id or exact title; empty string takes it out of its epic"),
       },
       kind: "write",
       idempotent: true,
@@ -408,6 +467,7 @@ export function registerCardTools(server: McpServer) {
         type: a.type,
         priority: a.priority,
         estimate: a.estimate,
+        epicId: a.epic === undefined ? undefined : a.epic.trim() ? await resolveEpicId(a.epic) : null,
       });
       return loadCard(cardId);
     },
@@ -496,6 +556,8 @@ type CardChanges = {
   type?: string;
   priority?: string;
   estimate?: number | null;
+  /** undefined = leave it; null = take it out of its epic. */
+  epicId?: string | null;
 };
 
 async function applyCardChanges(cardId: string, c: CardChanges) {
@@ -503,6 +565,7 @@ async function applyCardChanges(cardId: string, c: CardChanges) {
   if (c.type !== undefined) check(await setCardType(cardId, c.type));
   if (c.priority !== undefined) check(await setCardPriority(cardId, c.priority === "none" ? null : c.priority));
   if (c.estimate !== undefined) check(await setCardEstimate(cardId, c.estimate));
+  if (c.epicId !== undefined) check(await setCardEpic(cardId, c.epicId));
   if (c.description !== undefined) check(await updateCardDescription(cardId, fromMarkdown(c.description)));
   if (c.due !== undefined) check(await setCardDueDate(cardId, parseDate(c.due)));
   for (const r of c.assignees ?? []) check(await toggleCardAssignee(cardId, (await resolveMember(r)).id, true));

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode, useId } from "react";
-import { FolderKanban, Tag, User, X } from "lucide-react";
+import { FolderKanban, Tag, User, X, Zap } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -23,7 +23,7 @@ import { SavedViewsMenu } from "@/components/shared/saved-views-menu";
 import { FilterChip } from "@/components/board/filter-bar";
 import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
 import { AvatarStack, DueChip, LabelPill, StatusDot, type StatusCategory } from "@/components/shared/work-item";
-import { EstimateChip, PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
+import { EpicTag, EstimateChip, PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
 import { formatEstimate, type CardType, type EstimateUnit, type Priority } from "@/lib/card-fields";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +48,7 @@ export type SprintCard = {
   type: CardType;
   priority: Priority | null;
   estimate: number | null;
+  epic?: { id: string; title: string } | null;
   boardId: string;
   cardKeyPrefix: string | null;
   project: { id: string; name: string } | null;
@@ -62,6 +63,7 @@ const NO_STATUS = "__none__";
 const NO_PROJECT = "__noproject__";
 const UNASSIGNED = "__unassigned__";
 const NO_LABEL = "__nolabel__";
+const NO_EPIC = "__noepic__";
 
 export function SprintBoard({
   sprint,
@@ -88,6 +90,7 @@ export function SprintBoard({
   const [projectFilter, setProjectFilter] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState("");
   const [labelFilter, setLabelFilter] = useState("");
+  const [epicFilter, setEpicFilter] = useState("");
   // See board-view: the active view detaches as soon as a filter is hand-edited.
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
@@ -113,6 +116,7 @@ export function SprintBoard({
               ...(patch.type !== undefined ? { type: patch.type } : {}),
               ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
               ...(patch.estimate !== undefined ? { estimate: patch.estimate } : {}),
+              ...(patch.epic !== undefined ? { epic: patch.epic } : {}),
             }
           : c,
       ),
@@ -120,7 +124,7 @@ export function SprintBoard({
   }
 
   function currentFilters() {
-    return { project: projectFilter, assignee: assigneeFilter, label: labelFilter };
+    return { project: projectFilter, assignee: assigneeFilter, label: labelFilter, epic: epicFilter };
   }
 
   function applyView(view: SavedViewDTO | null) {
@@ -128,6 +132,7 @@ export function SprintBoard({
       setProjectFilter("");
       setAssigneeFilter("");
       setLabelFilter("");
+      setEpicFilter("");
       setActiveViewId(null);
       return;
     }
@@ -135,6 +140,7 @@ export function SprintBoard({
     setProjectFilter(f.project);
     setAssigneeFilter(f.assignee);
     setLabelFilter(f.label);
+    setEpicFilter(f.epic ?? "");
     setActiveViewId(view.id);
   }
 
@@ -166,8 +172,19 @@ export function SprintBoard({
     return { list: [...map.values()].sort((a, b) => a.name.localeCompare(b.name)), hasNone };
   }, [cards]);
 
+  const epics = useMemo(() => {
+    const map = new Map<string, string>();
+    let hasNone = false;
+    cards.forEach((c) => (c.epic ? map.set(c.epic.id, c.epic.title) : (hasNone = true)));
+    return { list: [...map.entries()].sort((a, b) => a[1].localeCompare(b[1])), hasNone };
+  }, [cards]);
+
   const visible = useMemo(() => {
     return cards.filter((c) => {
+      if (epicFilter) {
+        if (epicFilter === NO_EPIC && c.epic) return false;
+        if (epicFilter !== NO_EPIC && c.epic?.id !== epicFilter) return false;
+      }
       if (projectFilter) {
         if (projectFilter === NO_PROJECT && c.project) return false;
         if (projectFilter !== NO_PROJECT && c.project?.id !== projectFilter) return false;
@@ -182,7 +199,7 @@ export function SprintBoard({
       }
       return true;
     });
-  }, [cards, projectFilter, assigneeFilter, labelFilter]);
+  }, [cards, projectFilter, assigneeFilter, labelFilter, epicFilter]);
 
   const statusIds = useMemo(() => new Set(statuses.map((s) => s.id)), [statuses]);
   const needsNoStatus = visible.some((c) => !c.statusId || !statusIds.has(c.statusId));
@@ -226,7 +243,7 @@ export function SprintBoard({
     if (card) changeStatus(card, overId);
   }
 
-  const filtersActive = !!(projectFilter || assigneeFilter || labelFilter);
+  const filtersActive = !!(projectFilter || assigneeFilter || labelFilter || epicFilter);
   const navIds = columns.flatMap((col) => cardsFor(col.id).map((c) => c.id));
   const navIndex = openCardId ? navIds.indexOf(openCardId) : -1;
   const openCard = openCardId ? cards.find((c) => c.id === openCardId) ?? null : null;
@@ -291,6 +308,17 @@ export function SprintBoard({
             ...(labels.hasNone ? [{ id: NO_LABEL, name: "No label" }] : []),
           ]}
           onChange={(v) => { setActiveViewId(null); setLabelFilter(v); }}
+        />
+        <SingleSelectChip
+          icon={<Zap className="size-3.5" />}
+          label="Epic"
+          value={epicFilter}
+          current={epicFilter ? (epicFilter === NO_EPIC ? "No epic" : epics.list.find(([id]) => id === epicFilter)?.[1] ?? null) : null}
+          options={[
+            ...epics.list.map(([id, name]) => ({ id, name })),
+            ...(epics.hasNone ? [{ id: NO_EPIC, name: "No epic" }] : []),
+          ]}
+          onChange={(v) => { setActiveViewId(null); setEpicFilter(v); }}
         />
         {filtersActive && (
           <>
@@ -524,6 +552,7 @@ function SprintCardCell({
       >
         {card.title}
       </button>
+      {card.epic && <EpicTag title={card.epic.title} />}
       {card.labels.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {card.labels.map((l) => (

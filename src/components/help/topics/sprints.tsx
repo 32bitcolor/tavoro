@@ -74,7 +74,7 @@ export default function Sprints() {
         the header shows how much of the sprint is done (for example, <em>13 of 21 pts done</em>). Click a card
         to open the same full card drawer you use on a board &mdash; description, subtasks,
         comments, attachments, and all. Filter the view with the <UI>Project</UI>,{" "}
-        <UI>Assignee</UI>, and <UI>Label</UI> pickers at the top; while a filter is on, the bar shows{" "}
+        <UI>Assignee</UI>, <UI>Label</UI> and <UI>Epic</UI> pickers at the top; while a filter is on, the bar shows{" "}
         <em>N of M cards</em> and <UI>Clear</UI> resets it. Filtering by label works across projects because
         labels belong to the workspace, not to a single board. Keep a combination you use often by
         opening <UI>Views</UI> → <UI>Save current filters…</UI>; sprint views are personal to you and

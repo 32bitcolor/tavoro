@@ -15,6 +15,7 @@ import { appUrl } from "@/lib/app-url";
 import { extractMentionIds, extractText } from "@/lib/mentions";
 import { notificationsEnabled, notifySubtaskStatusChange } from "@/lib/notify";
 import { nextCardKeySeq } from "@/lib/card-keys";
+import { EPIC_REF_SELECT, epicRefOf } from "@/lib/epics";
 import { CardTypeSchema, EstimateSchema, EstimateUnitSchema, PrioritySchema, asCardType, asPriority, type EstimateUnit } from "@/lib/card-fields";
 
 const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid color");
@@ -67,6 +68,7 @@ export async function getCardDetail(cardId: string) {
         type: true,
         priority: true,
         estimate: true,
+        epic: EPIC_REF_SELECT,
         statusId: true,
         status: { select: { category: true } },
         parentCardId: true,
@@ -180,6 +182,7 @@ export async function getCardDetail(cardId: string) {
       type: asCardType(card.type),
       priority: asPriority(card.priority),
       estimate: card.estimate,
+      epic: epicRefOf(card.epic),
       statusId: card.statusId,
       labelIds: card.labels.map((l) => l.labelId),
       assigneeIds: card.assignees.map((a) => a.userId),
@@ -289,22 +292,32 @@ export async function setCardDueDate(cardId: string, iso: string | null) {
 
 // ── Type, priority, estimate (docs/JIRA-PARITY.md) ──────────────────────────
 
-/** Change a card's type. Subtasks have no type of their own; an epic holds work rather
- *  than being planned, so making a card an epic takes it out of its sprint. */
+/** Change a card's type. Subtasks have no type of their own. An epic holds work rather
+ *  than being planned, so making a card an epic takes it out of its sprint and its own
+ *  epic; turning an epic into something else takes its cards out of it. */
 export async function setCardType(cardId: string, type: string) {
   const card = await getCardForUser(cardId);
   if (!card) return { error: "Card not found." };
   if (card.parentCardId) return { error: "A subtask doesn’t have a type." };
   const parsed = CardTypeSchema.safeParse(type);
   if (!parsed.success) return { error: "Unknown type." };
-  const row = await prisma.card.update({
-    where: { id: cardId },
-    data: { type: parsed.data, ...(parsed.data === "epic" ? { sprintId: null } : {}) },
-    select: { type: true, sprintId: true },
+  const becomesEpic = parsed.data === "epic";
+  // An epic holds cards rather than sitting in a sprint or another epic. A card that
+  // stops being an epic lets its cards go (they keep everything else).
+  const [row, released] = await prisma.$transaction(async (tx) => {
+    const before = await tx.card.findUnique({ where: { id: cardId }, select: { type: true } });
+    const released =
+      before?.type === "epic" && !becomesEpic ? (await tx.card.updateMany({ where: { epicId: cardId }, data: { epicId: null } })).count : 0;
+    const row = await tx.card.update({
+      where: { id: cardId },
+      data: { type: parsed.data, ...(becomesEpic ? { sprintId: null, epicId: null } : {}) },
+      select: { type: true, sprintId: true, epicId: true },
+    });
+    return [row, released] as const;
   });
-  revalidatePath(boardPath(card.boardId));
+  revalidatePath("/boards", "layout");
   revalidatePath("/sprints");
-  return { type: asCardType(row.type), sprintId: row.sprintId };
+  return { type: asCardType(row.type), sprintId: row.sprintId, epicId: row.epicId, released };
 }
 
 export async function setCardPriority(cardId: string, priority: string | null) {

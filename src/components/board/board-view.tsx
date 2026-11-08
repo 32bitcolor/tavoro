@@ -85,7 +85,7 @@ import {
 import { REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/methodology";
 import { AvatarStack, DueChip, LabelPill, StatusDot, type StatusCategory } from "@/components/shared/work-item";
 import { cn } from "@/lib/utils";
-import { EstimateChip, PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
+import { EpicTag, EstimateChip, PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
 import { PRIORITY_LABEL, priorityRank, type CardType, type EstimateUnit, type Priority } from "@/lib/card-fields";
 
 /** What card estimates count in this workspace, for every card face on the board. */
@@ -104,6 +104,9 @@ type Card = {
   type: CardType;
   priority: Priority | null;
   estimate: number | null;
+  epic: { id: string; title: string } | null;
+  /** On an epic: how many of its cards are done. */
+  epicProgress?: { done: number; total: number } | null;
   labels: Label[];
   assignees: Member[];
   smes: Member[];
@@ -193,6 +196,7 @@ export function BoardView({
   const [fDue, setFDue] = useState<DueFilter>("any");
   const [fTypes, setFTypes] = useState<Set<string>>(new Set());
   const [fPriorities, setFPriorities] = useState<Set<string>>(new Set());
+  const [fEpics, setFEpics] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   // Which saved view (if any) produced the filters currently applied. Cleared the
   // moment the user hand-edits a filter, so the menu never claims a view is active
@@ -211,8 +215,26 @@ export function BoardView({
     return [...map.values()].sort((a, b) => (a.name ?? a.email).localeCompare(b.name ?? b.email));
   }, [columns]);
 
+  // Epics to filter by: those the board's cards are in, and epics that live on this board.
+  const availableEpics = useMemo(() => {
+    const map = new Map<string, { id: string; title: string }>();
+    columns.forEach((c) =>
+      c.cards.forEach((card) => {
+        if (card.epic) map.set(card.epic.id, card.epic);
+        if (card.type === "epic") map.set(card.id, { id: card.id, title: card.title });
+      }),
+    );
+    return [...map.values()].sort((a, b) => a.title.localeCompare(b.title));
+  }, [columns]);
+
   const filtersActive =
-    fLabels.size > 0 || fAssignees.size > 0 || fTypes.size > 0 || fPriorities.size > 0 || fDue !== "any" || search.trim() !== "";
+    fLabels.size > 0 ||
+    fAssignees.size > 0 ||
+    fTypes.size > 0 ||
+    fPriorities.size > 0 ||
+    fEpics.size > 0 ||
+    fDue !== "any" ||
+    search.trim() !== "";
 
   const filteredColumns = useMemo(() => {
     if (!filtersActive) return columns;
@@ -228,6 +250,8 @@ export function BoardView({
       if (fAssignees.size > 0 && !card.assignees.some((a) => fAssignees.has(a.id))) return false;
       if (fTypes.size > 0 && !fTypes.has(card.type)) return false;
       if (fPriorities.size > 0 && !fPriorities.has(card.priority ?? "none")) return false;
+      // An epic matches its own filter too, so "this epic" shows the epic and its cards.
+      if (fEpics.size > 0 && !(fEpics.has(card.epic?.id ?? "none") || (card.type === "epic" && fEpics.has(card.id)))) return false;
       if (fDue !== "any") {
         const ymd = card.dueDate ? card.dueDate.slice(0, 10) : null;
         if (fDue === "none" && ymd) return false;
@@ -238,7 +262,7 @@ export function BoardView({
       return true;
     };
     return columns.map((c) => ({ ...c, cards: c.cards.filter(match) }));
-  }, [columns, fLabels, fAssignees, fTypes, fPriorities, fDue, search, filtersActive]);
+  }, [columns, fLabels, fAssignees, fTypes, fPriorities, fEpics, fDue, search, filtersActive]);
 
   const totalCount = useMemo(() => columns.reduce((n, c) => n + c.cards.length, 0), [columns]);
   const visibleCount = useMemo(
@@ -262,6 +286,7 @@ export function BoardView({
     setFAssignees(new Set());
     setFTypes(new Set());
     setFPriorities(new Set());
+    setFEpics(new Set());
     setFDue("any");
     setSearch("");
     setActiveViewId(null);
@@ -273,6 +298,7 @@ export function BoardView({
       assignees: [...fAssignees],
       types: [...fTypes],
       priorities: [...fPriorities],
+      epics: [...fEpics],
       due: fDue,
       search,
     };
@@ -288,6 +314,7 @@ export function BoardView({
     setFAssignees(new Set(f.assignees));
     setFTypes(new Set(f.types ?? []));
     setFPriorities(new Set(f.priorities ?? []));
+    setFEpics(new Set(f.epics ?? []));
     setFDue(f.due);
     setSearch(f.search);
     setActiveViewId(view.id);
@@ -375,6 +402,8 @@ export function BoardView({
         type: "task",
         priority: null,
         estimate: null,
+        epic: null,
+        epicProgress: null,
         labels: [],
         assignees: [],
         smes: [],
@@ -511,6 +540,9 @@ export function BoardView({
         onToggleType={(t) => { setActiveViewId(null); toggleSet(setFTypes, t); }}
         selectedPriorities={fPriorities}
         onTogglePriority={(p) => { setActiveViewId(null); toggleSet(setFPriorities, p); }}
+        epics={availableEpics}
+        selectedEpics={fEpics}
+        onToggleEpic={(id) => { setActiveViewId(null); toggleSet(setFEpics, id); }}
         due={fDue}
         onDue={(d) => { setActiveViewId(null); setFDue(d); }}
         search={search}
@@ -1034,6 +1066,12 @@ function CardShell({
         {card.title}
       </button>
 
+      {card.epic && <EpicTag title={card.epic.title} />}
+
+      {card.type === "epic" && card.epicProgress && card.epicProgress.total > 0 && (
+        <EpicProgressBar done={card.epicProgress.done} total={card.epicProgress.total} />
+      )}
+
       {card.deliverable && (
         <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
           <FileCheck2 className="size-3.5 shrink-0 text-accent" aria-hidden="true" />
@@ -1202,6 +1240,12 @@ function ListView({
                   <td className="px-4 py-2 text-xs tabular-nums">{card.estimate ?? ""}</td>
                   <td className="px-4 py-2">
                     <span className="flex flex-wrap gap-1 overflow-hidden">
+                      {card.epic && <EpicTag title={card.epic.title} />}
+                      {card.type === "epic" && card.epicProgress && card.epicProgress.total > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {card.epicProgress.done}/{card.epicProgress.total} done
+                        </span>
+                      )}
                       {card.private && <PrivateTag />}
                       {card.labels.map((l) => (
                         <LabelPill key={l.id} label={l} />
@@ -1336,6 +1380,18 @@ function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
 }
 
 /** Private cards are left off the board's public link. */
+/** On an epic's face: how much of it is done. */
+function EpicProgressBar({ done, total }: { done: number; total: number }) {
+  return (
+    <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+        <span className="block h-full rounded-full bg-success" style={{ width: `${Math.round((done / total) * 100)}%` }} />
+      </span>
+      {done}/{total} done
+    </span>
+  );
+}
+
 function PrivateTag() {
   return (
     <span className="inline-flex h-5 items-center gap-1 rounded-full bg-muted px-1.5 text-[11px] font-semibold text-muted-foreground">

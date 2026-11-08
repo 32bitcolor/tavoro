@@ -100,6 +100,9 @@ const ProjectSnap = z.object({
                     type: CardTypeSchema.catch("task"),
                     priority: PrioritySchema.catch(null),
                     estimate: EstimateSchema.catch(null),
+                    // The epic this card is in, as the position of that epic among all the
+                    // template's cards (boards, then columns, then cards, in order).
+                    epic: z.number().int().min(0).nullable().catch(null).default(null),
                   }),
                 )
                 .max(LIMIT.cards),
@@ -235,6 +238,8 @@ export async function snapshotProject(projectId: string): Promise<ProjectSnapsho
                   type: true,
                   priority: true,
                   estimate: true,
+                  epicId: true,
+                  id: true,
                   labels: { select: { label: { select: { name: true } } } },
                   subtasks: { orderBy: { position: "asc" }, take: LIMIT.subtasks, select: { title: true } },
                 },
@@ -255,6 +260,8 @@ export async function snapshotProject(projectId: string): Promise<ProjectSnapsho
   const phaseKey = new Map(p.phases.map((ph, i) => [ph.id, `p${i}`]));
   const objectiveKey = new Map(p.objectives.map((o, i) => [o.id, `o${i}`]));
   const keysOf = (links: { objectiveId: string }[]) => links.map((l) => objectiveKey.get(l.objectiveId)).filter((k): k is string => !!k);
+  // Epic links survive only when the epic is one of this template's own cards.
+  const cardIndex = new Map(p.boards.flatMap((b) => b.columns.flatMap((c) => c.cards)).map((card, i) => [card.id, i]));
 
   return {
     v: 1,
@@ -293,6 +300,7 @@ export async function snapshotProject(projectId: string): Promise<ProjectSnapsho
           type: asCardType(card.type),
           priority: asPriority(card.priority),
           estimate: card.estimate,
+          epic: card.epicId != null ? (cardIndex.get(card.epicId) ?? null) : null,
         })),
       })),
     })),
@@ -394,6 +402,8 @@ export async function instantiateProject(workspaceId: string, snap: ProjectSnaps
         }
       }
 
+      const createdIds: string[] = [];
+      const epicLinks: [number, number][] = [];
       for (const b of snap.boards) {
         const board = await tx.board.create({ data: { workspaceId, projectId, name: b.name }, select: { id: true } });
         const colPos = positionsAfter(null, b.columns.length);
@@ -425,10 +435,20 @@ export async function instantiateProject(workspaceId: string, snap: ProjectSnaps
             },
             select: { id: true },
           });
+          createdIds.push(created.id);
+          if (card.epic != null) epicLinks.push([createdIds.length - 1, card.epic]);
           if (card.subtasks.length) {
             await tx.card.createMany({ data: card.subtasks.map((title, s) => ({ parentCardId: created.id, title, position: subPos[s] })) });
           }
         }
+      }
+
+      // Re-link cards to their epics, now that every card has its new id. A link only
+      // holds when its target is an epic and the card isn't one.
+      const types = snap.boards.flatMap((b) => b.columns.flatMap((c) => c.cards)).map((c) => c.type);
+      for (const [from, to] of epicLinks) {
+        if (to === from || types[to] !== "epic" || types[from] === "epic" || !createdIds[to]) continue;
+        await tx.card.update({ where: { id: createdIds[from] }, data: { epicId: createdIds[to] } });
       }
 
       return { id: projectId };

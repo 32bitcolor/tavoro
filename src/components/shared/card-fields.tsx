@@ -56,3 +56,14 @@ export function EstimateChip({ estimate, unit, className }: { estimate: number; 
     </span>
   );
 }
+
+/** The epic a card is in. */
+export function EpicTag({ title }: { title: string }) {
+  return (
+    <span className="inline-flex h-5 max-w-full items-center gap-1 self-start rounded-full bg-epic-ink/10 px-2 text-[11px] font-semibold text-epic-ink" title={`Epic: ${title}`}>
+      <Zap className="size-3 shrink-0" aria-hidden="true" />
+      <span className="sr-only">Epic: </span>
+      <span className="truncate">{title}</span>
+    </span>
+  );
+}

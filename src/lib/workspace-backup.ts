@@ -13,7 +13,7 @@ import { IntakeFieldList } from "@/lib/intake-fields";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 19; // bump when the shape changes
+export const BACKUP_FORMAT = 20; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -86,8 +86,13 @@ const SPECS: Spec[] = [
     key: "card",
     model: "card",
     where: cardInWorkspace,
-    fks: { columnId: "column", parentCardId: "card", statusId: "workspaceStatus" },
-    sort: (rows) => [...rows].sort((a, b) => (a.parentCardId ? 1 : 0) - (b.parentCardId ? 1 : 0)),
+    fks: { columnId: "column", parentCardId: "card", statusId: "workspaceStatus", epicId: "card" },
+    // Epics first (other cards point at them through epicId), then the rest of the
+    // top-level cards, then subtasks (they point at their parent).
+    sort: (rows) => {
+      const rank = (r: any) => (r.parentCardId ? 2 : r.type === "epic" ? 0 : 1);
+      return [...rows].sort((a, b) => rank(a) - rank(b));
+    },
   },
   { key: "label", model: "label", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },
   { key: "phase", model: "phase", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project" } },

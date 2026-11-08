@@ -30,6 +30,8 @@ import { CommentComposer, CommentBody } from "@/components/board/comment-editor"
 import { assignCardToSprint } from "@/app/actions/sprints";
 import { CARD_TYPES, CARD_TYPE_LABEL, PRIORITIES, PRIORITY_LABEL, type CardType, type EstimateUnit, type Priority } from "@/lib/card-fields";
 import { PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
+import { EpicCardsSection, EpicField, type EpicChip } from "@/components/board/epic-panels";
+import type { EpicRef } from "@/lib/epics";
 import { setCardPrivate } from "@/app/actions/board-share";
 import { MoveCardDialog, type MoveResult } from "@/components/board/move-card-dialog";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
@@ -69,6 +71,8 @@ export type CardFacePatch = {
   type?: CardType;
   priority?: Priority | null;
   estimate?: number | null;
+  epic?: EpicChip | null;
+  epicProgress?: { done: number; total: number };
   comments?: number;
   attachments?: number;
 };
@@ -123,6 +127,10 @@ export function CardDrawer({
   const [estimateDraft, setEstimateDraft] = useState("");
   const [estimateError, setEstimateError] = useState<string | null>(null);
   const [estimateUnit, setEstimateUnit] = useState<EstimateUnit>("points");
+  const [epic, setEpic] = useState<EpicRef | null>(null);
+  const [epicCount, setEpicCount] = useState(0);
+  const [pendingType, setPendingType] = useState<CardType | null>(null);
+  const [typeNote, setTypeNote] = useState<string | null>(null);
   const [statusId, setStatusId] = useState<string | null>(null);
   const [sprints, setSprints] = useState<{ id: string; name: string }[]>([]);
   const [sprintsEnabled, setSprintsEnabled] = useState(false);
@@ -166,6 +174,10 @@ export function CardDrawer({
       setEstimateDraft(d.card.estimate == null ? "" : String(d.card.estimate));
       setEstimateError(null);
       setEstimateUnit(d.estimateUnit);
+      setEpic(d.card.epic);
+      setEpicCount(0);
+      setPendingType(null);
+      setTypeNote(null);
       setStatusId(d.card.statusId);
       setSprints(d.sprints);
       setSprintsEnabled(d.sprintsEnabled);
@@ -222,16 +234,29 @@ export function CardDrawer({
     });
   }
 
-  function changeType(next: CardType) {
+  function changeType(next: CardType, confirmed = false) {
     const prev = cardType;
+    if (next === prev) return;
+    // Turning an epic with cards into something else lets those cards go: ask first.
+    if (prev === "epic" && epicCount > 0 && !confirmed) {
+      setPendingType(next);
+      return;
+    }
+    setPendingType(null);
+    setTypeNote(null);
     setCardTypeState(next);
-    onPatch(cardId, { type: next });
+    onPatch(cardId, { type: next, ...(next === "epic" ? { epic: null } : {}) });
     setCardType(cardId, next).then((res) => {
       if (res && "error" in res) {
         setCardTypeState(prev);
         onPatch(cardId, { type: prev });
-      } else if (res && res.sprintId === null) {
-        setSprintId(null);
+        return;
+      }
+      if (res.sprintId === null) setSprintId(null);
+      if (next === "epic") setEpic(null);
+      if (res.released > 0) {
+        setEpicCount(0);
+        setTypeNote(`${res.released} ${res.released === 1 ? "card was" : "cards were"} taken out of this epic.`);
       }
     });
   }
@@ -544,6 +569,22 @@ export function CardDrawer({
               <DescriptionEditor key={cardId} initial={description} onSave={saveDescription} mentionMembers={mentionable} />
             </Section>
 
+            {!isSubtask && cardType === "epic" && boardId && (
+              <Section title={`Cards in this epic${epicCount ? ` · ${epicCount}` : ""}`}>
+                <EpicCardsSection
+                  key={cardId}
+                  epicId={cardId}
+                  boardId={boardId}
+                  onNavigate={onNavigate}
+                  onProgress={(p) => {
+                    setEpicCount(p.total);
+                    onPatch(cardId, { epicProgress: p });
+                  }}
+                  onChildChange={(childId, inEpic) => onPatch(childId, { epic: inEpic ? { id: cardId, title } : null })}
+                />
+              </Section>
+            )}
+
             {!isSubtask && (
               <Section title={`Subtasks${subtasks.length ? ` · ${doneCount}/${subtasks.length}` : ""}`}>
                 <div className="flex flex-col gap-0.5">
@@ -596,7 +637,7 @@ export function CardDrawer({
                     <div className="flex items-center gap-2">
                       <TypeIcon type={cardType} />
                       <Select
-                        value={cardType}
+                        value={pendingType ?? cardType}
                         onChange={(e) => changeType(e.target.value as CardType)}
                         className="h-8 w-full py-1 text-sm"
                         aria-label="Type"
@@ -606,6 +647,36 @@ export function CardDrawer({
                         ))}
                       </Select>
                     </div>
+                    {pendingType && (
+                      <div role="alert" className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">
+                        <p>
+                          This epic has {epicCount} {epicCount === 1 ? "card" : "cards"}. Making it a {CARD_TYPE_LABEL[pendingType].toLowerCase()} takes{" "}
+                          {epicCount === 1 ? "it" : "them"} out of the epic.
+                        </p>
+                        <div className="mt-2 flex gap-2">
+                          <Button size="sm" variant="outline" className="h-7" onClick={() => changeType(pendingType, true)}>
+                            Make it a {CARD_TYPE_LABEL[pendingType].toLowerCase()}
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7" onClick={() => setPendingType(null)}>
+                            Keep it an epic
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {typeNote && <p role="status" className="mt-1 text-xs text-muted-foreground">{typeNote}</p>}
+                  </Field>
+                )}
+
+                {!isSubtask && cardType !== "epic" && boardId && (
+                  <Field label="Epic">
+                    <EpicField
+                      key={cardId}
+                      cardId={cardId}
+                      boardId={boardId}
+                      epic={epic}
+                      onNavigate={onNavigate}
+                      onChange={(e) => onPatch(cardId, { epic: e })}
+                    />
                   </Field>
                 )}
 

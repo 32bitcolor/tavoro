@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { CalendarClock, ChevronDown, Flag, Layers, Search, Tag, User, X } from "lucide-react";
+import { CalendarClock, ChevronDown, Flag, Layers, Search, Tag, User, X, Zap } from "lucide-react";
 import { CARD_TYPES, CARD_TYPE_LABEL, PRIORITIES, PRIORITY_LABEL } from "@/lib/card-fields";
 import { PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
 
@@ -42,6 +42,9 @@ export function FilterBar({
   onToggleType,
   selectedPriorities,
   onTogglePriority,
+  epics,
+  selectedEpics,
+  onToggleEpic,
   due,
   onDue,
   search,
@@ -65,6 +68,9 @@ export function FilterBar({
   onToggleType: (type: string) => void;
   selectedPriorities: Set<string>;
   onTogglePriority: (priority: string) => void;
+  epics: { id: string; title: string }[];
+  selectedEpics: Set<string>;
+  onToggleEpic: (id: string) => void;
   due: DueFilter;
   onDue: (d: DueFilter) => void;
   search: string;
@@ -105,6 +111,11 @@ export function FilterBar({
       .filter((p) => selectedPriorities.has(p))
       .map((p) => (p === "none" ? "No priority" : PRIORITY_LABEL[p])),
   );
+
+  const epicSummary = summarize([
+    ...epics.filter((e) => selectedEpics.has(e.id)).map((e) => e.title),
+    ...(selectedEpics.has("none") ? ["No epic"] : []),
+  ]);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -205,6 +216,32 @@ export function FilterBar({
           >
             <span className="size-3.5 shrink-0" aria-hidden="true" />
             No priority
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <FilterChip icon={<Zap className="size-3.5" />} label="Epic" current={epicSummary} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="max-h-72 w-64 overflow-y-auto">
+          <DropdownMenuLabel>Epics</DropdownMenuLabel>
+          {epics.map((e) => (
+            <DropdownMenuCheckboxItem
+              key={e.id}
+              checked={selectedEpics.has(e.id)}
+              onCheckedChange={() => onToggleEpic(e.id)}
+              onSelect={(ev) => ev.preventDefault()}
+            >
+              <span className="truncate">{e.title}</span>
+            </DropdownMenuCheckboxItem>
+          ))}
+          <DropdownMenuCheckboxItem
+            checked={selectedEpics.has("none")}
+            onCheckedChange={() => onToggleEpic("none")}
+            onSelect={(ev) => ev.preventDefault()}
+          >
+            No epic
           </DropdownMenuCheckboxItem>
         </DropdownMenuContent>
       </DropdownMenu>

@@ -22,6 +22,8 @@ export const BoardFilters = z.object({
   types: z.array(z.string()).default([]),
   /** Priorities, plus "none" for cards without one. */
   priorities: z.array(z.string()).default([]),
+  /** Epic card ids, plus "none" for cards in no epic. */
+  epics: z.array(z.string()).default([]),
   due: z.enum(DUE_FILTERS).default("any"),
   search: z.string().default(""),
 });
@@ -32,6 +34,7 @@ export const SprintFilters = z.object({
   project: z.string().default(""),
   assignee: z.string().default(""),
   label: z.string().default(""),
+  epic: z.string().default(""),
 });
 export type SprintFilters = z.infer<typeof SprintFilters>;
 
@@ -50,7 +53,7 @@ export function parseFilters(scope: string, raw: unknown): BoardFilters | Sprint
 export function filtersAreActive(scope: string, f: BoardFilters | SprintFilters): boolean {
   if (scope === SPRINT_VIEW_SCOPE) {
     const s = f as SprintFilters;
-    return !!(s.project || s.assignee || s.label);
+    return !!(s.project || s.assignee || s.label || s.epic);
   }
   const b = f as BoardFilters;
   return (
@@ -58,6 +61,7 @@ export function filtersAreActive(scope: string, f: BoardFilters | SprintFilters)
     b.assignees.length > 0 ||
     b.types.length > 0 ||
     b.priorities.length > 0 ||
+    b.epics.length > 0 ||
     b.due !== "any" ||
     b.search.trim() !== ""
   );

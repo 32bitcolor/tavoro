@@ -99,9 +99,14 @@ export default function Boards() {
         </Def>
         <Def term="Type">
           <UI>Task</UI>, <UI>Bug</UI>, <UI>Story</UI> or <UI>Epic</UI>, shown as an icon before the
-          card&rsquo;s key. New cards are tasks. An epic is a big piece of work that groups other cards, so it
-          isn&rsquo;t planned in a sprint: making a card an epic takes it out of its sprint. Subtasks
-          don&rsquo;t have a type.
+          card&rsquo;s key. New cards are tasks. An epic is a big piece of work that groups other cards (see{" "}
+          <em>Epics</em> below), so it isn&rsquo;t planned in a sprint: making a card an epic takes it out of
+          its sprint. Subtasks don&rsquo;t have a type.
+        </Def>
+        <Def term="Epic">
+          The epic this card belongs to. Pick one from the list (any open epic in the workspace, from any
+          board), or <UI>No epic</UI>. The card shows the epic&rsquo;s name in purple; click it in the drawer
+          to open the epic. Subtasks belong to their card&rsquo;s epic.
         </Def>
         <Def term="Priority">
           <UI>Highest</UI>, <UI>High</UI>, <UI>Medium</UI>, <UI>Low</UI>, <UI>Lowest</UI>, or <UI>None</UI>.
@@ -188,6 +193,32 @@ export default function Boards() {
         </LI>
       </UL>
 
+      <H2>Epics</H2>
+      <P>
+        An <strong>epic</strong> is a big piece of work, like &ldquo;Q1 onboarding refresh&rdquo;, that
+        collects cards from any board in the workspace. To make one, open a card and set its{" "}
+        <UI>Type</UI> to <UI>Epic</UI>.
+      </P>
+      <UL>
+        <LI>
+          On an epic, <UI>Cards in this epic</UI> lists its cards with their status and a progress bar
+          (how many are in a done column). <UI>Add cards</UI> finds cards by title or key; the{" "}
+          <UI>×</UI> takes one out. Cards on boards you can&rsquo;t see are counted but not listed.
+        </LI>
+        <LI>
+          On any other card, choose its epic under <UI>Epic</UI> in the details.
+        </LI>
+        <LI>
+          The epic&rsquo;s card on the board shows the same progress bar, and each card in it shows the
+          epic&rsquo;s name.
+        </LI>
+        <LI>
+          An epic can&rsquo;t be in a sprint or in another epic. If you change an epic that has cards into
+          another type, Tavoro asks first, then takes the cards out of it. Deleting an epic leaves its
+          cards where they are, in no epic.
+        </LI>
+      </UL>
+
       <H2>Filtering the board</H2>
       <P>
         The filter bar above the columns narrows what&rsquo;s visible without changing anything. Filters
@@ -206,6 +237,10 @@ export default function Boards() {
         <LI>
           <strong>Type</strong> and <strong>Priority</strong> — for example, only bugs, or only{" "}
           <UI>Highest</UI> and <UI>High</UI>. <UI>No priority</UI> finds cards nobody has prioritised yet.
+        </LI>
+        <LI>
+          <strong>Epic</strong> — the cards in one or more epics (each epic shows too), or{" "}
+          <UI>No epic</UI> for cards that aren&rsquo;t in one yet.
         </LI>
         <LI>
           <strong>Due date</strong> — <UI>Any due date</UI>, <UI>Overdue</UI>, <UI>Due this week</UI>, or{" "}

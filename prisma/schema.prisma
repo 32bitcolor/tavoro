@@ -206,6 +206,7 @@ model Card {
   type           String           @default("task") // task / bug / story / epic (lib/card-fields.ts); subtasks keep "task" and show as Subtask
   priority       String? // highest / high / medium / low / lowest; null = none
   estimate       Float? // story points or hours, per Workspace.estimateUnit
+  epicId         String? // the epic (a Card with type "epic", any board in the workspace) this card belongs to; top-level non-epic cards only
   keySeq         Int? // this card's number in its board's key sequence — null if the board has no cardKeyPrefix; display as "{board.cardKeyPrefix}-{keySeq}"
   statusId       String? // canonical status — source of truth for cross-board views; kept in sync with the card's column on move
   sprintId       String? // optional sprint assignment (independent of project); powers the team sprint board
@@ -216,6 +217,8 @@ model Card {
   column         Column?          @relation(fields: [columnId], references: [id], onDelete: Cascade)
   parentCard     Card?            @relation("CardSubtasks", fields: [parentCardId], references: [id], onDelete: Cascade)
   subtasks       Card[]           @relation("CardSubtasks")
+  epic           Card?            @relation("EpicCards", fields: [epicId], references: [id], onDelete: SetNull)
+  epicCards      Card[]           @relation("EpicCards")
   status         WorkspaceStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
   sprint         Sprint?          @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   labels         CardLabel[]
@@ -234,6 +237,7 @@ model Card {
   @@index([sprintId])
   @@index([completedAt])
   @@index([type])
+  @@index([epicId])
 }
 
 // A key a card had on a board it has since been moved off (e.g. SEC-12 after moving to

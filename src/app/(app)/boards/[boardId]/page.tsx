@@ -4,6 +4,7 @@ import { getBoardForUser } from "@/lib/authz";
 import { BoardView } from "@/components/board/board-view";
 import { loadProjectContext } from "@/lib/project-context";
 import { asCardType, asPriority } from "@/lib/card-fields";
+import { epicProgress } from "@/lib/epics";
 
 export const metadata = { title: "Board · Tavoro" };
 
@@ -39,6 +40,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
           type: true,
           priority: true,
           estimate: true,
+          epic: { select: { id: true, title: true } },
           labels: { select: { label: { select: { id: true, name: true, color: true } } } },
           assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
           smes: { select: { user: { select: { id: true, name: true, email: true } } } },
@@ -57,6 +59,9 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
       },
     },
   });
+
+  // Progress for the epics on this board, shown on their card faces.
+  const progress = await epicProgress(raw.flatMap((c) => c.cards.filter((k) => k.type === "epic").map((k) => k.id)));
 
   const columns = raw.map((c) => ({
     id: c.id,
@@ -77,6 +82,8 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
         type: asCardType(card.type),
         priority: asPriority(card.priority),
         estimate: card.estimate,
+        epic: card.epic,
+        epicProgress: progress.get(card.id) ?? null,
         labels: card.labels.map((l) => l.label),
         assignees: card.assignees.map((a) => a.user),
         smes: card.smes.map((s) => s.user),
