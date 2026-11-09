@@ -559,6 +559,7 @@ export function CardDrawer({
               variant="ghost"
               size="sm"
               onClick={toggleWatching}
+              disabled={loading}
               aria-pressed={watching}
               title={watching ? "You get emails about changes and comments. Click to stop watching." : "Get emails about changes and comments on this card."}
               className="h-8 gap-1.5 px-2 text-xs"
