@@ -10,6 +10,7 @@ import { loadProject, registerProjectTools } from "@/lib/mcp/tools/projects";
 import { loadStoryboard, registerStoryboardTools } from "@/lib/mcp/tools/storyboards";
 import { loadRound, registerReviewTools } from "@/lib/mcp/tools/reviews";
 import { registerPlanningTools } from "@/lib/mcp/tools/planning";
+import { registerQueryTools } from "@/lib/mcp/tools/query";
 import { loadWhiteboard, registerWhiteboardTools } from "@/lib/mcp/tools/whiteboards";
 import { registerDocumentTools } from "@/lib/mcp/documents";
 import { registerContentTools } from "@/lib/mcp/tools/content";
@@ -233,6 +234,7 @@ export function buildMcpServer(): McpServer {
   registerStoryboardTools(server);
   registerReviewTools(server);
   registerPlanningTools(server);
+  registerQueryTools(server);
   registerWhiteboardTools(server);
   registerContentTools(server);
   registerAssetTools(server);

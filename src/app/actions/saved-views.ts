@@ -7,6 +7,8 @@ import { getBoardForUser } from "@/lib/authz";
 import {
   BOARD_VIEW_SCOPE,
   SPRINT_VIEW_SCOPE,
+  QUERY_VIEW_SCOPE,
+  QueryFilters,
   ViewScopeEnum,
   ViewName,
   BoardFilters,
@@ -71,7 +73,7 @@ export async function saveView(
     scopedBoardId = board.id;
   }
 
-  const shape = s.data === SPRINT_VIEW_SCOPE ? SprintFilters : BoardFilters;
+  const shape = s.data === SPRINT_VIEW_SCOPE ? SprintFilters : s.data === QUERY_VIEW_SCOPE ? QueryFilters : BoardFilters;
   const parsed = shape.safeParse(filters ?? {});
   if (!parsed.success) return { error: "Those filters can't be saved." };
   if (!filtersAreActive(s.data, parsed.data)) {
@@ -108,7 +110,7 @@ export async function saveView(
       });
 
   if (scopedBoardId) revalidatePath(`/boards/${scopedBoardId}`);
-  else revalidatePath("/sprints");
+  else revalidatePath(s.data === QUERY_VIEW_SCOPE ? "/cards" : "/sprints");
   return { view: { ...view, filters: parseFilters(view.scope, view.filters) } };
 }
 

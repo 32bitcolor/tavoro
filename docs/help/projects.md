@@ -107,4 +107,4 @@ A project can opt into **sprints** — time-boxed iterations the team runs on a 
 
 ---
 
-← [Boards (Kanban)](boards.md) · [All guides](README.md) · [Sprints](sprints.md) →
+← [Cards: search and bulk edit](cards.md) · [All guides](README.md) · [Sprints](sprints.md) →

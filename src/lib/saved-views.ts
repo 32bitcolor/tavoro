@@ -9,7 +9,9 @@ import { z } from "zod";
 
 export const BOARD_VIEW_SCOPE = "board";
 export const SPRINT_VIEW_SCOPE = "sprint";
-export type ViewScope = typeof BOARD_VIEW_SCOPE | typeof SPRINT_VIEW_SCOPE;
+/** The Cards page: a saved query and the columns shown with it. */
+export const QUERY_VIEW_SCOPE = "query";
+export type ViewScope = typeof BOARD_VIEW_SCOPE | typeof SPRINT_VIEW_SCOPE | typeof QUERY_VIEW_SCOPE;
 
 export const DUE_FILTERS = ["any", "overdue", "week", "none"] as const;
 export type DueFilter = (typeof DUE_FILTERS)[number];
@@ -38,19 +40,26 @@ export const SprintFilters = z.object({
 });
 export type SprintFilters = z.infer<typeof SprintFilters>;
 
-export const ViewScopeEnum = z.enum([BOARD_VIEW_SCOPE, SPRINT_VIEW_SCOPE]);
+export const QueryFilters = z.object({
+  q: z.string().max(2000).default(""),
+  columns: z.array(z.string()).max(30).default([]),
+});
+export type QueryFilters = z.infer<typeof QueryFilters>;
+
+export const ViewScopeEnum = z.enum([BOARD_VIEW_SCOPE, SPRINT_VIEW_SCOPE, QUERY_VIEW_SCOPE]);
 export const ViewName = z.string().trim().min(1).max(60);
 
 /** Parse stored JSON for a scope, falling back to "no filters" if it's unusable. */
-export function parseFilters(scope: string, raw: unknown): BoardFilters | SprintFilters {
-  const schema = scope === SPRINT_VIEW_SCOPE ? SprintFilters : BoardFilters;
+export function parseFilters(scope: string, raw: unknown): BoardFilters | SprintFilters | QueryFilters {
+  const schema = scope === SPRINT_VIEW_SCOPE ? SprintFilters : scope === QUERY_VIEW_SCOPE ? QueryFilters : BoardFilters;
   const parsed = schema.safeParse(raw ?? {});
   return parsed.success ? parsed.data : schema.parse({});
 }
 
 /** True when a filter set would actually narrow anything — used to refuse saving
  *  an empty view, which would be indistinguishable from "Clear". */
-export function filtersAreActive(scope: string, f: BoardFilters | SprintFilters): boolean {
+export function filtersAreActive(scope: string, f: BoardFilters | SprintFilters | QueryFilters): boolean {
+  if (scope === QUERY_VIEW_SCOPE) return (f as QueryFilters).q.trim() !== "";
   if (scope === SPRINT_VIEW_SCOPE) {
     const s = f as SprintFilters;
     return !!(s.project || s.assignee || s.label || s.epic);

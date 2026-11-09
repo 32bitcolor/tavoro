@@ -499,3 +499,20 @@ ${note ? `<p style="border-left:3px solid #ddd;padding-left:10px;color:#444">${e
     text: `Hi ${recipientName},\n\n${flaggedBy} marked "${changed}" as changed. "${title}" depends on it, so it's been flagged for review.${note ? `\n\n${note}` : ""}\n\nCheck it still holds, update it if not, then mark it reviewed in Tavoro.`,
   };
 }
+
+/** One email in place of many, after a bulk edit (lib/queues.ts withEmailDigest). */
+export function bulkDigest(params: { actorName: string; count: number; items: { subject: string; url?: string }[] }): Email {
+  const { actorName, count, items } = params;
+  const shown = items.slice(0, 50);
+  const more = items.length - shown.length;
+  return {
+    subject: `${actorName} changed ${count} ${count === 1 ? "card" : "cards"} you follow`,
+    html: layout(
+      `${esc(actorName)} made a bulk change`,
+      `<p>${count === 1 ? "One update" : `${count} updates`} that you’d normally get one email each for:</p>
+  <ul style="padding-left:18px">${shown.map((i) => `<li style="margin:4px 0">${i.url ? `<a href="${i.url}">${esc(i.subject)}</a>` : esc(i.subject)}</li>`).join("")}</ul>
+  ${more > 0 ? `<p style="color:#666">…and ${more} more.</p>` : ""}`,
+    ),
+    text: `${actorName} made a bulk change:\n\n${shown.map((i) => `- ${i.subject}${i.url ? `\n  ${i.url}` : ""}`).join("\n")}${more > 0 ? `\n…and ${more} more.` : ""}`,
+  };
+}

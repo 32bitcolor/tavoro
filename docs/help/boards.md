@@ -152,4 +152,4 @@ Boards are the execution layer beneath your projects. A project’s board shows 
 
 ---
 
-← [Objectives & alignment](objectives-alignment.md) · [All guides](README.md) · [Projects](projects.md) →
+← [Objectives & alignment](objectives-alignment.md) · [All guides](README.md) · [Cards: search and bulk edit](cards.md) →

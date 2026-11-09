@@ -20,6 +20,7 @@ import {
   ChartColumn,
   LayoutTemplate,
   CloudDownload,
+  ListFilter,
   type LucideIcon,
 } from "lucide-react";
 
@@ -39,6 +40,7 @@ import AccountThemes from "@/components/help/topics/account-themes";
 import AiMcp from "@/components/help/topics/ai-mcp";
 import Sso from "@/components/help/topics/sso";
 import JiraImport from "@/components/help/topics/jira-import";
+import Cards from "@/components/help/topics/cards";
 import Reports from "@/components/help/topics/reports";
 import Content from "@/components/help/topics/content";
 import Assets from "@/components/help/topics/assets";
@@ -89,6 +91,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     icon: Columns3,
     group: "Modules",
     Body: Boards,
+  },
+  {
+    slug: "cards",
+    title: "Cards: search and bulk edit",
+    summary: "Find any card with a query, save it, and change many cards at once.",
+    icon: ListFilter,
+    group: "Modules",
+    Body: Cards,
   },
   {
     slug: "projects",

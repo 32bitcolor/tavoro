@@ -10,6 +10,7 @@ import {
   BookCheck,
   Shapes,
   Timer,
+  ListFilter,
   type LucideIcon,
 } from "lucide-react";
 
@@ -56,6 +57,13 @@ export const MODULES: ModuleDef[] = [
     href: "/boards",
     icon: Columns3,
     tagline: "Kanban for your production pipeline",
+  },
+  {
+    key: "cards",
+    name: "Cards",
+    href: "/cards",
+    icon: ListFilter,
+    tagline: "Search every card with a query, and change many at once",
   },
   {
     key: "projects",

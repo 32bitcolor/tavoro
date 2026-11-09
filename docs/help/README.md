@@ -16,6 +16,7 @@ The guides built into Tavoro (the **Help** link in the app's sidebar), as Markdo
 ## Modules
 
 - [Boards (Kanban)](boards.md) — Columns, cards, and the card drawer for your production pipeline.
+- [Cards: search and bulk edit](cards.md) — Find any card with a query, save it, and change many cards at once.
 - [Projects](projects.md) — Methodology, phases, deliverables, reviews, milestones & time.
 - [Sprints](sprints.md) — Time-boxed iterations and the team sprint board.
 - [Storyboards](storyboards.md) — Screen-by-screen course design with rich per-screen fields.

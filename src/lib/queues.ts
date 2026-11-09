@@ -1,6 +1,8 @@
 // Not tagged "server-only" — this is intentionally shared with worker/index.ts,
 // a standalone Node/tsx process, not a Next.js server context.
+import { AsyncLocalStorage } from "node:async_hooks";
 import { Queue, type ConnectionOptions } from "bullmq";
+import { bulkDigest } from "./email-templates";
 
 // Plain {host, port} connection, not a shared ioredis instance — mirrors
 // worker/index.ts's own connection, which documents why sharing an ioredis
@@ -15,7 +17,38 @@ if (process.env.NODE_ENV !== "production") globalForQueue.emailQueue = emailQueu
 // Fire-and-forget from the caller's perspective: a Redis hiccup while enqueuing
 // must never fail the underlying approve/reject/submit action, so failures here
 // are logged, not thrown — same fail-open posture as checkIntakeThrottle.
-export async function enqueueEmail(msg: { to: string; subject: string; html: string; text: string; replyTo?: string }): Promise<void> {
+type EmailMsg = { to: string; subject: string; html: string; text: string; replyTo?: string };
+
+// A bulk edit (cards page, MCP) runs the same per-card code as single edits, which
+// emails as it goes. Inside withEmailDigest those emails are collected instead, and
+// each recipient gets one: their only email unchanged, or a digest of all of them.
+const digest = new AsyncLocalStorage<EmailMsg[]>();
+
+export async function withEmailDigest<T>(actorName: string, fn: () => Promise<T>): Promise<T> {
+  const batch: EmailMsg[] = [];
+  const result = await digest.run(batch, fn);
+  const byTo = new Map<string, EmailMsg[]>();
+  for (const m of batch) byTo.set(m.to.toLowerCase(), [...(byTo.get(m.to.toLowerCase()) ?? []), m]);
+  for (const [to, msgs] of byTo) {
+    if (msgs.length === 1) await send(msgs[0]);
+    else {
+      const items = msgs.map((m) => ({ subject: m.subject, url: /\n\n(https?:\/\/\S+)\s*$/.exec(m.text)?.[1] }));
+      await send({ to, ...bulkDigest({ actorName, count: msgs.length, items }) });
+    }
+  }
+  return result;
+}
+
+export async function enqueueEmail(msg: EmailMsg): Promise<void> {
+  const batch = digest.getStore();
+  if (batch) {
+    batch.push(msg);
+    return;
+  }
+  await send(msg);
+}
+
+async function send(msg: EmailMsg): Promise<void> {
   try {
     await emailQueue.add("send", msg, { attempts: 3, backoff: { type: "exponential", delay: 5000 } });
   } catch (err) {

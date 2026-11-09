@@ -17,7 +17,7 @@ export function SavedViewsMenu({
   activeViewId,
   onApply,
 }: {
-  scope: "board" | "sprint";
+  scope: "board" | "sprint" | "query";
   boardId?: string;
   currentFilters: () => unknown;
   filtersActive: boolean;

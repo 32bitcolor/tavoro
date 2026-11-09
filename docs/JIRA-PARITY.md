@@ -1,6 +1,6 @@
 # Jira parity: boards that can replace Jira for an ID team
 
-**Status:** Phases 1–5 (Tier 1) shipped to prod. Phase 6 (Tier 3: sprint report, burndown, velocity, roadmap) built.
+**Status:** Phases 1–5 (Tier 1) shipped to prod. Phase 6 (Tier 3) on prod. Phase 7 (query language, Cards page, bulk edit) built.
 **Owner:** @32bitcolor
 
 ## Why
