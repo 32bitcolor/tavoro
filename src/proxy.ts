@@ -11,7 +11,9 @@ const PUBLIC_ROUTES = ["/login", "/signup"];
 // where outside SMEs review one round. Note "/review/" doesn't match "/reviews/".
 // Public board links (/share/b/<token>) show one board, read-only, and requester status
 // pages (/status/<token>) show one intake request to the person who sent it.
-const PUBLIC_PREFIXES = ["/request/", "/review/", "/share/", "/status/"];
+// /suite/authorize checks the connected app first, then sends a visitor with no session
+// to /login itself (docs/SUITE.md).
+const PUBLIC_PREFIXES = ["/request/", "/review/", "/share/", "/status/", "/suite/"];
 
 // Hostnames the app used to live at (e.g. before the rename to Tavoro). Page visits
 // there redirect to the same path on APP_URL; API calls and OAuth discovery are

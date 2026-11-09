@@ -53,4 +53,4 @@ Rules run in the background a moment after the change. Each card’s History sho
 
 ---
 
-← [Reports](reports.md) · [All guides](README.md) · [Import from Jira](jira-import.md) →
+← [Reports](reports.md) · [All guides](README.md) · [Connected apps](connected-apps.md) →

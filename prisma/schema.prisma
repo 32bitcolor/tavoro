@@ -98,6 +98,7 @@ model Workspace {
   reviewFiles          ReviewFile[]
   apiTokens            ApiToken[]
   ssoConnection        SsoConnection?
+  connectedApps        ConnectedApp[]
 }
 
 // Workspace/team-level, time-boxed grouping of work — independent of a project's
@@ -1445,4 +1446,42 @@ model AutomationRun {
 
   @@index([ruleId, at])
   @@index([cardId, at])
+}
+
+// ── Connected apps (docs/SUITE.md) ──────────────────────────────────────────────
+// Another app in the suite (CourseForge first) that signs people in with Tavoro.
+// Tavoro is its identity provider: an OpenID Connect-style code flow, an id_token
+// signed with the app's secret (HS256), and a member list the app syncs from so
+// suspensions here reach it within minutes.
+model ConnectedApp {
+  id           String             @id @default(cuid())
+  workspaceId  String
+  kind         String             @default("courseforge")
+  name         String
+  url          String // the app's public base URL, no trailing slash
+  clientId     String             @unique
+  secretSealed String // lib/secret-box; needed in plain to sign id_tokens
+  secretHint   String // last four characters, for the settings page
+  createdById  String?
+  createdAt    DateTime           @default(now())
+  lastUsedAt   DateTime?
+  lastSyncAt   DateTime?
+  workspace    Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  codes        ConnectedAppCode[]
+
+  @@index([workspaceId])
+}
+
+// A one-time sign-in code for a connected app, valid for two minutes.
+model ConnectedAppCode {
+  id            String       @id @default(cuid())
+  codeHash      String       @unique
+  appId         String
+  userId        String
+  nonce         String
+  codeChallenge String // PKCE S256
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime     @default(now())
+  app           ConnectedApp @relation(fields: [appId], references: [id], onDelete: Cascade)
 }

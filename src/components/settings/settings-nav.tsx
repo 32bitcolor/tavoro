@@ -18,6 +18,7 @@ export const SETTINGS_TABS = [
   { href: "/settings/notifications", label: "Notifications", group: "Workspace", adminOnly: true },
   { href: "/settings/backup", label: "Backup", group: "Workspace", adminOnly: true },
   { href: "/settings/import", label: "Import", group: "Workspace", adminOnly: true },
+  { href: "/settings/apps", label: "Connected apps", group: "Workspace", adminOnly: true },
   { href: "/settings/automation", label: "Automation", group: "Workspace", adminOnly: true },
   { href: "/settings/updates", label: "Updates", group: "Workspace", adminOnly: true, instanceOnly: true },
 ] as const;

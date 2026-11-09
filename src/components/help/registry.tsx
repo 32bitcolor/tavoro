@@ -23,6 +23,7 @@ import {
   ListFilter,
   Workflow,
   type LucideIcon,
+  AppWindow,
 } from "lucide-react";
 
 import GettingStarted from "@/components/help/topics/getting-started";
@@ -43,6 +44,7 @@ import Sso from "@/components/help/topics/sso";
 import JiraImport from "@/components/help/topics/jira-import";
 import Cards from "@/components/help/topics/cards";
 import Automation from "@/components/help/topics/automation";
+import ConnectedApps from "@/components/help/topics/connected-apps";
 import Reports from "@/components/help/topics/reports";
 import Content from "@/components/help/topics/content";
 import Assets from "@/components/help/topics/assets";
@@ -221,6 +223,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     icon: Workflow,
     group: "Modules",
     Body: Automation,
+  },
+  {
+    slug: "connected-apps",
+    title: "Connected apps",
+    summary: "Admin: let your team sign in to CourseForge with Tavoro.",
+    icon: AppWindow,
+    group: "Modules",
+    Body: ConnectedApps,
   },
   {
     slug: "jira-import",

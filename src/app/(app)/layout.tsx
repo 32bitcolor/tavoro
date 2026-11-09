@@ -2,6 +2,7 @@ import { requireUser, getActiveMembership } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { projectVisibilityWhere, boardVisibilityWhere } from "@/lib/authz";
 import { AppSidebar } from "@/components/app-shell/app-sidebar";
+import { suiteLinks } from "@/lib/connected-apps";
 import { Breadcrumbs, PageTitleProvider } from "@/components/app-shell/breadcrumbs";
 import { CommandPalette } from "@/components/app-shell/command-palette";
 import { QuickCreate } from "@/components/app-shell/quick-create";
@@ -61,6 +62,7 @@ export default async function AppLayout({
       : Promise.resolve(0),
     isAdmin ? readUpdateStatus() : Promise.resolve(null),
   ]);
+  const suiteApps = membership ? await suiteLinks(membership.workspaceId) : [];
 
   return (
     <SidebarProvider>
@@ -73,6 +75,7 @@ export default async function AppLayout({
         canViewTeam={canViewTeam}
         workspaces={memberships.map((m) => ({ id: m.workspaceId, name: m.workspace.name }))}
         activeWorkspaceId={membership?.workspaceId ?? null}
+        suiteApps={suiteApps}
       />
       <SidebarInset>
         <PageTitleProvider>

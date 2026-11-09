@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChartColumn, Check, ChevronsUpDown, Gauge, LifeBuoy, LogOut, Settings, Users } from "lucide-react";
+import { ArrowUpRight, ChartColumn, Check, ChevronsUpDown, Gauge, GraduationCap, LifeBuoy, LogOut, Settings, Users } from "lucide-react";
 
 import { logout } from "@/app/actions/auth";
 import { switchWorkspace } from "@/app/actions/workspace";
@@ -45,6 +45,7 @@ export function AppSidebar({
   canViewTeam,
   workspaces = [],
   activeWorkspaceId = null,
+  suiteApps = [],
 }: {
   workspaceName: string;
   userLabel: string;
@@ -54,6 +55,8 @@ export function AppSidebar({
   canViewTeam: boolean;
   workspaces?: { id: string; name: string }[];
   activeWorkspaceId?: string | null;
+  /** Connected apps (docs/SUITE.md): one click to CourseForge, already signed in. */
+  suiteApps?: { name: string; url: string }[];
 }) {
   const pathname = usePathname();
   const [, startTransition] = useTransition();
@@ -136,6 +139,25 @@ export function AppSidebar({
             )}
           </SidebarMenu>
         </SidebarGroup>
+
+        {suiteApps.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Apps</SidebarGroupLabel>
+            <SidebarMenu>
+              {suiteApps.map((a) => (
+                <SidebarMenuItem key={a.url}>
+                  <SidebarMenuButton asChild tooltip={`Open ${a.name}`}>
+                    <a href={`${a.url}/auth/tavoro/start`}>
+                      <GraduationCap />
+                      <span>{a.name}</span>
+                      <ArrowUpRight className="ml-auto opacity-60" aria-hidden />
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
 
         <SidebarGroup className="mt-auto">
           <SidebarMenu>
