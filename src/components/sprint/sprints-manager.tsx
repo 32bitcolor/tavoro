@@ -116,6 +116,11 @@ export function SprintsManager({ initial, estimateUnit }: { initial: SprintT[]; 
               <span className="shrink-0 text-xs text-muted-foreground">
                 {s.cardCount} {s.cardCount === 1 ? "card" : "cards"}
               </span>
+              {s.status !== "planned" && (
+                <Link href={`/sprints/${s.id}/report`} className="shrink-0 text-xs text-muted-foreground hover:text-foreground hover:underline">
+                  Report
+                </Link>
+              )}
               <Link
                 href={`/sprints/${s.id}`}
                 className="ml-auto inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"

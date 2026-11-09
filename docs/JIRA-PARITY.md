@@ -1,6 +1,6 @@
 # Jira parity: boards that can replace Jira for an ID team
 
-**Status:** Phases 1–4 shipped to prod (phase 4 on 2026-11-09); phase 5 (Jira import) built and tested against the mock.
+**Status:** Phases 1–5 (Tier 1) shipped to prod. Phase 6 (Tier 3: sprint report, burndown, velocity, roadmap) built.
 **Owner:** @32bitcolor
 
 ## Why
@@ -21,9 +21,9 @@ and service-desk features (intake already covers requests).
 | Tier | What | Notes |
 |---|---|---|
 | **1. Core** | Issue types + epics, priority, estimates, card links, watchers + activity history, Backlog view, **Jira import** | This doc. |
-| 2. Power | List/table view with bulk edit, a query language (saved as filters), swimlanes + WIP limits, custom card fields | Own doc later. |
-| 3. Insight | Burndown, velocity, sprint report; epic timeline | Extends Reports. |
-| 4. Automation | "When X, do Y" rules on the BullMQ worker | Later. |
+| 2. Power | List/table view with bulk edit, a query language (saved as filters), swimlanes + WIP limits, custom card fields | "Tiers 2–4" below. |
+| 3. Insight | Burndown, velocity, sprint report; epic timeline | "Tiers 2–4" below. |
+| 4. Automation | "When X, do Y" rules on the BullMQ worker | "Tiers 2–4" below. |
 
 Tier 1 is designed so the Jira import has somewhere to put everything it reads. An
 import that drops issue types, epics, priorities, points or links would lose work, so those
@@ -255,6 +255,70 @@ team import, keep working in Jira for a week, and top up before switching.
 New fields (type, epic, priority, estimate, links, watchers) go into the MCP card tools and
 the workspace backup (format bump). The import itself is admin-only and not exposed to MCP.
 
+## Tiers 2–4 (planned 2026-11-09)
+
+Built in this order: insight first (it makes the sprint data from phases 4–5 useful at
+once), then power, then automation (whose conditions reuse the query language).
+
+### Phase 6 — Insight (Tier 3)
+
+- **Sprint history, day by day.** `SprintDay` (sprint, day, scope points/cards, done
+  points/cards), written by the worker each night for active sprints and at start and
+  complete. Burndown needs what the sprint looked like on each day, and the activity log
+  holds display names, not ids, so it can't be replayed reliably. Starts when it ships;
+  today's point is always computed live.
+- **Sprint report** (`/sprints/[id]/report`, linked from the sprint board and the
+  Backlog): burndown (remaining points per day against the ideal line), committed vs.
+  completed, cards added after the start, done and not-done lists.
+- **Velocity** (Reports → Sprints): committed vs. completed points for the last
+  completed sprints, from `Sprint.report`, with the average. Jira sprints that come over
+  closed get a report computed at import from the cards still in them.
+- **Epic timeline** (Sprints → Roadmap): open epics as bars from start to due date, filled
+  by progress, with month/quarter zoom and a board filter. Epics get a **start date**
+  (`Card.startDate`, shown for epics); dates are set in the card panel or by dragging bar
+  ends.
+- **MCP:** `get_sprint_report`, `get_velocity`, `get_roadmap`.
+
+### Phase 7 — Query and bulk edit (Tier 2)
+
+- **Query language**, small and Jira-like, parsed server side into Prisma `where`:
+  `status = "In progress" AND assignee = me AND priority >= high AND labels in (qa, video)
+  AND epic = SEC-1 AND sprint = active AND type != bug AND due < 7d AND text ~ "quiz"
+  ORDER BY priority DESC, rank`. Fields: key, text, title, type, status, statusCategory,
+  priority, estimate, assignee, sme, label(s), epic, sprint, board, project, due, created,
+  updated, watcher, blocked; `AND`/`OR`/`NOT`/parentheses; `empty`; `me`, `active`, relative
+  dates. Errors point at the column. Same visibility rules as everywhere.
+- **Cards page** (`/cards`): the query bar (with field/value suggestions), a table with
+  chosen columns, sort, and paging; saved as personal filters (`SavedView` scope "query").
+- **Bulk edit:** select rows (or all matching) → set status, assignee, priority, type,
+  estimate, sprint, epic, add/remove labels, watch, move to board, delete — one confirm,
+  recorded in each card's History, one notification digest per person, not one email per card.
+- **MCP:** `search_cards` (query), `bulk_update_cards`.
+
+### Phase 8 — Swimlanes, WIP limits, custom fields (Tier 2)
+
+- **Swimlanes** on a board: none / assignee / epic / priority / type; collapsible.
+- **WIP limits** per column: the column header turns amber at the limit and red over it;
+  dropping over the limit asks first (soft limit, like Jira's).
+- **Custom card fields**, workspace-wide: text, number, select (options), multi-select,
+  date, checkbox, person. Admins define them (Settings → Cards & labels) and pick which
+  boards show each. Shown in the card panel, filterable and sortable in the query
+  language (`"Audience" = Managers`), in MCP card tools, templates and backups. The Jira
+  import can map Jira custom fields to them (opt in per field).
+
+### Phase 9 — Automation (Tier 4)
+
+- **Rules** (Settings → Automation, admins; per workspace, optionally per board):
+  *when* card created / status changes / field changes / comment added / all subtasks
+  done / due date in N days / on a schedule; *if* a query (phase 7) matches; *then* set
+  a field, assign, add or remove a label, move to a status, add a comment, add a subtask,
+  watch, notify people (email), or update the parent / epic.
+- Run on the worker from an `automation` queue that the app's change points (the same
+  ones that call `recordActivity`) feed. A rule's changes are recorded in History as
+  "Automation: <rule name>". Loop guard: a chain stops after 10 rule runs per card per
+  minute. Each rule keeps a run log (last 200: when, card, result, error).
+- **MCP:** `list_automation_rules` (read); rules are edited in the app only.
+
 ## Phases
 
 | Phase | Scope | Size |
@@ -264,6 +328,10 @@ the workspace backup (format bump). The import itself is admin-only and not expo
 | **3** | Card links + Blocked mark; watchers + notifications; History tab and `recordActivity` | Medium |
 | **4** | Backlog view with cross-board rank, sprint start/complete | Medium |
 | **5** | Jira import (API client, ADF → TipTap, mapping UI, worker job, report, re-run) | Large |
+| **6** | Sprint report + burndown, velocity, epic timeline (Tier 3) | Medium |
+| **7** | Query language, Cards page, bulk edit (Tier 2) | Large |
+| **8** | Swimlanes, WIP limits, custom card fields (Tier 2) | Large |
+| **9** | Automation rules (Tier 4) | Large |
 
 Each phase ships to test, is checked end to end, and waits for approval before prod.
 

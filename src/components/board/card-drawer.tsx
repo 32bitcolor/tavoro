@@ -8,6 +8,7 @@ import {
   getCardDetail,
   updateCardDescription,
   setCardDueDate,
+  setCardStartDate,
   createLabel,
   toggleCardLabel,
   toggleCardAssignee,
@@ -124,6 +125,8 @@ export function CardDrawer({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null); // ISO
+  const [startDate, setStartDate] = useState<string | null>(null); // ISO (shown for epics)
+  const [dateError, setDateError] = useState<string | null>(null);
   const [labelIds, setLabelIds] = useState<Set<string>>(new Set());
   const [assigneeIds, setAssigneeIds] = useState<Set<string>>(new Set());
   const [smeIds, setSmeIds] = useState<Set<string>>(new Set());
@@ -175,6 +178,8 @@ export function CardDrawer({
       setTitle(d.card.title);
       setDescription(d.card.description);
       setDueDate(d.card.dueDate);
+      setStartDate(d.card.startDate);
+      setDateError(null);
       setLabelIds(new Set(d.card.labelIds));
       setAssigneeIds(new Set(d.card.assigneeIds));
       setSmeIds(new Set(d.card.smeIds));
@@ -336,9 +341,30 @@ export function CardDrawer({
 
   function changeDueDate(value: string) {
     const iso = value ? new Date(value).toISOString() : null;
+    const prev = dueDate;
     setDueDate(iso);
-    setCardDueDate(cardId, iso);
+    setDateError(null);
     onPatch(cardId, { dueDate: iso });
+    setCardDueDate(cardId, iso).then((r) => {
+      if (r && "error" in r && r.error) {
+        setDueDate(prev);
+        onPatch(cardId, { dueDate: prev });
+        setDateError(r.error);
+      }
+    });
+  }
+
+  function changeStartDate(value: string) {
+    const iso = value ? new Date(value).toISOString() : null;
+    const prev = startDate;
+    setStartDate(iso);
+    setDateError(null);
+    setCardStartDate(cardId, iso).then((r) => {
+      if (r && "error" in r && r.error) {
+        setStartDate(prev);
+        setDateError(r.error);
+      }
+    });
   }
 
   function patchLabelsFace(nextIds: Set<string>) {
@@ -794,11 +820,33 @@ export function CardDrawer({
                   )}
                 </Field>
 
+                {cardType === "epic" && !isSubtask && (
+                  <Field label="Start date">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        aria-label="Start date"
+                        value={startDate ? startDate.slice(0, 10) : ""}
+                        max={dueDate ? dueDate.slice(0, 10) : undefined}
+                        onChange={(e) => changeStartDate(e.target.value)}
+                        className="h-8 w-auto"
+                      />
+                      {startDate && (
+                        <Button variant="link" className="h-auto p-0 text-xs" onClick={() => changeStartDate("")}>
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                  </Field>
+                )}
+
                 <Field label="Due date">
                   <div className="flex items-center gap-2">
                     <Input
                       type="date"
+                      aria-label="Due date"
                       value={dueDate ? dueDate.slice(0, 10) : ""}
+                      min={cardType === "epic" && startDate ? startDate.slice(0, 10) : undefined}
                       onChange={(e) => changeDueDate(e.target.value)}
                       className="h-8 w-auto"
                     />
@@ -808,6 +856,11 @@ export function CardDrawer({
                       </Button>
                     )}
                   </div>
+                  {dateError && (
+                    <p role="alert" className="mt-1 text-xs text-destructive-ink">
+                      {dateError}
+                    </p>
+                  )}
                 </Field>
 
                 {!isSubtask && sprintsEnabled && cardType !== "epic" && (

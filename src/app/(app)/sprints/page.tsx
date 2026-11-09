@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
 import { PageContainer, PageHeader } from "@/components/shared/page";
 import Link from "next/link";
-import { ListOrdered } from "lucide-react";
+import { GanttChart, ListOrdered } from "lucide-react";
 import { SprintsManager } from "@/components/sprint/sprints-manager";
 import { asSprintReport } from "@/lib/sprint";
 
@@ -51,6 +51,14 @@ export default async function SprintsPage() {
         title="Sprints"
         description="Plan time-boxed sprints across projects, then open the board to run them."
         actions={
+          <span className="flex items-center gap-2">
+          <Link
+            href="/sprints/roadmap"
+            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium hover:bg-hover"
+          >
+            <GanttChart className="size-4" aria-hidden="true" />
+            Roadmap
+          </Link>
           <Link
             href="/sprints/backlog"
             className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium hover:bg-hover"
@@ -58,6 +66,7 @@ export default async function SprintsPage() {
             <ListOrdered className="size-4" aria-hidden="true" />
             Backlog
           </Link>
+          </span>
         }
       />
       {/* Remount when a sprint starts or completes elsewhere (e.g. after Complete sprint refreshes). */}

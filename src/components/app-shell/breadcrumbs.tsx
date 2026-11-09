@@ -60,6 +60,12 @@ export function useSetPageTitle(title: string, trail?: Crumb[] | null) {
   }, [trailKey, setTrail]);
 }
 
+/** For server pages: sets the trailing breadcrumb crumb. */
+export function SetPageTitle({ title, trail }: { title: string; trail?: Crumb[] | null }) {
+  useSetPageTitle(title, trail);
+  return null;
+}
+
 const SECTIONS_WITHOUT_INDEX = new Set(["reviews"]);
 
 export function Breadcrumbs() {

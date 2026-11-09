@@ -26,6 +26,7 @@ import {
   deleteSubtask,
   getCardDetail,
   setCardDueDate,
+  setCardStartDate,
   setCardEstimate,
   setCardPriority,
   setCardType,
@@ -506,12 +507,13 @@ export function registerCardTools(server: McpServer) {
     {
       title: "Update a card",
       description:
-        "Change a card: title, description (Markdown, replaces the old one), due date (empty string clears it), column (moves it), board (moves it to another board, into \`column\` there or its first column; its key changes and the old key keeps resolving), assignees, SMEs, labels, sprint, type, priority, estimate, epic, private (true leaves it off the board's public link; top-level cards only). Lists add or remove people/labels; anything you leave out stays as it is.",
+        "Change a card: title, description (Markdown, replaces the old one), due date and start date (empty string clears them), column (moves it), board (moves it to another board, into \`column\` there or its first column; its key changes and the old key keeps resolving), assignees, SMEs, labels, sprint, type, priority, estimate, epic, private (true leaves it off the board's public link; top-level cards only). Lists add or remove people/labels; anything you leave out stays as it is.",
       input: {
         card: cardRef,
         title: z.string().min(1).max(280).optional(),
         description: z.string().max(50000).optional().describe("Markdown; replaces the description"),
         due: z.string().optional().describe("YYYY-MM-DD, or empty to clear"),
+        start: z.string().optional().describe("Start date, YYYY-MM-DD, or empty to clear (the roadmap draws epics from start to due)"),
         column: z.string().optional().describe("Move to this column (name or id), at the bottom"),
         board: z.string().optional().describe("Move to another board (name, id or key prefix); column then names a column on that board"),
         add_assignees: z.array(z.string()).max(20).optional(),
@@ -550,6 +552,7 @@ export function registerCardTools(server: McpServer) {
       await applyCardChanges(cardId, {
         description: a.description,
         due: a.due,
+        start: a.start,
         assignees: a.add_assignees,
         removeAssignees: a.remove_assignees,
         smes: a.add_smes,
@@ -639,6 +642,7 @@ export function registerCardTools(server: McpServer) {
 type CardChanges = {
   description?: string;
   due?: string;
+  start?: string;
   assignees?: string[];
   removeAssignees?: string[];
   smes?: string[];
@@ -661,6 +665,7 @@ async function applyCardChanges(cardId: string, c: CardChanges) {
   if (c.epicId !== undefined) check(await setCardEpic(cardId, c.epicId));
   if (c.description !== undefined) check(await updateCardDescription(cardId, fromMarkdown(c.description)));
   if (c.due !== undefined) check(await setCardDueDate(cardId, parseDate(c.due)));
+  if (c.start !== undefined) check(await setCardStartDate(cardId, parseDate(c.start)));
   for (const r of c.assignees ?? []) check(await toggleCardAssignee(cardId, (await resolveMember(r)).id, true));
   for (const r of c.removeAssignees ?? []) check(await toggleCardAssignee(cardId, (await resolveMember(r)).id, false));
   for (const r of c.smes ?? []) check(await toggleCardSme(cardId, (await resolveMember(r)).id, true));

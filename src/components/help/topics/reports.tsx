@@ -97,6 +97,15 @@ export default function Reports() {
           the number to reach for when estimating new work.
         </LI>
       </UL>
+
+      <H2>Sprints</H2>
+      <P>
+        <strong>Velocity</strong>: for each of the last eight completed sprints, what it committed to
+        when it started (the outline) and what it completed (the solid column), in story points if
+        cards are estimated, otherwise in cards &mdash; with the average of the last three, a fair
+        guide to how much fits in the next sprint. Below it, each active and recent sprint links to
+        its report and burndown. The time range doesn&rsquo;t apply to this tab.
+      </P>
     </>
   );
 }

@@ -13,6 +13,7 @@
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+  --color-chart-ref: var(--chart-ref);
   --color-hover: var(--hover);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
@@ -420,6 +421,14 @@
   --hover: #eff2f5;
   --accent: #0969da;
   --accent-foreground: #ffffff;
+}
+
+/* Reference marks in charts (an ideal line, a target outline): recessive in every theme,
+   derived from its text and surface colours so all 17 themes get one without a value each.
+   A real custom property (not only a @theme token) so SVG can use var(--chart-ref). */
+:root,
+[data-theme] {
+  --chart-ref: color-mix(in oklab, var(--foreground) 42%, var(--surface));
 }
 
 body {

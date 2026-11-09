@@ -9,6 +9,7 @@ import { sweepReviewFiles } from "../src/lib/review-file-sweep";
 import { sweepOAuth } from "../src/lib/oauth-sweep";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Cancelled, failImport, runImport, scanImport } from "../src/lib/jira/engine";
+import { snapshotActiveSprints } from "../src/lib/sprint-stats";
 import { JiraError } from "../src/lib/jira/client";
 
 // Background job runner. Phase 5 registers real LearnUpon sync jobs here; for
@@ -141,6 +142,23 @@ const importWorker = new Worker(
 );
 importWorker.on("failed", (job, err) => console.error(`[worker] jira-import job ${job?.id} failed:`, err));
 
+// Nightly sprint snapshots for burndowns (lib/sprint-stats.ts), just before midnight UTC.
+const sprintDaysQueue = new Queue("sprint-days", { connection });
+sprintDaysQueue
+  .add("snapshot", {}, { repeat: { pattern: "55 23 * * *" }, removeOnComplete: true, removeOnFail: 50 })
+  .then(() => console.log("[worker] scheduled nightly sprint snapshots (23:55 UTC)"))
+  .catch((err) => console.error("[worker] failed to schedule sprint snapshots:", err));
+const sprintDaysWorker = new Worker(
+  "sprint-days",
+  async () => {
+    const n = await snapshotActiveSprints(prisma);
+    console.log(`[worker] sprint snapshots: ${n} active sprint(s)`);
+    return { ok: true, sprints: n };
+  },
+  { connection },
+);
+sprintDaysWorker.on("failed", (job, err) => console.error(`[worker] sprint-days job ${job?.id} failed:`, err));
+
 console.log("[worker] starting…");
 
 async function shutdown() {
@@ -150,6 +168,8 @@ async function shutdown() {
   await remindersWorker.close();
   await maintenanceWorker.close();
   await importWorker.close();
+  await sprintDaysWorker.close();
+  await sprintDaysQueue.close();
   await lmsQueue.close();
   await remindersQueue.close();
   await maintenanceQueue.close();

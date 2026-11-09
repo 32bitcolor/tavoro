@@ -19,6 +19,8 @@ import {
 import { createSprint, renameSprint, setSprintDates, setSprintStatus } from "@/app/actions/sprints";
 import { completeSprint, planCard, startSprint } from "@/app/actions/backlog";
 import { loadBacklog, RANK_ORDER, type BacklogCard } from "@/lib/backlog";
+import { loadSprintReport, loadVelocity } from "@/lib/sprint-report";
+import { loadRoadmap } from "@/lib/roadmap";
 import { formatEstimate } from "@/lib/card-fields";
 import { asSprintReport, sprintReportLine } from "@/lib/sprint";
 import { check, day, link, parseDate, principal, resolveCardId, tool, ToolError } from "@/lib/mcp/util";
@@ -442,6 +444,69 @@ export function registerPlanningTools(server: McpServer) {
       const dest = to === "backlog" || to === "new" ? to : (await resolveSprint(a.move_unfinished_to)).id;
       const r = check(await completeSprint(s.id, dest));
       return { ok: true, sprint: s.name, done: r.done, unfinishedMoved: r.moved, movedTo: r.movedTo?.name ?? "Backlog" };
+    },
+  );
+
+  tool(
+    server,
+    "get_sprint_report",
+    {
+      title: "Get a sprint report",
+      description:
+        "A sprint's report: what it committed to at the start, what's done and not done, cards added after the start, where unfinished cards went, and its burndown (remaining work per day against the ideal line; null where no snapshot exists). sprint = name, id, or 'active'.",
+      input: { sprint: z.string().min(1).default("active") },
+      kind: "read",
+    },
+    async ({ sprint }) => {
+      const s = await resolveSprint(sprint);
+      const r = await loadSprintReport(principal().workspaceId, s.id);
+      if (!r) throw new ToolError("Sprint not found.");
+      const card = (c: (typeof r.done)[number]) => ({ key: c.key ?? undefined, title: c.title, estimate: c.estimate ?? undefined, status: c.status ?? undefined, addedAfterStart: r.addedIds.includes(c.id) || undefined });
+      return {
+        ...r.sprint,
+        url: link(`/sprints/${s.id}/report`),
+        committed: r.committed ?? undefined,
+        done: r.tally ? { cards: r.tally.doneCards, points: r.tally.donePoints } : undefined,
+        notDone: r.tally ? { cards: r.tally.notDoneCards, points: r.tally.notDonePoints } : undefined,
+        addedAfterStart: r.addedAfterStart ?? undefined,
+        unfinishedMovedTo: r.sprint.status === "completed" ? (r.movedTo?.name ?? "Backlog") : undefined,
+        burndown: r.burndown ? { unit: r.burndown.unit, days: r.burndown.days.map((d, i) => ({ day: d.day, remaining: d.remaining, ideal: r.burndown!.ideal[i]?.value ?? null })) } : undefined,
+        doneCards: r.done.map(card),
+        notDoneCards: r.notDone.map(card),
+      };
+    },
+  );
+
+  tool(
+    server,
+    "get_velocity",
+    {
+      title: "Get velocity",
+      description: "Committed vs. completed work for the last completed sprints (oldest first), and the average of the last three — for forecasting how much fits in the next sprint.",
+      input: { sprints: z.number().int().min(1).max(20).default(8) },
+      kind: "read",
+    },
+    async ({ sprints }) => {
+      const v = await loadVelocity(principal().workspaceId, sprints);
+      return { unit: v.unit, averageOfLastThree: v.average, sprints: v.rows.map((r) => ({ name: r.name, completedOn: r.completedAt.slice(0, 10), committed: r.committed, completed: r.completed })), url: link("/reports?tab=sprints") };
+    },
+  );
+
+  tool(
+    server,
+    "get_roadmap",
+    {
+      title: "Get the roadmap",
+      description: "Epics across every board with their start and due dates and progress (cards done of total), earliest first. Set an epic's dates with update_card (start, due).",
+      input: { include_done: z.boolean().default(false) },
+      kind: "read",
+    },
+    async ({ include_done }) => {
+      const epics = (await loadRoadmap(principal().workspaceId)).filter((e) => include_done || !e.done);
+      return {
+        url: link("/sprints/roadmap"),
+        epics: epics.map((e) => ({ key: e.key ?? undefined, id: e.id, title: e.title, board: e.boardName, status: e.status ?? undefined, start: e.startDate ?? undefined, due: e.dueDate ?? undefined, done: e.progress.done, total: e.progress.total })),
+      };
     },
   );
 }

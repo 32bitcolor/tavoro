@@ -19,6 +19,9 @@ import { cn } from "@/lib/utils";
 import { PageContainer, PageHeader, SectionHeader } from "@/components/shared/page";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ColumnChart, type ChartBucket } from "@/components/reports/column-chart";
+import { VelocityChart } from "@/components/reports/velocity-chart";
+import { loadVelocity } from "@/lib/sprint-report";
+import { prisma } from "@/lib/db";
 
 export const metadata = { title: "Reports · Tavoro" };
 
@@ -27,6 +30,7 @@ const TABS = [
   { key: "delivery", label: "Delivery" },
   { key: "reviews", label: "Reviews" },
   { key: "time", label: "Time" },
+  { key: "sprints", label: "Sprints" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
@@ -114,12 +118,57 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         {tab === "delivery" && <DeliveryTab ws={ws} since={since} now={now} range={range} />}
         {tab === "reviews" && <ReviewsTab ws={ws} since={since} now={now} range={range} />}
         {tab === "time" && <TimeTab ws={ws} since={since} now={now} range={range} />}
+        {tab === "sprints" && <SprintsTab ws={ws} since={since} now={now} range={range} />}
       </div>
     </PageContainer>
   );
 }
 
 type TabProps = { ws: string; since: Date; now: Date; range: ReportRange };
+
+/** Velocity over the last completed sprints. The time range doesn't apply: it's per sprint. */
+async function SprintsTab({ ws }: TabProps) {
+  const v = await loadVelocity(ws);
+  const [active, recent] = await Promise.all([
+    prisma.sprint.findMany({ where: { workspaceId: ws, status: "active" }, orderBy: { startDate: "asc" }, select: { id: true, name: true } }),
+    prisma.sprint.findMany({ where: { workspaceId: ws, status: "completed" }, orderBy: { completedAt: "desc" }, take: 8, select: { id: true, name: true, completedAt: true } }),
+  ]);
+  const label = v.unit === "points" ? "pts" : "cards";
+  const last = v.rows[v.rows.length - 1];
+  return (
+    <div className="flex flex-col gap-6">
+      <Stats
+        items={[
+          { label: "Average velocity", value: v.average != null ? `${v.average} ${label}` : "—", hint: v.rows.length === 1 ? "The one completed sprint" : v.rows.length ? `Last ${Math.min(3, v.rows.length)} completed sprints` : undefined },
+          { label: "Last sprint", value: last ? `${last.completed} of ${last.committed}` : "—", hint: last?.name },
+          { label: "Completed sprints", value: String(v.rows.length), hint: "Shown below, up to 8" },
+          { label: "Active now", value: String(active.length) },
+        ]}
+      />
+      {v.rows.length ? (
+        <VelocityChart rows={v.rows} unit={v.unit} average={v.average} />
+      ) : (
+        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+          Velocity appears once a sprint is completed. Complete one from the Backlog or the Sprints page.
+        </p>
+      )}
+      <section>
+        <h2 className="mb-2 text-sm font-semibold">Sprint reports</h2>
+        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border text-sm">
+          {[...active.map((sp) => ({ ...sp, completedAt: null as Date | null })), ...recent].map((sp) => (
+            <li key={sp.id}>
+              <Link href={`/sprints/${sp.id}/report`} className="flex items-center justify-between gap-2 px-4 py-2 hover:bg-hover">
+                <span className="font-medium">{sp.name}</span>
+                <span className="text-xs text-muted-foreground">{sp.completedAt ? `Completed ${sp.completedAt.toLocaleDateString()}` : "Active"}</span>
+              </Link>
+            </li>
+          ))}
+          {active.length + recent.length === 0 && <li className="px-4 py-3 text-muted-foreground">No sprints have started yet.</li>}
+        </ul>
+      </section>
+    </div>
+  );
+}
 
 function Stats({ items }: { items: { label: string; value: string; hint?: string }[] }) {
   return (

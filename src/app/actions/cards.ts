@@ -64,6 +64,7 @@ export async function getCardDetail(cardId: string) {
         title: true,
         description: true,
         dueDate: true,
+        startDate: true,
         keySeq: true,
         sprintId: true,
         done: true,
@@ -186,6 +187,7 @@ export async function getCardDetail(cardId: string) {
       title: card.title,
       description: card.description,
       dueDate: card.dueDate ? card.dueDate.toISOString() : null,
+      startDate: card.startDate ? card.startDate.toISOString() : null,
       keySeq: card.keySeq,
       sprintId: card.sprintId,
       private: card.private,
@@ -296,15 +298,35 @@ export async function updateCardDescription(cardId: string, description: string 
 export async function setCardDueDate(cardId: string, iso: string | null) {
   const card = await getCardForUser(cardId);
   if (!card) return { error: "Card not found." };
-  const dueDate = iso ? new Date(iso) : null;
-  if (iso && Number.isNaN(dueDate!.getTime())) return { error: "Invalid date." };
+  const before = await prisma.card.findUnique({ where: { id: cardId }, select: { startDate: true } });
+  return setCardDates(cardId, before?.startDate?.toISOString() ?? null, iso);
+}
+
+/** When work on a card starts. Shown for epics: the roadmap draws them from start to due. */
+export async function setCardStartDate(cardId: string, iso: string | null) {
+  const card = await getCardForUser(cardId);
+  if (!card) return { error: "Card not found." };
   const before = await prisma.card.findUnique({ where: { id: cardId }, select: { dueDate: true } });
-  await prisma.card.update({ where: { id: cardId }, data: { dueDate } });
+  return setCardDates(cardId, iso, before?.dueDate?.toISOString() ?? null);
+}
+
+/** Start and due date together (the roadmap's drag), each recorded in History if it changed. */
+export async function setCardDates(cardId: string, startIso: string | null, dueIso: string | null) {
+  const card = await getCardForUser(cardId);
+  if (!card) return { error: "Card not found." };
+  const startDate = startIso ? new Date(startIso) : null;
+  const dueDate = dueIso ? new Date(dueIso) : null;
+  if ((startIso && Number.isNaN(startDate!.getTime())) || (dueIso && Number.isNaN(dueDate!.getTime()))) return { error: "Invalid date." };
   const ymd = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
-  if (ymd(before?.dueDate) !== ymd(dueDate)) {
-    await recordActivity(cardId, (await getCurrentUser())?.id, "due", { from: ymd(before?.dueDate), to: ymd(dueDate) });
-  }
+  if (startDate && dueDate && ymd(startDate)! > ymd(dueDate)!) return { error: "The start date must be on or before the due date." };
+  const before = await prisma.card.findUnique({ where: { id: cardId }, select: { dueDate: true, startDate: true } });
+  await prisma.card.update({ where: { id: cardId }, data: { dueDate, startDate } });
+  const me = (await getCurrentUser())?.id;
+  if (ymd(before?.dueDate) !== ymd(dueDate)) await recordActivity(cardId, me, "due", { from: ymd(before?.dueDate), to: ymd(dueDate) });
+  if (ymd(before?.startDate) !== ymd(startDate)) await recordActivity(cardId, me, "start", { from: ymd(before?.startDate), to: ymd(startDate) });
   revalidatePath(boardPath(card.boardId));
+  revalidatePath("/sprints/roadmap");
+  return { ok: true as const };
 }
 
 // ── Type, priority, estimate (docs/JIRA-PARITY.md) ──────────────────────────

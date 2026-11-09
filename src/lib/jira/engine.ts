@@ -797,6 +797,23 @@ export async function runImport(deps: Deps, importId: string) {
     await save();
   }
 
+  // ── Closed Jira sprints: a result for velocity, from the cards still in them ──
+  {
+    const closed = await db.sprint.findMany({
+      where: { workspaceId: ws, externalRef: { startsWith: `jira:${cloudId}:sprint:` }, status: "completed", report: { equals: Prisma.DbNull } },
+      select: { id: true, completedAt: true },
+    });
+    for (const sp of closed) {
+      const cards = await db.card.findMany({ where: { sprintId: sp.id, columnId: { not: null }, type: { not: "epic" } }, select: { id: true, estimate: true, status: { select: { category: true } } } });
+      const t = (list: typeof cards) => ({ count: list.length, estimate: Math.round(list.reduce((n, c) => n + (c.estimate ?? 0), 0) * 100) / 100, cardIds: list.map((c) => c.id) });
+      const done = cards.filter((c) => c.status?.category === "done");
+      await db.sprint.update({
+        where: { id: sp.id },
+        data: { report: { completed: { at: (sp.completedAt ?? new Date()).toISOString(), done: t(done), notDone: t(cards.filter((c) => c.status?.category !== "done")), movedTo: null, addedAfterStart: 0 } } },
+      });
+    }
+  }
+
   // ── Backlog order: Jira's rank, for imported cards that don't have one yet ──
   if (progress.phase === "rank") {
     const unranked = inRun

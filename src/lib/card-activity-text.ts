@@ -12,6 +12,7 @@ export type ActivityKind =
   | "estimate"
   | "type"
   | "due"
+  | "start"
   | "sprint"
   | "epic"
   | "link"
@@ -55,6 +56,8 @@ export function describeActivity(kind: string, data: ActivityData): string {
       return `changed the type from ${v(data.from)} to ${v(data.to)}`;
     case "due":
       return data.to ? (data.from ? `moved the due date from ${data.from} to ${data.to}` : `set the due date to ${data.to}`) : "cleared the due date";
+    case "start":
+      return data.to ? (data.from ? `moved the start date from ${data.from} to ${data.to}` : `set the start date to ${data.to}`) : "cleared the start date";
     case "sprint":
       return data.to ? (data.from ? `moved it from ${data.from} to ${data.to}` : `added it to ${data.to}`) : `took it out of ${v(data.from)}`;
     case "epic":

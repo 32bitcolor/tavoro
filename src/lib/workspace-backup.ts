@@ -13,7 +13,7 @@ import { IntakeFieldList } from "@/lib/intake-fields";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 24; // bump when the shape changes (22: Card.rank; 23: ImportedCard, Comment.importedAuthor, Board.externalRef; 24: sprints)
+export const BACKUP_FORMAT = 25; // bump when the shape changes (22: Card.rank; 23: ImportedCard, Comment.importedAuthor, Board.externalRef; 24: sprints; 25: sprint days, Card.startDate)
 
 const WS = "__ws";
 const USER = "__user";
@@ -67,6 +67,8 @@ const SPECS: Spec[] = [
       return true;
     },
   },
+  // A sprint's daily snapshots, for its burndown (format 25+).
+  { key: null, model: "sprintDay", where: (w) => ({ sprint: { workspaceId: w } }), fks: { sprintId: "sprint" } },
   // Project before Board so Board.projectId can remap on import; both before
   // Column/Card so their statusId → workspaceStatus remaps too.
   { key: "project", model: "project", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },

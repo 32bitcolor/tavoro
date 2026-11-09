@@ -10,6 +10,7 @@ import { recordActivity } from "@/lib/card-activity";
 import { ensureRanks, rankBetween } from "@/lib/backlog";
 import { asSprintReport, nextSprintName, type SprintReport, type SprintTally } from "@/lib/sprint";
 import { assignCardToSprint } from "@/app/actions/sprints";
+import { recordSprintDay } from "@/lib/sprint-stats";
 
 // Backlog planning and the sprint lifecycle (docs/JIRA-PARITY.md, phase 4).
 // A sprint goes planned → active (Start sprint) → completed (Complete sprint, which
@@ -120,6 +121,8 @@ export async function startSprint(sprintId: string, input: { name: string; goal?
       report: report as Prisma.InputJsonValue,
     },
   });
+  // The burndown's first point.
+  await recordSprintDay(prisma, sprintId, new Date(`${startDate}T12:00:00Z`) < new Date() ? new Date(`${startDate}T12:00:00Z`) : new Date());
   revalidate();
   revalidatePath(`/sprints/${sprintId}`);
   return { ok: true as const };
@@ -180,6 +183,13 @@ export async function completeSprint(sprintId: string, moveTo: string) {
 
   const me = (await getCurrentUser())?.id;
   await prisma.$transaction(async (tx) => {
+    // The burndown's last point, before the unfinished cards leave.
+    await recordSprintDay(tx, sprintId, new Date(), {
+      scopeCards: done.count + notDone.count,
+      scopePoints: Math.round((done.estimate + notDone.estimate) * 100) / 100,
+      doneCards: done.count,
+      donePoints: done.estimate,
+    });
     await tx.card.updateMany({ where: { id: { in: notDone.cardIds } }, data: { sprintId: dest?.id ?? null } });
     for (const id of notDone.cardIds) await recordActivity(id, me, "sprint", { from: s.name, to: dest?.name ?? null }, tx);
     await tx.sprint.update({ where: { id: sprintId }, data: { status: "completed", completedAt: new Date(), report: report as Prisma.InputJsonValue } });

@@ -49,6 +49,10 @@ The Time report is built from the **Time tracking** section of each project, so 
 - Hours logged per week or month, by project and by person.
 - **Typical effort by deliverable type** — the median and average hours spent on finished deliverables of each type (storyboards, videos, assessments…), across all time, not just the window. Log time against a deliverable to feed it; it’s the number to reach for when estimating new work.
 
+## Sprints
+
+**Velocity**: for each of the last eight completed sprints, what it committed to when it started (the outline) and what it completed (the solid column), in story points if cards are estimated, otherwise in cards — with the average of the last three, a fair guide to how much fits in the next sprint. Below it, each active and recent sprint links to its report and burndown. The time range doesn’t apply to this tab.
+
 ---
 
 ← [Single sign-on & provisioning](sso.md) · [All guides](README.md) · [Import from Jira](jira-import.md) →

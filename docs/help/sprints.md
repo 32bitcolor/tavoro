@@ -33,6 +33,18 @@ Click a card to open it in the card panel. **Create sprint** on the Backlog sect
 
 > **Sprint status and card status.** A sprint’s status is separate from the status of the cards in it. A card is “done” for a sprint when its status is in the **Done** category.
 
+## Sprint report and burndown
+
+Every started sprint has a **Report** (on its sprint board, its Backlog section and the Sprints page). It shows what the sprint committed to when it started, what’s done and not done, how many cards were added after the start, and where unfinished cards went.
+
+The **burndown** plots the work remaining each day — in points if the sprint’s cards have estimates, otherwise in cards — against a dashed ideal line from the starting total down to zero on the last day. Tavoro records each sprint’s progress every night while it’s active, and when it starts and completes; days before that have no point. Hover or use the arrow keys for a day’s numbers, or open **Show as table**.
+
+**Velocity** — committed vs. completed across recent sprints — is in **Reports → Sprints**.
+
+## Roadmap
+
+**Sprints → Roadmap** lays out epics from every board on a timeline, from their **start date** to their **due date**, each bar filled by how many of its cards are done. Epics have a **Start date** field in the card panel. On the roadmap, drag a bar to move it, or drag either end to change one date; click a bar to open the epic. Switch between **Months** and **Quarters**, filter by board, and show done epics if you want them. Epics with no dates are listed underneath.
+
 ## The sprint board
 
 ![A sprint board with cards from several boards grouped by status columns, and Project, Assignee and Label filters](../../public/help-shots/sprint-board.png)

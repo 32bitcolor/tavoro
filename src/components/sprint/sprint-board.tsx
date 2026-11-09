@@ -3,7 +3,7 @@
 import { useMemo, useState, type ReactNode, useId } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FolderKanban, ListOrdered, Tag, User, X, Zap } from "lucide-react";
+import { ChartLine, FolderKanban, ListOrdered, Tag, User, X, Zap } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -286,6 +286,12 @@ export function SprintBoard({
             <ListOrdered className="size-4" aria-hidden="true" />
             Backlog
           </Link>
+          {sprint.status !== "planned" && (
+            <Link href={`/sprints/${sprint.id}/report`} className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-sm text-muted-foreground hover:bg-hover hover:text-foreground">
+              <ChartLine className="size-4" aria-hidden="true" />
+              Report
+            </Link>
+          )}
           {sprint.status === "planned" && (
             <StartSprintButton
               sprint={{ id: sprint.id, name: sprint.name, goal: sprint.goal, startDate: sprint.startDate?.slice(0, 10) ?? null, endDate: sprint.endDate?.slice(0, 10) ?? null }}

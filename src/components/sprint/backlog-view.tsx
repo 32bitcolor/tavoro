@@ -364,9 +364,14 @@ export function BacklogView({
         title="Backlog"
         description="Rank work across every board, plan it into sprints, then start and complete them."
         actions={
-          <Link href="/sprints" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline">
-            All sprints <ArrowRight className="size-3.5" aria-hidden="true" />
-          </Link>
+          <span className="flex items-center gap-4">
+            <Link href="/sprints/roadmap" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline">
+              Roadmap <ArrowRight className="size-3.5" aria-hidden="true" />
+            </Link>
+            <Link href="/sprints" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline">
+              All sprints <ArrowRight className="size-3.5" aria-hidden="true" />
+            </Link>
+          </span>
         }
       />
 
@@ -503,6 +508,11 @@ export function BacklogView({
                       <Link href={`/sprints/${s.id}`} className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:bg-hover hover:text-foreground">
                         Sprint board <ArrowRight className="size-3" aria-hidden="true" />
                       </Link>
+                      {s.status === "active" && (
+                        <Link href={`/sprints/${s.id}/report`} className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:bg-hover hover:text-foreground">
+                          Report
+                        </Link>
+                      )}
                       {s.status === "active" ? (
                         <CompleteSprintButton size="xs" sprintId={s.id} estimateUnit={estimateUnit} onCompleted={(r) => onCompleted(s.id, r)} />
                       ) : (

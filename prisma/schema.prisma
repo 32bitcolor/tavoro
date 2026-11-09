@@ -101,23 +101,42 @@ model Workspace {
 // ADDIE/SAM phases. One sprint can span projects; the team sprint board is a view
 // over its cards. Projects opt in via Project.sprintsEnabled.
 model Sprint {
-  id          String    @id @default(cuid())
+  id          String      @id @default(cuid())
   workspaceId String
   name        String
   goal        String?
-  status      String    @default("planned") // planned / active / completed
+  status      String      @default("planned") // planned / active / completed
   startDate   DateTime?
   endDate     DateTime?
   completedAt DateTime? // set by completeSprint (lib/sprint-plan.ts)
   report      Json? // what the sprint finished with: lib/sprint.ts SprintReport
   externalRef String? // "jira:<cloudId>:sprint:<id>" when it came from a Jira import (lib/jira)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   cards       Card[]
+  days        SprintDay[]
 
   @@unique([workspaceId, externalRef])
   @@index([workspaceId, status])
+}
+
+// What a sprint looked like at the end of a day (UTC), for its burndown
+// (lib/sprint-stats.ts). Written nightly by the worker for active sprints, and when a
+// sprint starts or completes. Today's point is always computed live.
+model SprintDay {
+  id          String   @id @default(cuid())
+  sprintId    String
+  day         DateTime @db.Date
+  scopeCards  Int
+  scopePoints Float
+  doneCards   Int
+  donePoints  Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  sprint      Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+
+  @@unique([sprintId, day])
 }
 
 // Role is per-workspace (on Membership), never global on User.
@@ -212,6 +231,7 @@ model Card {
   title          String
   description    String? // TipTap document, stored as JSON string
   dueDate        DateTime?
+  startDate      DateTime? // when work starts; the roadmap draws epics from startDate to dueDate
   done           Boolean          @default(false) // only meaningful for subtask-cards
   private        Boolean          @default(false) // never shown on the board's public link (top-level cards; subtasks follow their card)
   type           String           @default("task") // task / bug / story / epic (lib/card-fields.ts); subtasks keep "task" and show as Subtask

@@ -91,6 +91,35 @@ export default function Sprints() {
         &ldquo;done&rdquo; for a sprint when its status is in the <UI>Done</UI> category.
       </Callout>
 
+      <H2>Sprint report and burndown</H2>
+      <P>
+        Every started sprint has a <UI>Report</UI> (on its sprint board, its Backlog section and the
+        Sprints page). It shows what the sprint committed to when it started, what&rsquo;s done and
+        not done, how many cards were added after the start, and where unfinished cards went.
+      </P>
+      <P>
+        The <strong>burndown</strong> plots the work remaining each day &mdash; in points if the
+        sprint&rsquo;s cards have estimates, otherwise in cards &mdash; against a dashed ideal line
+        from the starting total down to zero on the last day. Tavoro records each sprint&rsquo;s
+        progress every night while it&rsquo;s active, and when it starts and completes; days before
+        that have no point. Hover or use the arrow keys for a day&rsquo;s numbers, or open{" "}
+        <UI>Show as table</UI>.
+      </P>
+      <P>
+        <strong>Velocity</strong> &mdash; committed vs. completed across recent sprints &mdash; is in{" "}
+        <UI>Reports → Sprints</UI>.
+      </P>
+
+      <H2>Roadmap</H2>
+      <P>
+        <UI>Sprints → Roadmap</UI> lays out epics from every board on a timeline, from their{" "}
+        <strong>start date</strong> to their <strong>due date</strong>, each bar filled by how many of
+        its cards are done. Epics have a <UI>Start date</UI> field in the card panel. On the roadmap,
+        drag a bar to move it, or drag either end to change one date; click a bar to open the epic.
+        Switch between <UI>Months</UI> and <UI>Quarters</UI>, filter by board, and show done epics if you
+        want them. Epics with no dates are listed underneath.
+      </P>
+
       <H2>The sprint board</H2>
       <Screenshot name="sprint-board" alt="A sprint board with cards from several boards grouped by status columns, and Project, Assignee and Label filters" caption="Sprint 42's board: cards from across projects, grouped by status." />
       <P>
