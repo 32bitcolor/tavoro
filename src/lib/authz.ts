@@ -117,11 +117,36 @@ export async function getBoardForUser(boardId: string) {
 export async function resolveCardKey(prefix: string, keySeq: number) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
+  const visibleCard = {
+    OR: [
+      { column: { board: { workspace: ownedByUser(ctx), ...boardAccessOR(ctx) } } },
+      { parentCard: { column: { board: { workspace: ownedByUser(ctx), ...boardAccessOR(ctx) } } } },
+    ],
+  };
+  /** Where a card is now, if this member can see it. */
+  const follow = async (cardId: string) => {
+    const moved = await prisma.card.findFirst({
+      where: { id: cardId, ...visibleCard },
+      select: { id: true, title: true, parentCardId: true, column: { select: { boardId: true } }, parentCard: { select: { column: { select: { boardId: true } } } } },
+    });
+    if (!moved) return null;
+    const boardId = moved.column?.boardId ?? moved.parentCard!.column!.boardId;
+    return { boardId, cardId: moved.id, title: moved.title, isSubtask: moved.parentCardId != null };
+  };
+  // A card imported from Jira under a different key still answers to its Jira key.
+  const imported = async () => {
+    const hit = await prisma.importedCard.findFirst({
+      where: { externalKey: { equals: `${prefix}-${keySeq}`, mode: "insensitive" }, card: visibleCard },
+      select: { cardId: true },
+    });
+    return hit ? follow(hit.cardId) : null;
+  };
+
   const board = await prisma.board.findFirst({
     where: { cardKeyPrefix: { equals: prefix, mode: "insensitive" }, workspace: ownedByUser(ctx) },
     select: { id: true },
   });
-  if (!board) return null;
+  if (!board) return imported();
   const visible = await prisma.board.count({ where: { id: board.id, ...boardAccessOR(ctx) } });
   const card = visible
     ? await prisma.card.findFirst({
@@ -143,20 +168,7 @@ export async function resolveCardKey(prefix: string, keySeq: number) {
     where: { boardId_keySeq: { boardId: board.id, keySeq } },
     select: { cardId: true },
   });
-  if (!alias) return null;
-  const moved = await prisma.card.findFirst({
-    where: {
-      id: alias.cardId,
-      OR: [
-        { column: { board: { workspace: ownedByUser(ctx), ...boardAccessOR(ctx) } } },
-        { parentCard: { column: { board: { workspace: ownedByUser(ctx), ...boardAccessOR(ctx) } } } },
-      ],
-    },
-    select: { id: true, title: true, parentCardId: true, column: { select: { boardId: true } }, parentCard: { select: { column: { select: { boardId: true } } } } },
-  });
-  if (!moved) return null;
-  const boardId = moved.column?.boardId ?? moved.parentCard!.column!.boardId;
-  return { boardId, cardId: moved.id, title: moved.title, isSubtask: moved.parentCardId != null };
+  return alias ? follow(alias.cardId) : imported();
 }
 
 export async function getColumnForUser(columnId: string) {

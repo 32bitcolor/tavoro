@@ -93,6 +93,7 @@ export async function getCardDetail(cardId: string) {
             id: true,
             body: true,
             createdAt: true,
+            importedAuthor: true,
             author: { select: { id: true, name: true, email: true } },
           },
         },
@@ -236,6 +237,7 @@ export async function getCardDetail(cardId: string) {
       body: c.body,
       createdAt: c.createdAt.toISOString(),
       author: c.author,
+      importedAuthor: c.importedAuthor,
     })),
     attachments: card.attachments.map((a) => ({
       id: a.id,

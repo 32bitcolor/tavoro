@@ -1,6 +1,6 @@
 # Jira parity: boards that can replace Jira for an ID team
 
-**Status:** In progress. Phases 1–3 shipped to prod (phase 3 on 2026-11-09); phase 4 (Backlog, start/complete sprint) built.
+**Status:** Phases 1–4 shipped to prod (phase 4 on 2026-11-09); phase 5 (Jira import) built and tested against the mock.
 **Owner:** @32bitcolor
 
 ## Why
@@ -218,6 +218,37 @@ team import, keep working in Jira for a week, and top up before switching.
 - The site must be `*.atlassian.net` (or an admin-approved host) and is fetched server side
   with redirects refused, so the importer can't be pointed at internal addresses.
 - A backup is suggested before the first import (Settings → Backups).
+
+### As built (phase 5)
+
+- **Code:** `src/lib/jira/` — `client.ts` (REST client: site allow-list, refused
+  redirects, 429 backoff, paging by `nextPageToken` on `/rest/api/3/search/jql`),
+  `adf.ts` (ADF → TipTap, unit-tested), `map.ts` (mapping rules, unit-tested), `engine.ts`
+  (scan + import, run on the worker's `jira-import` queue). UI and actions:
+  `Settings → Import`, `app/actions/jira-import.ts`.
+- **Token:** the doc said "never stored"; the worker needs it for the length of the run,
+  so it's sealed onto the `JiraImport` row (AES-256-GCM, key derived from
+  `SESSION_SECRET`, `lib/secret-box.ts`) and wiped when the run finishes, fails or is
+  cancelled. A re-run asks for the token again.
+- **Re-runs:** `ImportedCard` (cardId, `jira:<cloudId>:<issueId>`, Jira key, snapshot of
+  what the last run wrote per field + Jira→Tavoro comment and attachment ids) instead of
+  a `Card.externalRef` column. `Board.externalRef` / `Sprint.externalRef` find the board
+  and sprints again. Comments already imported aren't updated if edited in Jira. A card
+  deleted in Tavoro is imported again on the next run.
+- **Keys:** when a card can't keep its Jira key (existing board with another prefix, or
+  the number is taken), it gets the board's next key and the old key still resolves
+  through `ImportedCard.externalKey` (search, MCP, links) — `CardKeyAlias` needs the
+  prefix's own board, which there isn't.
+- **Unmatched comment authors:** `Comment.importedAuthor` holds the name and the UI shows
+  "Jane Doe (from Jira)"; no "Originally by" line is added to the body.
+- **People:** matched by email, then by display name when Jira hides emails and exactly
+  one member has that name.
+- **Columns:** from the Jira board's column layout; a Jira column with several statuses
+  becomes one Tavoro column per status, side by side.
+- **Order:** Jira's rank field orders the imported cards in the Backlog.
+- **Mock:** `scripts/jira-mock/server.mjs` (run it, set
+  `JIRA_ALLOWED_HOSTS=localhost:4010,127.0.0.1:4011`, connect to
+  `http://localhost:4010` as `admin@acme.test` / `mock-token`).
 
 ### MCP and backups
 

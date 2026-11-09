@@ -29,6 +29,7 @@ model User {
   cardLinksCreated        CardLink[]          @relation("CardLinkCreator")
   watchedCards            CardWatcher[]       @relation("CardWatching")
   cardActivity            CardActivity[]      @relation("CardActivityActor")
+  jiraImports             JiraImport[]        @relation("JiraImportCreator")
   uploadedAssets          Asset[]             @relation("AssetUploader")
   bankItems               BankItem[]          @relation("BankItemCreator")
   contentDependencies     ContentDependency[] @relation("DependencyCreator")
@@ -83,6 +84,7 @@ model Workspace {
   intakeRequests       IntakeRequest[]
   statuses             WorkspaceStatus[]
   sprints              Sprint[]
+  jiraImports          JiraImport[]
   labels               Label[]
   savedViews           SavedView[]
   contentItems         ContentItem[]
@@ -108,11 +110,13 @@ model Sprint {
   endDate     DateTime?
   completedAt DateTime? // set by completeSprint (lib/sprint-plan.ts)
   report      Json? // what the sprint finished with: lib/sprint.ts SprintReport
+  externalRef String? // "jira:<cloudId>:sprint:<id>" when it came from a Jira import (lib/jira)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   cards       Card[]
 
+  @@unique([workspaceId, externalRef])
   @@index([workspaceId, status])
 }
 
@@ -179,8 +183,10 @@ model Board {
   groupAccess         BoardGroup[]
   savedViews          SavedView[]
   keyAliases          CardKeyAlias[]
+  externalRef         String? // "jira:<cloudId>:project:<id>" for a board a Jira import made, so a re-run finds it
 
   @@unique([workspaceId, cardKeyPrefix])
+  @@unique([workspaceId, externalRef])
   @@index([workspaceId])
   @@index([projectId])
 }
@@ -240,6 +246,7 @@ model Card {
   whiteboards    Whiteboard[]
   reviewComments ReviewComment[]
   keyAliases     CardKeyAlias[]
+  imported       ImportedCard?
 
   @@index([columnId, position])
   @@index([parentCardId, position])
@@ -714,13 +721,16 @@ model AssessmentItemObjective {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  cardId    String
-  authorId  String
-  body      String
-  createdAt DateTime @default(now())
-  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  cardId         String
+  authorId       String
+  body           String
+  // Imported from Jira with no matching member: authorId is whoever ran the import, and
+  // this is the original author's name, shown as "Jane Doe (from Jira)".
+  importedAuthor String?
+  createdAt      DateTime @default(now())
+  card           Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  author         User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([cardId, createdAt])
 }
@@ -1271,4 +1281,51 @@ model CardActivity {
   actor     User?    @relation("CardActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([cardId, createdAt])
+}
+
+// ── Jira import (docs/JIRA-PARITY.md, phase 5) ───────────────────────────────
+
+// One import run: connect → scan (dry run) → import, done on the worker. The API token
+// is held only while the run needs it, encrypted (lib/secret-box.ts), and wiped when
+// the run finishes, fails or is cancelled.
+model JiraImport {
+  id          String    @id @default(cuid())
+  workspaceId String
+  createdById String?
+  site        String // "acme.atlassian.net"
+  email       String // the Atlassian account the token belongs to (shown, never used alone)
+  cloudId     String?
+  tokenCipher String?
+  status      String    @default("connected") // connected / scanning / ready / importing / done / failed / cancelled
+  projects    Json      @default("[]") // lib/jira/types.ts ImportProject[]
+  mapping     Json? // lib/jira/types.ts ImportMapping
+  scan        Json? // the dry run: lib/jira/types.ts ScanResult
+  progress    Json? // where the run is, so it can resume after a worker restart
+  report      Json? // what came over and what didn't
+  error       String?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy   User?     @relation("JiraImportCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+}
+
+// A card that came from another tool. `snapshot` is what the last run wrote to each
+// field, so a re-run updates fields nobody has changed in Tavoro since and leaves the
+// rest alone; it also maps the source's comment and attachment ids to ours.
+model ImportedCard {
+  cardId      String   @id
+  workspaceId String
+  externalRef String // "jira:<cloudId>:<issueId>"
+  externalKey String // "PROJ-123", as it was in Jira
+  snapshot    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, externalRef])
+  @@index([workspaceId, externalKey])
 }

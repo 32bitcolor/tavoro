@@ -19,6 +19,7 @@ import {
   KeyRound,
   ChartColumn,
   LayoutTemplate,
+  CloudDownload,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,7 @@ import MembersAccess from "@/components/help/topics/members-access";
 import AccountThemes from "@/components/help/topics/account-themes";
 import AiMcp from "@/components/help/topics/ai-mcp";
 import Sso from "@/components/help/topics/sso";
+import JiraImport from "@/components/help/topics/jira-import";
 import Reports from "@/components/help/topics/reports";
 import Content from "@/components/help/topics/content";
 import Assets from "@/components/help/topics/assets";
@@ -199,6 +201,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     icon: ChartColumn,
     group: "Modules",
     Body: Reports,
+  },
+  {
+    slug: "jira-import",
+    title: "Import from Jira",
+    summary: "Bring Jira Cloud projects over as boards, and top them up later.",
+    icon: CloudDownload,
+    group: "Modules",
+    Body: JiraImport,
   },
   {
     slug: "members-access",

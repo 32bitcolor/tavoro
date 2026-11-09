@@ -16,7 +16,8 @@
     "worker": "tsx worker/index.ts",
     "help:export": "tsx --tsconfig tsconfig.json scripts/export-help.tsx",
     "help:check": "tsx --tsconfig tsconfig.json scripts/export-help.tsx --check",
-    "help:screenshots": "node scripts/help-screenshots.mjs"
+    "help:screenshots": "node scripts/help-screenshots.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1073.0",
@@ -69,7 +70,8 @@
     "prisma": "^7.8.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   },
   "overrides": {
     "lodash-es": "^4.18.1",

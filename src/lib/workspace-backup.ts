@@ -13,7 +13,7 @@ import { IntakeFieldList } from "@/lib/intake-fields";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 22; // bump when the shape changes (22: Card.rank, the backlog order)
+export const BACKUP_FORMAT = 23; // bump when the shape changes (22: Card.rank; 23: ImportedCard, Comment.importedAuthor, Board.externalRef)
 
 const WS = "__ws";
 const USER = "__user";
@@ -230,6 +230,25 @@ const SPECS: Spec[] = [
     prepare: async (d) => !!d.cardId && !(await prisma.cardWatcher.findUnique({ where: { cardId_userId: { cardId: d.cardId, userId: d.userId } } })),
   },
   { key: null, model: "cardActivity", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", actorId: USER }, json: ["data"] },
+  // Cards that came from Jira (format 23+), so importing again into a restored copy
+  // updates them instead of making duplicates. The snapshot's field values name rows of
+  // the original workspace, so they're dropped: the next import treats every field as
+  // unchanged here and refreshes it from Jira. Its comment and attachment maps (keyed by
+  // Jira ids) are kept, so those aren't imported twice.
+  {
+    key: null,
+    model: "importedCard",
+    where: (w) => ({ workspaceId: w }),
+    fks: { cardId: "card", workspaceId: WS },
+    json: ["snapshot"],
+    prepare: async (d) => {
+      if (!d.cardId) return false;
+      const snap = d.snapshot && typeof d.snapshot === "object" && !Array.isArray(d.snapshot) ? { ...d.snapshot } : {};
+      delete snap.f;
+      d.snapshot = snap;
+      return true;
+    },
+  },
   { key: null, model: "boardGroup", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board", groupId: "group" } },
   { key: null, model: "projectGroup", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", groupId: "group" } },
   { key: null, model: "storyboardGroup", where: (w) => ({ storyboard: { workspaceId: w } }), fks: { storyboardId: "storyboard", groupId: "group" } },

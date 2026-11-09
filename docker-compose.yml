@@ -97,6 +97,9 @@ services:
       # Who may update the server (Settings → Updates); default: admins of the oldest workspace.
       INSTANCE_ADMIN_EMAILS: ${INSTANCE_ADMIN_EMAILS:-}
       APP_URL: ${APP_URL:-}
+      # Jira import: extra hosts allowed besides *.atlassian.net (a test mock or an
+      # approved proxy), comma-separated host:port. Leave empty in production.
+      JIRA_ALLOWED_HOSTS: ${JIRA_ALLOWED_HOSTS:-}
       # Old hostnames whose page visits redirect to APP_URL (comma-separated, optional).
       LEGACY_HOSTS: ${LEGACY_HOSTS:-}
       # Shared with the host self-update agent (see deploy/update-agent.sh). The app
@@ -130,6 +133,9 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: "${SMTP_FROM:-Tavoro <no-reply@haggabasin.com>}"
       APP_URL: ${APP_URL:-}
+      # Jira import: extra hosts allowed besides *.atlassian.net (a test mock or an
+      # approved proxy), comma-separated host:port. Leave empty in production.
+      JIRA_ALLOWED_HOSTS: ${JIRA_ALLOWED_HOSTS:-}
       # Guest review links are HMACs keyed by this — reminder emails re-create them.
       SESSION_SECRET: ${SESSION_SECRET}
       # The nightly review-file sweep deletes unused uploads from MinIO.

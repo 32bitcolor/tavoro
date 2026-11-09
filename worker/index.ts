@@ -7,7 +7,9 @@ import { enqueueEmail } from "../src/lib/queues";
 import { runDueReminders, runLifecycleReminders } from "../src/lib/reminders";
 import { sweepReviewFiles } from "../src/lib/review-file-sweep";
 import { sweepOAuth } from "../src/lib/oauth-sweep";
-import { S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { Cancelled, failImport, runImport, scanImport } from "../src/lib/jira/engine";
+import { JiraError } from "../src/lib/jira/client";
 
 // Background job runner. Phase 5 registers real LearnUpon sync jobs here; for
 // now it stays alive and confirms the app ⇄ Redis ⇄ worker topology works.
@@ -105,6 +107,40 @@ const maintenanceWorker = new Worker(
 );
 maintenanceWorker.on("failed", (job, err) => console.error(`[worker] maintenance job ${job?.id} failed:`, err));
 
+// Jira imports (docs/JIRA-PARITY.md, phase 5). A job that dies part way (a restart, a
+// network blip) is retried and resumes from the page it saved; Jira refusing the
+// credentials isn't retried. The token is dropped when the run ends either way.
+const importWorker = new Worker(
+  "jira-import",
+  async (job) => {
+    const importId = String(job.data?.importId ?? "");
+    const deps = {
+      prisma,
+      putObject: async (key: string, bytes: Uint8Array, contentType: string) => {
+        await s3.send(new PutObjectCommand({ Bucket: process.env.S3_BUCKET ?? "tavoro", Key: key, Body: bytes, ContentType: contentType }));
+      },
+    };
+    try {
+      if (job.name === "scan") await scanImport(deps, importId);
+      else await runImport(deps, importId);
+      console.log(`[worker] jira ${job.name} ${importId} finished`);
+    } catch (err) {
+      // Refused credentials or a bad setup (status 0) won't fix themselves; network errors (-1) and 5xx might.
+      const fatal = err instanceof JiraError && (err.status === 401 || err.status === 403 || err.status === 0);
+      const last = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
+      console.error(`[worker] jira ${job.name} ${importId} failed (attempt ${job.attemptsMade + 1}):`, err);
+      if (fatal || last || err instanceof Cancelled) {
+        await failImport(deps, importId, err);
+        return { ok: false };
+      }
+      throw err;
+    }
+    return { ok: true };
+  },
+  { connection, concurrency: 1, lockDuration: 120_000 },
+);
+importWorker.on("failed", (job, err) => console.error(`[worker] jira-import job ${job?.id} failed:`, err));
+
 console.log("[worker] starting…");
 
 async function shutdown() {
@@ -113,6 +149,7 @@ async function shutdown() {
   await emailWorker.close();
   await remindersWorker.close();
   await maintenanceWorker.close();
+  await importWorker.close();
   await lmsQueue.close();
   await remindersQueue.close();
   await maintenanceQueue.close();

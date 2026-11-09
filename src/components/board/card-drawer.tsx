@@ -62,6 +62,8 @@ type CommentT = {
   body: string;
   createdAt: string;
   author: { id: string; name: string | null; email: string };
+  /** Imported from Jira with no matching member: the original author's name. */
+  importedAuthor?: string | null;
 };
 export type CardFacePatch = {
   title?: string;
@@ -1025,7 +1027,15 @@ export function CardDrawer({
                 {comments.map((c) => (
                   <div key={c.id} className="group">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-medium">{c.author.name ?? c.author.email}</span>
+                      <span className="text-xs font-medium">
+                        {c.importedAuthor ? (
+                          <span title={`Imported by ${c.author.name ?? c.author.email}`}>
+                            {c.importedAuthor} <span className="font-normal text-muted-foreground">(from Jira)</span>
+                          </span>
+                        ) : (
+                          (c.author.name ?? c.author.email)
+                        )}
+                      </span>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">{formatTime(c.createdAt)}</span>
                         {(c.author.id === currentUserId || isAdmin) && (

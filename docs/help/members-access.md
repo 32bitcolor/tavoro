@@ -84,4 +84,4 @@ So to lock down a sensitive project, add the right people to a group and tick th
 
 ---
 
-← [Reports](reports.md) · [All guides](README.md) · [Account & themes](account-themes.md) →
+← [Import from Jira](jira-import.md) · [All guides](README.md) · [Account & themes](account-themes.md) →

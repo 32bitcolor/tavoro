@@ -22,3 +22,13 @@ export async function enqueueEmail(msg: { to: string; subject: string; html: str
     console.error("[email] failed to enqueue", err);
   }
 }
+
+// Jira imports (lib/jira/engine.ts) run on the worker: "scan" (the dry run) and
+// "import". One at a time per worker, so a big import can't starve the others.
+const globalForImport = globalThis as unknown as { importQueue?: Queue };
+export const importQueue = globalForImport.importQueue ?? new Queue("jira-import", { connection });
+if (process.env.NODE_ENV !== "production") globalForImport.importQueue = importQueue;
+
+export async function enqueueJiraImport(kind: "scan" | "import", importId: string): Promise<void> {
+  await importQueue.add(kind, { importId }, { jobId: `${kind}-${importId}-${Date.now()}`, attempts: 3, backoff: { type: "exponential", delay: 30_000 }, removeOnComplete: 100, removeOnFail: 100 });
+}
