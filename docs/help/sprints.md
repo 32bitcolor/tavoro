@@ -11,22 +11,34 @@ Sprints live under **Sprints** in the sidebar. Every sprint belongs to your work
 1. On the **Sprints** page, type a name into **New sprint name…**, optionally add a one-line goal in **Goal (optional)**, and click **Create sprint**. The new sprint appears at the top of the list.
 2. Set its window with the two date fields on the sprint row — a start date, the **→** arrow, and an end date. Both are optional, but they’re what makes the sprint a real time box.
 3. Rename a sprint by clicking its title, and edit its goal in place. The count beside the name shows how many cards are currently in the sprint.
-4. Move the sprint through its life with the status dropdown — **Planned** while you’re still gathering cards, **Active** once work is underway, and **Completed** when the window closes.
 
-> **Sprint status.** A sprint’s status is its own lifecycle — it’s separate from the status of the cards inside it. Marking a sprint **Completed** is a record that the iteration is over; it doesn’t move or close the cards on it.
+## The Backlog
 
-**Planned** — The default for a new sprint. Use it while you’re still deciding scope and pulling cards in.
+The **Backlog** (the button at the top of the Sprints page, or **Backlog** on any sprint board) is where you plan. It lists your active and planned sprints, each as a section, and then **Backlog**: every open card that isn’t in a sprint, from every board you can see. Epics aren’t listed themselves — their cards are.
 
-**Active** — The sprint is running. This is the signal that the team is heads-down on these cards for the current window.
+- **Rank** — drag a card up or down to set its priority. The order is one list across all boards, so it’s the team’s priority, not one board’s. New cards start at the bottom.
+- **Plan** — drag a card from the backlog into a sprint, between sprints, or back out. Each section shows its card count and estimate total, so you can see when a sprint is full.
+- **Without dragging** — every card has a **⋯** menu with **Move to top**, **Move to bottom**, and each sprint (or **Backlog**).
+- **Filter** — search by title or key, or filter by type, priority, assignee, label and project. The **Epics** panel on the left shows each open epic’s progress; click one to see only its cards.
 
-**Completed** — The window has closed. Cards that didn’t finish keep living on their home boards — you can move them to the next sprint.
+Click a card to open it in the card panel. **Create sprint** on the Backlog section adds the next sprint (*Sprint 43* after *Sprint 42*).
+
+## Start and complete a sprint
+
+**Planned** — A new sprint. Plan cards into it from the Backlog. **Start sprint** asks for its name, dates (today for two weeks, unless you set dates already) and goal, and makes it active. What the sprint holds when it starts is recorded, so later reports can tell planned work from work added mid-sprint.
+
+**Active** — The sprint is running. When it ends, click **Complete sprint** (on the Backlog, the Sprints page or the sprint board). It shows how many cards are done and asks where the unfinished ones go: a planned sprint, a **New sprint**, or the **Backlog**.
+
+**Completed** — Done cards stay with the sprint, and its result is kept — for example *8 of 10 cards done · 21 of 26 pts* — on the Sprints page and the sprint board. A completed sprint is closed to new cards. **Reopen** makes it active again if you completed it by mistake.
+
+> **Sprint status and card status.** A sprint’s status is separate from the status of the cards in it. A card is “done” for a sprint when its status is in the **Done** category.
 
 ## The sprint board
 
 ![A sprint board with cards from several boards grouped by status columns, and Project, Assignee and Label filters](../../public/help-shots/sprint-board.png)
 *Sprint 42's board: cards from across projects, grouped by status.*
 
-Click **Open board** on any sprint to see its cards laid out as a Kanban view. Instead of the columns a single board uses, the sprint board groups every card by your workspace’s statuses — by default **Backlog**, **To do**, **In progress**, **In review**, and **Done** — so a mix of cards from different boards reads as one shared picture of progress.
+Click **Open board** on any sprint (or **Sprint board** on the Backlog) to see its cards laid out as a Kanban view. Instead of the columns a single board uses, the sprint board groups every card by your workspace’s statuses — by default **Backlog**, **To do**, **In progress**, **In review**, and **Done** — so a mix of cards from different boards reads as one shared picture of progress.
 
 Each card shows its type, key, priority, home project, labels, estimate, due date, and assignees. If any card has an estimate, each column shows its total next to the card count, and the header shows how much of the sprint is done (for example, *13 of 21 pts done*). Click a card to open the same full card drawer you use on a board — description, subtasks, comments, attachments, and all. Filter the view with the **Project**, **Assignee**, **Label** and **Epic** pickers at the top; while a filter is on, the bar shows *N of M cards* and **Clear** resets it. Filtering by label works across projects because labels belong to the workspace, not to a single board. Keep a combination you use often by opening **Views** → **Save current filters…**; sprint views are personal to you and available on every sprint board.
 
@@ -38,7 +50,7 @@ Drag a card from one status column to another and it updates that card’s canon
 
 ## Getting cards onto a sprint
 
-There are two ways to add a card to a sprint, and both do the same thing under the hood.
+The Backlog is the main way to plan. There are two more ways to add a card to a sprint, and all of them do the same thing under the hood.
 
 - **From the sprint board** — click **Add cards**, search by title or card key, and click **Add** next to each one. The picker lists cards that aren’t already in a sprint.
 - **From a card** — open any card and set its **Sprint** field to the sprint (or back to **No sprint** to remove it). This is handy when you’re already working on a board and want to tag a card as you go.

@@ -13,7 +13,7 @@ import { IntakeFieldList } from "@/lib/intake-fields";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 21; // bump when the shape changes
+export const BACKUP_FORMAT = 22; // bump when the shape changes (22: Card.rank, the backlog order)
 
 const WS = "__ws";
 const USER = "__user";

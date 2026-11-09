@@ -116,8 +116,9 @@ export async function getCardDetail(cardId: string) {
       where: { userId: me.id, workspaceId: board.workspaceId, suspendedAt: null },
       select: { role: true },
     }),
+    // Completed sprints are closed to new cards; the card's own sprint still shows.
     prisma.sprint.findMany({
-      where: { workspaceId: board.workspaceId },
+      where: { workspaceId: board.workspaceId, OR: [{ status: { not: "completed" } }, { cards: { some: { id: cardId } } }] },
       orderBy: { createdAt: "desc" },
       select: { id: true, name: true },
     }),

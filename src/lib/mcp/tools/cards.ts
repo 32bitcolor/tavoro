@@ -98,7 +98,10 @@ async function resolveLabel(ref: string) {
 }
 
 async function resolveSprint(ref: string) {
-  const sprints = await prisma.sprint.findMany({ where: { workspaceId: principal().workspaceId }, select: { id: true, name: true, status: true } });
+  // Open sprints first, so a name shared with a completed sprint finds the open one.
+  const sprints = (await prisma.sprint.findMany({ where: { workspaceId: principal().workspaceId }, select: { id: true, name: true, status: true } })).sort(
+    (a, b) => Number(a.status === "completed") - Number(b.status === "completed"),
+  );
   const hit =
     sprints.find((s) => s.id === ref) ??
     sprints.find((s) => s.name.toLowerCase() === ref.trim().toLowerCase()) ??

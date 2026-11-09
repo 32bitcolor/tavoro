@@ -31,38 +31,70 @@ export default function Sprints() {
           Rename a sprint by clicking its title, and edit its goal in place. The count beside the
           name shows how many cards are currently in the sprint.
         </>
-        <>
-          Move the sprint through its life with the status dropdown &mdash; <UI>Planned</UI> while
-          you&rsquo;re still gathering cards, <UI>Active</UI> once work is underway, and{" "}
-          <UI>Completed</UI> when the window closes.
-        </>
       </Steps>
 
-      <Callout tone="note" title="Sprint status">
-        A sprint&rsquo;s status is its own lifecycle &mdash; it&rsquo;s separate from the status of
-        the cards inside it. Marking a sprint <UI>Completed</UI> is a record that the iteration is
-        over; it doesn&rsquo;t move or close the cards on it.
-      </Callout>
+      <H2>The Backlog</H2>
+      <P>
+        The <UI>Backlog</UI> (the button at the top of the Sprints page, or <UI>Backlog</UI> on any
+        sprint board) is where you plan. It lists your active and planned sprints, each as a section,
+        and then <strong>Backlog</strong>: every open card that isn&rsquo;t in a sprint, from every
+        board you can see. Epics aren&rsquo;t listed themselves &mdash; their cards are.
+      </P>
+      <UL>
+        <LI>
+          <strong>Rank</strong> &mdash; drag a card up or down to set its priority. The order is one
+          list across all boards, so it&rsquo;s the team&rsquo;s priority, not one board&rsquo;s. New
+          cards start at the bottom.
+        </LI>
+        <LI>
+          <strong>Plan</strong> &mdash; drag a card from the backlog into a sprint, between sprints, or
+          back out. Each section shows its card count and estimate total, so you can see when a sprint
+          is full.
+        </LI>
+        <LI>
+          <strong>Without dragging</strong> &mdash; every card has a <UI>⋯</UI> menu with{" "}
+          <UI>Move to top</UI>, <UI>Move to bottom</UI>, and each sprint (or <UI>Backlog</UI>).
+        </LI>
+        <LI>
+          <strong>Filter</strong> &mdash; search by title or key, or filter by type, priority, assignee,
+          label and project. The <UI>Epics</UI> panel on the left shows each open epic&rsquo;s progress;
+          click one to see only its cards.
+        </LI>
+      </UL>
+      <P>
+        Click a card to open it in the card panel. <UI>Create sprint</UI> on the Backlog section adds
+        the next sprint (<em>Sprint 43</em> after <em>Sprint 42</em>).
+      </P>
 
+      <H2>Start and complete a sprint</H2>
       <DefList>
         <Def term="Planned">
-          The default for a new sprint. Use it while you&rsquo;re still deciding scope and pulling
-          cards in.
+          A new sprint. Plan cards into it from the Backlog. <UI>Start sprint</UI> asks for its name,
+          dates (today for two weeks, unless you set dates already) and goal, and makes it active. What
+          the sprint holds when it starts is recorded, so later reports can tell planned work from work
+          added mid-sprint.
         </Def>
         <Def term="Active">
-          The sprint is running. This is the signal that the team is heads-down on these cards for
-          the current window.
+          The sprint is running. When it ends, click <UI>Complete sprint</UI> (on the Backlog, the
+          Sprints page or the sprint board). It shows how many cards are done and asks where the
+          unfinished ones go: a planned sprint, a <UI>New sprint</UI>, or the <UI>Backlog</UI>.
         </Def>
         <Def term="Completed">
-          The window has closed. Cards that didn&rsquo;t finish keep living on their home boards &mdash;
-          you can move them to the next sprint.
+          Done cards stay with the sprint, and its result is kept &mdash; for example{" "}
+          <em>8 of 10 cards done · 21 of 26 pts</em> &mdash; on the Sprints page and the sprint board.
+          A completed sprint is closed to new cards. <UI>Reopen</UI> makes it active again if you
+          completed it by mistake.
         </Def>
       </DefList>
+      <Callout tone="note" title="Sprint status and card status">
+        A sprint&rsquo;s status is separate from the status of the cards in it. A card is
+        &ldquo;done&rdquo; for a sprint when its status is in the <UI>Done</UI> category.
+      </Callout>
 
       <H2>The sprint board</H2>
       <Screenshot name="sprint-board" alt="A sprint board with cards from several boards grouped by status columns, and Project, Assignee and Label filters" caption="Sprint 42's board: cards from across projects, grouped by status." />
       <P>
-        Click <UI>Open board</UI> on any sprint to see its cards laid out as a Kanban view. Instead
+        Click <UI>Open board</UI> on any sprint (or <UI>Sprint board</UI> on the Backlog) to see its cards laid out as a Kanban view. Instead
         of the columns a single board uses, the sprint board groups every card by your
         workspace&rsquo;s statuses &mdash; by default <UI>Backlog</UI>, <UI>To do</UI>,{" "}
         <UI>In progress</UI>, <UI>In review</UI>, and <UI>Done</UI> &mdash; so a mix of cards from
@@ -95,7 +127,10 @@ export default function Sprints() {
       </Callout>
 
       <H2>Getting cards onto a sprint</H2>
-      <P>There are two ways to add a card to a sprint, and both do the same thing under the hood.</P>
+      <P>
+        The Backlog is the main way to plan. There are two more ways to add a card to a sprint, and
+        all of them do the same thing under the hood.
+      </P>
       <UL>
         <LI>
           <strong>From the sprint board</strong> &mdash; click <UI>Add cards</UI>, search by title or

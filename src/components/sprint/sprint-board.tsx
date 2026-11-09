@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState, type ReactNode, useId } from "react";
-import { FolderKanban, Tag, User, X, Zap } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FolderKanban, ListOrdered, Tag, User, X, Zap } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -19,6 +21,7 @@ import { setCardStatus } from "@/app/actions/boards";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
 import { AddCardsDialog } from "@/components/sprint/add-cards-dialog";
+import { CompleteSprintButton, StartSprintButton } from "@/components/sprint/sprint-lifecycle";
 import { SavedViewsMenu } from "@/components/shared/saved-views-menu";
 import { FilterChip } from "@/components/board/filter-bar";
 import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
@@ -82,11 +85,14 @@ export function SprintBoard({
     endDate?: string | null;
     /** "day N of M" for an active sprint — computed on the server (render stays pure). */
     progress?: string | null;
+    /** A completed sprint's result ("8 of 10 cards done · …"). */
+    reportLine?: string | null;
   };
   statuses: StatusT[];
   initialCards: SprintCard[];
 }) {
   const [cards, setCards] = useState<SprintCard[]>(initialCards);
+  const router = useRouter();
   const dndId = useId();
   const [projectFilter, setProjectFilter] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState("");
@@ -268,13 +274,30 @@ export function SprintBoard({
             <StatusBadge tone={SPRINT_TONE[sprint.status] ?? "neutral"}>{SPRINT_LABEL[sprint.status] ?? sprint.status}</StatusBadge>
           </div>
           <SprintMeta goal={sprint.goal} startDate={sprint.startDate ?? null} endDate={sprint.endDate ?? null} progress={sprint.progress ?? null} />
-          {estimated && (
+          {sprint.reportLine && <p className="mt-1 text-sm text-muted-foreground">{sprint.reportLine}</p>}
+          {estimated && !sprint.reportLine && (
             <p className="mt-1 text-sm text-muted-foreground">
               {Math.round(doneEstimate * 100) / 100} of {formatEstimate(totalEstimate, estimateUnit)} done
             </p>
           )}
         </div>
-        <AddCardsDialog sprintId={sprint.id} onAdded={(card) => setCards((cs) => [card, ...cs])} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/sprints/backlog" className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-sm text-muted-foreground hover:bg-hover hover:text-foreground">
+            <ListOrdered className="size-4" aria-hidden="true" />
+            Backlog
+          </Link>
+          {sprint.status === "planned" && (
+            <StartSprintButton
+              sprint={{ id: sprint.id, name: sprint.name, goal: sprint.goal, startDate: sprint.startDate?.slice(0, 10) ?? null, endDate: sprint.endDate?.slice(0, 10) ?? null }}
+              cardCount={cards.length}
+              estimate={sum(cards)}
+              estimateUnit={estimateUnit}
+              onStarted={() => router.refresh()}
+            />
+          )}
+          {sprint.status === "active" && <CompleteSprintButton sprintId={sprint.id} estimateUnit={estimateUnit} onCompleted={() => router.refresh()} />}
+          {sprint.status !== "completed" && <AddCardsDialog sprintId={sprint.id} onAdded={(card) => setCards((cs) => [card, ...cs])} />}
+        </div>
       </header>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -433,7 +456,7 @@ function SprintMeta({
 }
 
 /** A filter chip with a single-choice menu ("" = no filter). */
-function SingleSelectChip({
+export function SingleSelectChip({
   icon,
   label,
   value,

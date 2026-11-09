@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowRight, Timer, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, RotateCcw, Timer, X } from "lucide-react";
 
 import {
   createSprint,
@@ -11,12 +12,14 @@ import {
   setSprintDates,
   deleteSprint,
 } from "@/app/actions/sprints";
-import { SPRINT_STATUSES, SPRINT_STATUS_LABEL } from "@/lib/sprint";
+import { SPRINT_STATUS_LABEL, sprintReportLine, type SprintReport, type SprintStatus } from "@/lib/sprint";
+import { formatEstimate, type EstimateUnit } from "@/lib/card-fields";
+import { CompleteSprintButton, StartSprintButton } from "@/components/sprint/sprint-lifecycle";
+import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
 import { InlineTitle } from "@/components/shared/inline-title";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 
 type SprintT = {
   id: string;
@@ -26,9 +29,14 @@ type SprintT = {
   startDate: string | null;
   endDate: string | null;
   cardCount: number;
+  estimate: number;
+  report: SprintReport;
 };
 
-export function SprintsManager({ initial }: { initial: SprintT[] }) {
+const TONE: Record<string, StatusTone> = { planned: "neutral", active: "info", completed: "success" };
+
+export function SprintsManager({ initial, estimateUnit }: { initial: SprintT[]; estimateUnit: EstimateUnit }) {
+  const router = useRouter();
   const [sprints, setSprints] = useState<SprintT[]>(initial);
   const [name, setName] = useState("");
   const [goal, setGoal] = useState("");
@@ -50,7 +58,7 @@ export function SprintsManager({ initial }: { initial: SprintT[] }) {
     }
     if ("sprint" in res && res.sprint) {
       setSprints((prev) => [
-        { ...res.sprint, startDate: null, endDate: null, cardCount: 0 },
+        { ...res.sprint, startDate: null, endDate: null, cardCount: 0, estimate: 0, report: {} },
         ...prev,
       ]);
       setName("");
@@ -130,18 +138,41 @@ export function SprintsManager({ initial }: { initial: SprintT[] }) {
             {s.goal && <p className="mt-1 text-sm text-muted-foreground">{s.goal}</p>}
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Select aria-label="Sprint status"
-                value={s.status}
-                onChange={(e) => {
-                  patch(s.id, { status: e.target.value });
-                  startTransition(() => void setSprintStatus(s.id, e.target.value));
-                }}
-                className="h-8 w-auto py-1 text-xs"
-              >
-                {SPRINT_STATUSES.map((st) => (
-                  <option key={st} value={st}>{SPRINT_STATUS_LABEL[st]}</option>
-                ))}
-              </Select>
+              <StatusBadge tone={TONE[s.status] ?? "neutral"}>{SPRINT_STATUS_LABEL[s.status as SprintStatus] ?? s.status}</StatusBadge>
+              {s.status === "planned" && (
+                <StartSprintButton
+                  size="xs"
+                  sprint={s}
+                  cardCount={s.cardCount}
+                  estimate={s.estimate}
+                  estimateUnit={estimateUnit}
+                  onStarted={(x) => patch(s.id, { ...x, status: "active" })}
+                />
+              )}
+              {s.status === "active" && (
+                <CompleteSprintButton size="xs" sprintId={s.id} estimateUnit={estimateUnit} onCompleted={() => router.refresh()} />
+              )}
+              {s.status === "completed" && (
+                <>
+                  <span className="text-xs text-muted-foreground">
+                    {sprintReportLine(s.report, (n) => formatEstimate(n, estimateUnit)) ?? "Completed"}
+                    {s.report.completed?.movedTo && <> · unfinished moved to {s.report.completed.movedTo.name}</>}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="text-muted-foreground"
+                    title="Make this sprint active again"
+                    onClick={() => {
+                      patch(s.id, { status: "active" });
+                      startTransition(() => void setSprintStatus(s.id, "active"));
+                    }}
+                  >
+                    <RotateCcw className="size-3" aria-hidden="true" />
+                    Reopen
+                  </Button>
+                </>
+              )}
               <input
                 type="date"
                 value={s.startDate ?? ""}

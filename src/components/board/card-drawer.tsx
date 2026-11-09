@@ -77,6 +77,8 @@ export type CardFacePatch = {
   epic?: EpicChip | null;
   epicProgress?: { done: number; total: number };
   blocked?: boolean;
+  /** The card's sprint changed from the panel (the Backlog moves it between sections). */
+  sprintId?: string | null;
   comments?: number;
   attachments?: number;
 };
@@ -809,6 +811,7 @@ export function CardDrawer({
                       onChange={(e) => {
                         const next = e.target.value || null;
                         setSprintId(next);
+                        onPatch(cardId, { sprintId: next });
                         assignCardToSprint(cardId, next);
                       }}
                       className="h-8 w-full py-1 text-xs"

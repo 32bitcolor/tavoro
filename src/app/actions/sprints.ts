@@ -20,7 +20,7 @@ async function sprintInWorkspace(sprintId: string) {
   if (!m) return null;
   return prisma.sprint.findFirst({
     where: { id: sprintId, workspaceId: m.workspaceId },
-    select: { id: true },
+    select: { id: true, status: true },
   });
 }
 
@@ -51,11 +51,18 @@ export async function renameSprint(sprintId: string, name: string) {
   return { ok: true };
 }
 
+/** Reopen a sprint (completed → active, or active → planned). Starting and completing
+ *  go through startSprint / completeSprint (actions/backlog.ts), which do more. */
 export async function setSprintStatus(sprintId: string, status: string) {
-  if (!(await sprintInWorkspace(sprintId))) return { error: "Sprint not found." };
+  const m = await getActiveMembership();
+  const sprint = m && (await prisma.sprint.findFirst({ where: { id: sprintId, workspaceId: m.workspaceId }, select: { status: true } }));
+  if (!sprint) return { error: "Sprint not found." };
   const parsed = StatusSchema.safeParse(status);
   if (!parsed.success) return { error: "Invalid status." };
-  await prisma.sprint.update({ where: { id: sprintId }, data: { status: parsed.data } });
+  if (parsed.data === sprint.status) return { ok: true };
+  if (parsed.data === "completed") return { error: "Complete the sprint from the Backlog or Sprints page, so its unfinished cards move on." };
+  if (parsed.data === "active" && sprint.status === "planned") return { error: "Start the sprint from the Backlog or Sprints page." };
+  await prisma.sprint.update({ where: { id: sprintId }, data: { status: parsed.data, completedAt: null } });
   revalidatePath("/sprints");
   return { ok: true };
 }
@@ -134,7 +141,9 @@ export async function listAssignableCards(sprintId: string) {
 export async function assignCardToSprint(cardId: string, sprintId: string | null) {
   const card = await getCardForUser(cardId);
   if (!card) return { error: "Card not found." };
-  if (sprintId && !(await sprintInWorkspace(sprintId))) return { error: "Sprint not found." };
+  const target = sprintId ? await sprintInWorkspace(sprintId) : null;
+  if (sprintId && !target) return { error: "Sprint not found." };
+  if (target?.status === "completed") return { error: "That sprint is complete. Plan cards into an active or planned sprint." };
   if (sprintId) {
     const row = await prisma.card.findUnique({ where: { id: cardId }, select: { type: true } });
     if (row?.type === "epic") return { error: "Epics aren\u2019t planned in sprints; their cards are." };

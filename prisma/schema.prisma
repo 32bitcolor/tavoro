@@ -106,6 +106,8 @@ model Sprint {
   status      String    @default("planned") // planned / active / completed
   startDate   DateTime?
   endDate     DateTime?
+  completedAt DateTime? // set by completeSprint (lib/sprint-plan.ts)
+  report      Json? // what the sprint finished with: lib/sprint.ts SprintReport
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -215,6 +217,7 @@ model Card {
   sprintId       String? // optional sprint assignment (independent of project); powers the team sprint board
   completedAt    DateTime? // when it entered a "done"-category status; set by a DB trigger (see migration card_completed_at), never by app code
   position       String
+  rank           String? // backlog order across boards (fractional index, docs/JIRA-PARITY.md); null sorts last, by createdAt
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   column         Column?          @relation(fields: [columnId], references: [id], onDelete: Cascade)
@@ -245,6 +248,7 @@ model Card {
   @@index([completedAt])
   @@index([type])
   @@index([epicId])
+  @@index([rank])
 }
 
 // A key a card had on a board it has since been moved off (e.g. SEC-12 after moving to

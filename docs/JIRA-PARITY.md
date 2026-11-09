@@ -1,6 +1,6 @@
 # Jira parity: boards that can replace Jira for an ID team
 
-**Status:** In progress. Phases 1–2 shipped to prod 2026-11-09; phase 3 (links, watchers, history) built.
+**Status:** In progress. Phases 1–3 shipped to prod (phase 3 on 2026-11-09); phase 4 (Backlog, start/complete sprint) built.
 **Owner:** @32bitcolor
 
 ## Why
@@ -124,6 +124,16 @@ Filterable by project, board, epic, assignee and label, like the sprint board.
 Ordering: the backlog needs a rank that spans boards, so `Card.rank String?` (fractional
 index, like positions) is used here and nowhere else. Cards without a rank sort after ranked
 ones, by creation date.
+
+As built (phase 4): `/sprints/backlog`. `Card.rank` is `COLLATE "C"` so keys sort byte-wise
+whatever the server locale. The first time someone ranks next to an unranked card, every
+unranked card in the workspace gets a rank after the last ranked one, oldest first (the order
+they already show in), so nothing visibly moves. The backlog section shows the first 1,500
+cards. Starting a sprint records what it holds (`Sprint.report.committed`); completing it
+records done / not done counts and points, where the unfinished cards went, and how many done
+cards were added after the start (`Sprint.report.completed`), for Tier 3 reports. A completed
+sprint is closed to new cards; `update_sprint` status changes go through start/complete.
+Sprints still aren't part of a workspace backup (ranks are).
 
 ## Jira import
 

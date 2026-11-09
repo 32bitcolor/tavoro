@@ -5,6 +5,8 @@ import { boardVisibilityWhere } from "@/lib/authz";
 import { SprintBoard } from "@/components/sprint/sprint-board";
 import { asCardType, asPriority } from "@/lib/card-fields";
 import { blockedCardIds } from "@/lib/card-blocked";
+import { formatEstimate } from "@/lib/card-fields";
+import { asSprintReport, sprintReportLine } from "@/lib/sprint";
 
 export const metadata = { title: "Sprint board · Tavoro" };
 
@@ -16,7 +18,7 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
 
   const sprint = await prisma.sprint.findFirst({
     where: { id: sprintId, workspaceId: wsId },
-    select: { id: true, name: true, goal: true, status: true, startDate: true, endDate: true },
+    select: { id: true, name: true, goal: true, status: true, startDate: true, endDate: true, report: true },
   });
   if (!sprint) notFound();
 
@@ -85,18 +87,22 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
   }));
 
   const progress = sprintProgress(sprint);
+  const unit = workspace?.estimateUnit === "hours" ? "hours" : "points";
+  const { report, ...sprintFields } = sprint;
+  const reportLine = sprint.status === "completed" ? sprintReportLine(asSprintReport(report), (n) => formatEstimate(n, unit)) : null;
 
   return (
     <SprintBoard
       sprint={{
-        ...sprint,
+        ...sprintFields,
         progress,
+        reportLine,
         startDate: sprint.startDate ? sprint.startDate.toISOString() : null,
         endDate: sprint.endDate ? sprint.endDate.toISOString() : null,
       }}
       statuses={statuses.map((s) => ({ ...s, category: s.category as "todo" | "active" | "done" }))}
       initialCards={items}
-      estimateUnit={workspace?.estimateUnit === "hours" ? "hours" : "points"}
+      estimateUnit={unit}
     />
   );
 }
