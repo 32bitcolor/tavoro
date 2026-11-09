@@ -24,12 +24,13 @@ If something’s wrong, the bar highlights the part it couldn’t read and says 
 - `labels`, `epic` (key or title), `sprint` (a name, or active, planned, completed), `board` (name or key prefix), `project`
 - `due`, `start`, `created`, `updated` take a date (`2026-12-01`), `today`, or a distance from today: `7d`, `-2w`, `1m`
 - `blocked` and `done` are true or false
+- your workspace’s **custom fields**, by name — in quotes if it has a space: `"Audience" in (Managers, "New hires")`, `"Seat time" > 20`
 
 Operators: `=` `!=` `>` `>=` `<` `<=`, `~` (contains), `in (a, b)`, `not in (…)`, and `is EMPTY` / `is not EMPTY`. Put values with spaces in quotes. As in Jira, `!=` leaves out cards with no value at all — add `OR field is EMPTY` to include them.
 
 ## The results
 
-Click a column header to sort by it (it rewrites the query’s `ORDER BY`), choose what to show with **Columns**, and click a card to open it in the card panel. Keep a query — with its columns — under **Views** → **Save current filters…**; saved queries are personal. The page’s address includes the query, so you can share a link.
+Click a column header to sort by it (it rewrites the query’s `ORDER BY`), choose what to show with **Columns** (custom fields included), and click a card to open it in the card panel. Keep a query — with its columns — under **Views** → **Save current filters…**; saved queries are personal. The page’s address includes the query, so you can share a link.
 
 ## Change many cards at once
 

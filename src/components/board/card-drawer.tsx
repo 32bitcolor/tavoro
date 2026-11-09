@@ -35,6 +35,7 @@ import { CARD_TYPES, CARD_TYPE_LABEL, PRIORITIES, PRIORITY_LABEL, type CardType,
 import { PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
 import { EpicCardsSection, EpicField, type EpicChip } from "@/components/board/epic-panels";
 import { CardLinksSection } from "@/components/board/card-links-section";
+import { CardFieldsSection } from "@/components/board/card-fields-section";
 import type { EpicRef } from "@/lib/epics";
 import { setCardPrivate } from "@/app/actions/board-share";
 import { MoveCardDialog, type MoveResult } from "@/components/board/move-card-dialog";
@@ -959,6 +960,8 @@ export function CardDrawer({
                 </div>
               </div>
             </Section>
+
+            <CardFieldsSection key={`fields-${cardId}`} cardId={cardId} members={members} />
 
             <Section title="Attachments">
               <div className="flex flex-col gap-1.5">

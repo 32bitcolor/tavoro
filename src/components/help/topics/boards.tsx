@@ -278,6 +278,32 @@ export default function Boards() {
         sprint board has its own <UI>Views</UI> menu that works the same way.
       </P>
 
+      <H2>Swimlanes and WIP limits</H2>
+      <P>
+        <UI>Swimlanes</UI> (above the board) splits it into rows: by assignee, epic, priority or type.
+        Each row keeps the board&rsquo;s columns, collapses with its heading, and only appears if it has
+        cards. Dragging a card into another row changes that attribute &mdash; into Jordan&rsquo;s row
+        reassigns it from the row&rsquo;s person to Jordan, into the High row makes it high priority.
+        The choice is part of the page&rsquo;s address, so a link keeps it.
+      </P>
+      <P>
+        A column can have a <strong>WIP limit</strong> (work in progress): open the column&rsquo;s{" "}
+        <UI>⋯</UI> menu → <UI>Set WIP limit…</UI>. Its count then reads <em>3 / 4</em>, turns amber at
+        the limit and red over it, and moving a card past the limit shows a note. Nothing is blocked
+        &mdash; the limit is a signal to finish work before starting more.
+      </P>
+
+      <H2>Custom fields</H2>
+      <P>
+        Admins can add fields to cards in <UI>Settings → Cards &amp; labels → Custom fields</UI>: text,
+        a number, a date, a checkbox, a person, or a list of options to pick one or several from. Each
+        field shows on every board or only the boards you choose, in the card panel under{" "}
+        <UI>Fields</UI>, where anyone who can edit the card sets it. Changes are recorded in the
+        card&rsquo;s History. On the Cards page, query a field by its name (
+        <code>&quot;Audience&quot; = Managers</code>, <code>&quot;Seat time&quot; &gt;= 30</code>) and
+        add it as a column. Deleting a field deletes its values.
+      </P>
+
       <H2>Sharing a board publicly</H2>
       <P>
         A public link lets people outside the workspace (a stakeholder, a client, the rest of the

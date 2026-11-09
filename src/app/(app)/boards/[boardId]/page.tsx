@@ -27,6 +27,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
       id: true,
       name: true,
       position: true,
+      wipLimit: true,
       status: { select: { category: true } },
       cards: {
         orderBy: { position: "asc" },
@@ -69,6 +70,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
     id: c.id,
     name: c.name,
     position: c.position,
+    wipLimit: c.wipLimit,
     category: (c.status?.category ?? null) as "todo" | "active" | "done" | null,
     cards: c.cards.map((card) => {
       const d = card.deliverables[0];

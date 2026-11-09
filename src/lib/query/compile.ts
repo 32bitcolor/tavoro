@@ -19,6 +19,8 @@ export type QueryCtx = {
   cardIdsForKeys: (keys: string[]) => Promise<Map<string, string>>;
   /** Cards blocked by an unfinished card. */
   blockedIds: () => Promise<string[]>;
+  /** Custom card fields, queried by name: "Audience" = Managers. */
+  customFields?: { id: string; name: string; type: string; options: { id: string; label: string }[] }[];
 };
 
 type W = Prisma.CardWhereInput;
@@ -84,7 +86,11 @@ async function node(n: Node, ctx: QueryCtx): Promise<W> {
   if (n.kind === "or") return { OR: [await node(n.a, ctx), await node(n.b, ctx)] };
   if (n.kind === "not") return { NOT: await node(n.x, ctx) };
   const f = fieldByName.get(n.field);
-  if (!f) throw new QueryError(`There’s no field called ${n.field}. Try: ${FIELDS.map((x) => x.name).join(", ")}.`, n.fieldPos, n.fieldEnd);
+  if (!f) {
+    const cf = ctx.customFields?.find((x) => x.name.toLowerCase() === n.field);
+    if (cf) return custom(cf, n.op, n.value, ctx, n.fieldPos);
+    throw new QueryError(`There’s no field called ${n.field}. Try: ${[...FIELDS.map((x) => x.name), ...(ctx.customFields ?? []).map((x) => `"${x.name}"`)].join(", ")}.`, n.fieldPos, n.fieldEnd);
+  }
   if (!f.ops.includes(n.op)) throw new QueryError(`${f.name} can’t use “${n.op}”. It takes ${f.ops.join(", ")}.`, n.fieldPos, n.value.end);
   return cmp(f.name, n.op, n.value, ctx);
 }
@@ -307,4 +313,62 @@ async function cmp(field: string, op: Op, v: Value, ctx: QueryCtx): Promise<W> {
     }
   }
   throw new QueryError(`There’s no field called ${field}.`, 0);
+}
+
+const CUSTOM_OPS: Record<string, Op[]> = {
+  text: ["=", "!=", "~", "!~", "is", "is not"],
+  number: ["=", "!=", ">", ">=", "<", "<=", "is", "is not"],
+  date: ["=", "!=", ">", ">=", "<", "<=", "is", "is not"],
+  checkbox: ["=", "!=", "is", "is not"],
+  select: ["=", "!=", "in", "not in", "is", "is not"],
+  multiselect: ["=", "!=", "in", "not in", "is", "is not"],
+  person: ["=", "!=", "in", "not in", "is", "is not"],
+};
+
+/** A custom field: a condition on the card's value row for it. */
+function custom(cf: NonNullable<QueryCtx["customFields"]>[number], op: Op, v: Value, ctx: QueryCtx, pos: number): W {
+  const ops = CUSTOM_OPS[cf.type] ?? [];
+  if (!ops.includes(op)) throw new QueryError(`“${cf.name}” can’t use “${op}”. It takes ${ops.join(", ")}.`, pos, v.end);
+  type V = Prisma.CardFieldValueWhereInput;
+  const has = (cond: V): W => ({ fieldValues: { some: { fieldId: cf.id, ...cond } } });
+  const filled: V =
+    cf.type === "text" ? { text: { not: null } } : cf.type === "number" ? { number: { not: null } } : cf.type === "date" ? { date: { not: null } } : cf.type === "checkbox" ? { bool: { not: null } } : cf.type === "person" ? { userId: { not: null } } : { NOT: { optionIds: { isEmpty: true } } };
+  if (op === "is") return { NOT: has(filled) };
+  if (op === "is not") return has(filled);
+  const vals = list(v);
+  const neg = op === "!=" || op === "!~" || op === "not in";
+  let cond: V;
+  switch (cf.type) {
+    case "text": {
+      const s = (v as Str).v;
+      cond = op === "~" || op === "!~" ? { text: { contains: s, mode: "insensitive" } } : { text: { equals: s, mode: "insensitive" } };
+      break;
+    }
+    case "number": {
+      const n = Number((v as Str).v);
+      if (!Number.isFinite(n)) throw new QueryError("Use a number.", v.pos, v.end);
+      cond = { number: { "=": { equals: n }, "!=": { equals: n }, ">": { gt: n }, ">=": { gte: n }, "<": { lt: n }, "<=": { lte: n } }[op as "="] };
+      break;
+    }
+    case "date": {
+      const d = day(v as Str, ctx.now);
+      const next = new Date(d.getTime() + DAY);
+      cond = { date: { "=": { gte: d, lt: next }, "!=": { gte: d, lt: next }, ">": { gte: next }, ">=": { gte: d }, "<": { lt: d }, "<=": { lt: next } }[op as "="] };
+      break;
+    }
+    case "checkbox": {
+      cond = { bool: bool(v) };
+      break;
+    }
+    case "person": {
+      cond = { userId: { in: people(vals, ctx) } };
+      break;
+    }
+    default: {
+      const ids = resolve(vals, (s) => cf.options.filter((o) => o.label.toLowerCase() === s).map((o) => o.id), `option of “${cf.name}”`, () => cf.options.map((o) => o.label));
+      cond = { optionIds: { hasSome: ids } };
+    }
+  }
+  // "!=" leaves out cards with no value, like the built-in fields.
+  return neg ? { AND: [has(filled), { NOT: has(cond) }] } : has(cond);
 }

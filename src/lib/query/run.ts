@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { boardVisibilityWhere } from "@/lib/authz";
 import { asCardType, asPriority, priorityRank } from "@/lib/card-fields";
+import { asFieldType, asOptions, displayValue, fromStored } from "@/lib/custom-fields";
 import { compileQuery, type OrderField, type QueryCtx } from "@/lib/query/compile";
 import { QueryError } from "@/lib/query/parse";
 import type { Prisma } from "@/generated/prisma/client";
@@ -13,7 +14,7 @@ import type { Prisma } from "@/generated/prisma/client";
 export const QUERY_LIMIT = 5000;
 
 export async function queryContext(workspaceId: string, userId: string): Promise<QueryCtx> {
-  const [statuses, labels, members, sprints, boards, projects, epics] = await Promise.all([
+  const [statuses, labels, members, sprints, boards, projects, epics, customFields] = await Promise.all([
     prisma.workspaceStatus.findMany({ where: { workspaceId }, orderBy: { position: "asc" }, select: { id: true, name: true, category: true } }),
     prisma.label.findMany({ where: { workspaceId }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.membership.findMany({ where: { workspaceId, suspendedAt: null }, select: { user: { select: { id: true, name: true, email: true } } } }),
@@ -25,6 +26,7 @@ export async function queryContext(workspaceId: string, userId: string): Promise
       select: { id: true, title: true, keySeq: true, column: { select: { board: { select: { cardKeyPrefix: true } } } } },
       take: 1000,
     }),
+    prisma.customField.findMany({ where: { workspaceId }, orderBy: { position: "asc" }, select: { id: true, name: true, type: true, options: true } }),
   ]);
   return {
     me: userId,
@@ -36,6 +38,7 @@ export async function queryContext(workspaceId: string, userId: string): Promise
     boards: boards.map((b) => ({ id: b.id, name: b.name, prefix: b.cardKeyPrefix })),
     projects,
     epics: epics.map((e) => ({ id: e.id, title: e.title, key: e.column?.board.cardKeyPrefix && e.keySeq != null ? `${e.column.board.cardKeyPrefix}-${e.keySeq}` : null })),
+    customFields: customFields.map((f) => ({ id: f.id, name: f.name, type: f.type, options: asOptions(f.options) })),
     cardIdsForKeys: async (keys) => {
       const out = new Map<string, string>();
       const parsed = keys.map((k) => /^([A-Z][A-Z0-9]{0,9})-(\d+)$/.exec(k)).filter((m): m is RegExpExecArray => !!m);
@@ -85,6 +88,7 @@ const ROW = {
   assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
   labels: { select: { label: { select: { id: true, name: true, color: true } } } },
   column: { select: { board: { select: { id: true, name: true, cardKeyPrefix: true, project: { select: { id: true, name: true } } } } } },
+  fieldValues: { select: { fieldId: true, text: true, number: true, date: true, bool: true, optionIds: true, userId: true, updatedAt: true, user: { select: { name: true, email: true } } } },
 } as const;
 
 export type QueryRow = {
@@ -105,6 +109,8 @@ export type QueryRow = {
   start: string | null;
   created: string;
   updated: string;
+  /** Custom field values, shown as text, by field id. */
+  fields: Record<string, string>;
 };
 
 type SortRow = { id: string; title: string; keySeq: number | null; prefix: string | null; type: string; priority: string | null; estimate: number | null; dueDate: Date | null; startDate: Date | null; createdAt: Date; updatedAt: Date; rank: string | null; statusPos: string | null };
@@ -160,8 +166,9 @@ export type QueryResult =
 /** Run a query: one page of rows, plus every matching id (for "select all"), sorted. */
 export async function runQuery(workspaceId: string, userId: string, query: string, page = 0, pageSize = 50): Promise<QueryResult> {
   let compiled;
+  const ctx = await queryContext(workspaceId, userId);
   try {
-    compiled = await compileQuery(query, await queryContext(workspaceId, userId));
+    compiled = await compileQuery(query, ctx);
   } catch (e) {
     if (e instanceof QueryError) return { ok: false, error: e.message, pos: e.pos, end: e.end };
     throw e;
@@ -211,6 +218,15 @@ export async function runQuery(workspaceId: string, userId: string, query: strin
         start: day(c.startDate),
         created: c.createdAt.toISOString(),
         updated: c.updatedAt.toISOString(),
+        fields: Object.fromEntries(
+          c.fieldValues.flatMap((fv) => {
+            const def = ctx.customFields?.find((f) => f.id === fv.fieldId);
+            if (!def) return [];
+            const f = { type: asFieldType(def.type), options: def.options };
+            const shown = f.type === "person" ? (fv.user?.name ?? fv.user?.email ?? null) : displayValue(f, fromStored(f, fv));
+            return shown ? [[fv.fieldId, shown]] : [];
+          }),
+        ),
       },
     ];
   });

@@ -64,6 +64,11 @@ export default function Cards() {
         <LI>
           <Q>blocked</Q> and <Q>done</Q> are true or false
         </LI>
+        <LI>
+          your workspace&rsquo;s <strong>custom fields</strong>, by name &mdash; in quotes if it has a
+          space: <Q>&quot;Audience&quot; in (Managers, &quot;New hires&quot;)</Q>,{" "}
+          <Q>&quot;Seat time&quot; &gt; 20</Q>
+        </LI>
       </UL>
       <P>
         Operators: <Q>=</Q> <Q>!=</Q> <Q>&gt;</Q> <Q>&gt;=</Q> <Q>&lt;</Q> <Q>&lt;=</Q>, <Q>~</Q>{" "}
@@ -75,7 +80,7 @@ export default function Cards() {
       <H2>The results</H2>
       <P>
         Click a column header to sort by it (it rewrites the query&rsquo;s <Q>ORDER BY</Q>), choose
-        what to show with <UI>Columns</UI>, and click a card to open it in the card panel. Keep a query
+        what to show with <UI>Columns</UI> (custom fields included), and click a card to open it in the card panel. Keep a query
         &mdash; with its columns &mdash; under <UI>Views</UI> → <UI>Save current filters…</UI>; saved
         queries are personal. The page&rsquo;s address includes the query, so you can share a link.
       </P>

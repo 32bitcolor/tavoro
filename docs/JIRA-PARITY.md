@@ -1,6 +1,6 @@
 # Jira parity: boards that can replace Jira for an ID team
 
-**Status:** Phases 1–5 (Tier 1) shipped to prod. Phase 6 (Tier 3) on prod. Phase 7 (query language, Cards page, bulk edit) built.
+**Status:** Phases 1–5 (Tier 1) shipped to prod. Phase 6 (Tier 3) on prod. Phase 7 (query language, Cards page, bulk edit) on test. Phase 8 (swimlanes, WIP limits, custom fields) built.
 **Owner:** @32bitcolor
 
 ## Why
@@ -299,12 +299,17 @@ once), then power, then automation (whose conditions reuse the query language).
 
 - **Swimlanes** on a board: none / assignee / epic / priority / type; collapsible.
 - **WIP limits** per column: the column header turns amber at the limit and red over it;
-  dropping over the limit asks first (soft limit, like Jira's).
+  a move past the limit shows a note. *As built:* it doesn't ask first — like Jira, a
+  limit is a signal, not a gate.
 - **Custom card fields**, workspace-wide: text, number, select (options), multi-select,
   date, checkbox, person. Admins define them (Settings → Cards & labels) and pick which
   boards show each. Shown in the card panel, filterable and sortable in the query
   language (`"Audience" = Managers`), in MCP card tools, templates and backups. The Jira
   import can map Jira custom fields to them (opt in per field).
+  *As built:* values live in typed columns (`CardFieldValue.text/number/date/bool/optionIds/
+  userId`) so queries compare them properly; a field's type is fixed once made; removing an
+  option clears it from cards. Not yet: templates don't carry values, and the Jira import
+  doesn't map custom fields (follow-up).
 
 ### Phase 9 — Automation (Tier 4)
 

@@ -11,6 +11,7 @@ export type SuggestData = {
   boards: { name: string; prefix: string | null }[];
   projects: { name: string }[];
   epics: { title: string; key: string | null }[];
+  customFields?: { name: string; type: string; options: { label: string }[] }[];
 };
 
 export type Suggestion = { label: string; insert: string; hint?: string };
@@ -62,8 +63,10 @@ function values(field: string, d: SuggestData): Suggestion[] {
 
 export function suggest(text: string, caret: number, d: SuggestData): { from: number; to: number; items: Suggestion[] } {
   const left = text.slice(0, caret);
-  const partialMatch = /(?:"[^"]*|'[^']*|[A-Za-z0-9_\-.:@+/#&]*)$/.exec(left);
-  const partial = partialMatch ? partialMatch[0] : "";
+  // Inside an open quote, the partial value runs from that quote; otherwise it's the word.
+  const dq = (left.match(/"/g) ?? []).length % 2 === 1;
+  const sq = !dq && (left.match(/'/g) ?? []).length % 2 === 1;
+  const partial = dq ? left.slice(left.lastIndexOf('"')) : sq ? left.slice(left.lastIndexOf("'")) : (/[A-Za-z0-9_\-.:@+/#&]*$/.exec(left)?.[0] ?? "");
   const from = caret - partial.length;
   const needle = partial.replace(/^["']/, "").toLowerCase();
   const toks = (left.slice(0, from).match(TOKEN) ?? []).map((t) => t.toLowerCase());
@@ -71,7 +74,7 @@ export function suggest(text: string, caret: number, d: SuggestData): { from: nu
   const filter = (items: Suggestion[]) =>
     items
       .filter((s) => !needle || s.label.toLowerCase().startsWith(needle) || (needle.length > 1 && s.label.toLowerCase().includes(needle)))
-      .slice(0, 12);
+      .slice(0, needle ? 12 : 40);
   const out = (items: Suggestion[]) => ({ from, to: caret, items: filter(items) });
 
   const inOrder = toks.includes("order");
@@ -90,9 +93,24 @@ export function suggest(text: string, caret: number, d: SuggestData): { from: nu
   } else if (last === "is" || (last === "not" && toks[toks.length - 2] === "is")) {
     return out([{ label: "EMPTY", insert: "EMPTY" }, ...(last === "is" ? [{ label: "NOT EMPTY", insert: "NOT EMPTY" }] : [])]);
   }
+  const customOf = (tok: string | undefined) => (tok ? d.customFields?.find((c) => c.name.toLowerCase() === tok.replace(/^["']|["']$/g, "")) : undefined);
   if (field) {
     const f = fieldFor.get(field);
-    return out(f ? values(f.name, d) : []);
+    if (f) return out(values(f.name, d));
+    const cf = customOf(field);
+    if (!cf) return out([]);
+    if (cf.type === "select" || cf.type === "multiselect") return out(cf.options.map((o) => ({ label: o.label, insert: quoteIfNeeded(o.label) })));
+    if (cf.type === "person") return out(values("assignee", d));
+    if (cf.type === "checkbox") return out(values("done", d));
+    if (cf.type === "date") return out(values("due", d));
+    return out([]);
+  }
+
+  // An operator, after a custom field.
+  const cfLast = customOf(last);
+  if (cfLast && (toks.length < 2 || !OPS.has(toks[toks.length - 2]))) {
+    const ops = cfLast.type === "number" || cfLast.type === "date" ? ["=", "!=", ">", ">=", "<", "<="] : cfLast.type === "text" ? ["~", "=", "!="] : cfLast.type === "checkbox" ? ["="] : ["=", "!=", "in"];
+    return out([...ops, "is"].map((o) => ({ label: o === "in" ? "in (…)" : o === "is" ? "is EMPTY" : o, insert: o === "in" ? "in (" : o })));
   }
 
   // An operator, after a field.
@@ -103,7 +121,8 @@ export function suggest(text: string, caret: number, d: SuggestData): { from: nu
 
   // A field, at the start or after AND / OR / NOT / (.
   if (!last || last === "and" || last === "or" || last === "not" || last === "(") {
-    return out(FIELDS.map((x) => ({ label: x.name, insert: x.name, hint: x.hint })));
+    // The workspace's own fields first: they're the ones people can't guess.
+    return out([...(d.customFields ?? []).map((c) => ({ label: c.name, insert: quoteIfNeeded(c.name), hint: "custom field" })), ...FIELDS.map((x) => ({ label: x.name, insert: x.name, hint: x.hint }))]);
   }
 
   // After a whole condition.

@@ -32,6 +32,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
         boards: ctx.boards,
         projects: ctx.projects,
         epics: ctx.epics,
+        customFields: ctx.customFields,
       }}
     />
   );

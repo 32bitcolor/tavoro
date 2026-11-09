@@ -13,7 +13,7 @@ import { IntakeFieldList } from "@/lib/intake-fields";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 25; // bump when the shape changes (22: Card.rank; 23: ImportedCard, Comment.importedAuthor, Board.externalRef; 24: sprints; 25: sprint days, Card.startDate)
+export const BACKUP_FORMAT = 26; // bump when the shape changes (22: Card.rank; 23: ImportedCard, Comment.importedAuthor, Board.externalRef; 24: sprints; 25: sprint days, Card.startDate; 26: custom fields, Column.wipLimit)
 
 const WS = "__ws";
 const USER = "__user";
@@ -252,6 +252,11 @@ const SPECS: Spec[] = [
     prepare: async (d) => !!d.cardId && !(await prisma.cardWatcher.findUnique({ where: { cardId_userId: { cardId: d.cardId, userId: d.userId } } })),
   },
   { key: null, model: "cardActivity", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", actorId: USER }, json: ["data"] },
+  // Custom card fields (format 26+): the fields, which boards show them, and values.
+  // Option ids live inside the field's own options, so values' optionIds stay valid.
+  { key: "customField", model: "customField", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS }, json: ["options"] },
+  { key: null, model: "customFieldBoard", where: (w) => ({ field: { workspaceId: w } }), fks: { fieldId: "customField", boardId: "board" } },
+  { key: null, model: "cardFieldValue", where: (w) => ({ field: { workspaceId: w } }), fks: { cardId: "card", fieldId: "customField", userId: USER } },
   // Cards that came from Jira (format 23+), so importing again into a restored copy
   // updates them instead of making duplicates. The snapshot's field values name rows of
   // the original workspace, so they're dropped: the next import treats every field as

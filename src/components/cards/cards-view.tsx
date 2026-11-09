@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 // query, in a table you can sort, choose columns for, save, and change in bulk.
 
 type Data = {
+  customFields?: { id: string; name: string; type: string; options: { id: string; label: string }[] }[];
   projects: { id: string; name: string }[];
   statuses: { id: string; name: string; category: string }[];
   labels: { id: string; name: string }[];
@@ -54,7 +55,8 @@ const COLUMNS = [
   { key: "created", label: "Created", sort: "created" },
   { key: "updated", label: "Updated", sort: "updated" },
 ] as const;
-type ColKey = (typeof COLUMNS)[number]["key"];
+/** A built-in column, or "cf:<id>" for a custom field. */
+type ColKey = (typeof COLUMNS)[number]["key"] | `cf:${string}`;
 const DEFAULT_COLUMNS: ColKey[] = ["type", "status", "priority", "assignee", "sprint", "updated"];
 const PAGE = 50;
 
@@ -116,6 +118,10 @@ export function CardsView({
     }
   }
 
+  const allColumns: { key: ColKey; label: string; sort?: string }[] = [
+    ...COLUMNS.map((c) => ({ key: c.key as ColKey, label: c.label, sort: "sort" in c ? c.sort : undefined })),
+    ...(data.customFields ?? []).map((f) => ({ key: `cf:${f.id}` as ColKey, label: f.name })),
+  ];
   const ok = result.ok ? result : null;
   const rows = ok?.rows ?? [];
   const allOnPage = rows.length > 0 && rows.every((r) => selected.has(r.id));
@@ -159,12 +165,12 @@ export function CardsView({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel className="text-xs text-muted-foreground">Show columns</DropdownMenuLabel>
-            {COLUMNS.map((c) => (
+            {allColumns.map((c) => (
               <DropdownMenuCheckboxItem
                 key={c.key}
                 checked={columns.includes(c.key)}
                 onSelect={(e) => e.preventDefault()}
-                onCheckedChange={(on) => setColumns((cs) => (on ? COLUMNS.map((x) => x.key).filter((k) => k === c.key || cs.includes(k)) : cs.filter((k) => k !== c.key)))}
+                onCheckedChange={(on) => setColumns((cs) => (on ? allColumns.map((x) => x.key).filter((k) => k === c.key || cs.includes(k)) : cs.filter((k) => k !== c.key)))}
               >
                 {c.label}
               </DropdownMenuCheckboxItem>
@@ -187,7 +193,7 @@ export function CardsView({
             const f = view.filters as QueryFilters;
             setActiveViewId(view.id);
             setQuery(f.q);
-            if (f.columns.length) setColumns(f.columns.filter((c): c is ColKey => COLUMNS.some((x) => x.key === c)));
+            if (f.columns.length) setColumns(f.columns.filter((c): c is ColKey => allColumns.some((x) => x.key === c)));
             run(f.q, 0);
           }}
         />
@@ -239,8 +245,8 @@ export function CardsView({
               </th>
               <SortHeader label="Key" field="key" order={order} onSort={sortBy} />
               <SortHeader label="Title" field="title" order={order} onSort={sortBy} />
-              {COLUMNS.filter((c) => columns.includes(c.key)).map((c) =>
-                "sort" in c ? <SortHeader key={c.key} label={c.label} field={c.sort} order={order} onSort={sortBy} /> : (
+              {allColumns.filter((c) => columns.includes(c.key)).map((c) =>
+                c.sort ? <SortHeader key={c.key} label={c.label} field={c.sort} order={order} onSort={sortBy} /> : (
                   <th key={c.key} scope="col" className="px-3 py-2 font-medium whitespace-nowrap">
                     {c.label}
                   </th>
@@ -354,6 +360,7 @@ function SortHeader({ label, field, order, onSort }: { label: string; field: str
 
 function Row({ row: r, columns, unit, selected, onSelect, onOpen }: { row: QueryRow; columns: ColKey[]; unit: EstimateUnit; selected: boolean; onSelect: (on: boolean) => void; onOpen: () => void }) {
   const cell = (k: ColKey) => {
+    if (k.startsWith("cf:")) return r.fields[k.slice(3)] ?? null;
     switch (k) {
       case "type":
         return <TypeIcon type={r.type} />;

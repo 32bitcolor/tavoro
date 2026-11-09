@@ -321,6 +321,16 @@ export async function renameColumn(columnId: string, name: string) {
   revalidatePath(boardPath(column.boardId));
 }
 
+/** A column's soft work-in-progress limit (null clears it). The board warns at and over it. */
+export async function setColumnWipLimit(columnId: string, limit: number | null) {
+  const column = await getColumnForUser(columnId);
+  if (!column) return { error: "Column not found." };
+  if (limit !== null && (!Number.isInteger(limit) || limit < 1 || limit > 999)) return { error: "Use a whole number from 1 to 999, or leave it empty." };
+  await prisma.column.update({ where: { id: columnId }, data: { wipLimit: limit } });
+  revalidatePath(boardPath(column.boardId));
+  return { ok: true as const };
+}
+
 export async function deleteColumn(columnId: string) {
   const column = await getColumnForUser(columnId);
   if (!column) return { error: "Column not found." };

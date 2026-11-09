@@ -99,6 +99,9 @@ review that.
   - **links** between cards (blocks, relates to, duplicates, clones); a card blocked by an
     unfinished one shows **Blocked**
   - **watchers**, who get emails about changes, and a **History** of who changed what
+  - **custom fields** (text, number, date, checkbox, person, one or several options) that
+    admins add per board, queryable on the Cards page
+  - **swimlanes** by assignee, epic, priority or type, and per-column **WIP limits**
   - subtasks, comments, file attachments and linked whiteboards
 
   Boards that belong to a project show a strip with the current phase, the next milestone and

@@ -30,6 +30,7 @@ model User {
   watchedCards            CardWatcher[]       @relation("CardWatching")
   cardActivity            CardActivity[]      @relation("CardActivityActor")
   jiraImports             JiraImport[]        @relation("JiraImportCreator")
+  fieldValues             CardFieldValue[]
   uploadedAssets          Asset[]             @relation("AssetUploader")
   bankItems               BankItem[]          @relation("BankItemCreator")
   contentDependencies     ContentDependency[] @relation("DependencyCreator")
@@ -85,6 +86,7 @@ model Workspace {
   statuses             WorkspaceStatus[]
   sprints              Sprint[]
   jiraImports          JiraImport[]
+  customFields         CustomField[]
   labels               Label[]
   savedViews           SavedView[]
   contentItems         ContentItem[]
@@ -181,27 +183,28 @@ model WorkspaceStatus {
 }
 
 model Board {
-  id                  String         @id @default(cuid())
+  id                  String             @id @default(cuid())
   workspaceId         String
   projectId           String? // null = standalone "quick board"; set = one of a project's boards
   name                String
   cardKeyPrefix       String? // e.g. "WP" — when set, every card created under this board (including subtasks) gets a sequential "WP-123" key
-  cardKeySeq          Int            @default(0) // last card key number issued; incremented atomically on card creation
+  cardKeySeq          Int                @default(0) // last card key number issued; incremented atomically on card creation
   // Public read-only link (lib/board-share.ts). Set = shared; the link is an HMAC over
   // the nonce, so a database dump can't produce one. A new nonce kills the old link.
   publicNonce         String?
-  publicShowAssignees Boolean        @default(false)
+  publicShowAssignees Boolean            @default(false)
   publicSharedAt      DateTime?
   publicSharedById    String?
-  publicSharedBy      User?          @relation("BoardPublicSharer", fields: [publicSharedById], references: [id], onDelete: SetNull)
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  workspace           Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  project             Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  publicSharedBy      User?              @relation("BoardPublicSharer", fields: [publicSharedById], references: [id], onDelete: SetNull)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  workspace           Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project             Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
   columns             Column[]
   groupAccess         BoardGroup[]
   savedViews          SavedView[]
   keyAliases          CardKeyAlias[]
+  customFields        CustomFieldBoard[]
   externalRef         String? // "jira:<cloudId>:project:<id>" for a board a Jira import made, so a re-run finds it
 
   @@unique([workspaceId, cardKeyPrefix])
@@ -216,6 +219,7 @@ model Column {
   statusId  String? // the canonical status this column represents (drives card.statusId on move)
   name      String
   position  String
+  wipLimit  Int? // soft work-in-progress limit: the header warns at and over it
   createdAt DateTime         @default(now())
   board     Board            @relation(fields: [boardId], references: [id], onDelete: Cascade)
   status    WorkspaceStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
@@ -267,6 +271,7 @@ model Card {
   reviewComments ReviewComment[]
   keyAliases     CardKeyAlias[]
   imported       ImportedCard?
+  fieldValues    CardFieldValue[]
 
   @@index([columnId, position])
   @@index([parentCardId, position])
@@ -1348,4 +1353,54 @@ model ImportedCard {
 
   @@unique([workspaceId, externalRef])
   @@index([workspaceId, externalKey])
+}
+
+// ── Custom card fields (docs/JIRA-PARITY.md, phase 8) ───────────────────────
+
+// A field admins add to cards: text, number, select, multiselect, date, checkbox or
+// person. Workspace-wide; shown on every board, or only the boards listed.
+model CustomField {
+  id          String             @id @default(cuid())
+  workspaceId String
+  name        String
+  type        String // text / number / select / multiselect / date / checkbox / person (lib/custom-fields.ts)
+  options     Json               @default("[]") // select types: [{ id, label }]
+  position    String
+  allBoards   Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  boards      CustomFieldBoard[]
+  values      CardFieldValue[]
+
+  @@index([workspaceId, position])
+}
+
+model CustomFieldBoard {
+  fieldId String
+  boardId String
+  field   CustomField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  board   Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@id([fieldId, boardId])
+  @@index([boardId])
+}
+
+// A card's value for a field, in the column for its type, so queries can compare it.
+model CardFieldValue {
+  cardId    String
+  fieldId   String
+  text      String?
+  number    Float?
+  date      DateTime?
+  bool      Boolean?
+  optionIds String[]    @default([])
+  userId    String?
+  updatedAt DateTime    @updatedAt
+  card      Card        @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  field     CustomField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@id([cardId, fieldId])
+  @@index([fieldId])
 }

@@ -17,14 +17,14 @@ export function registerWorkspaceTools(server: McpServer) {
     {
       title: "Workspace overview",
       description:
-        "Who you are, which workspace this connection works in, and the reference lists other tools take as input: members (for assignees and reviewers), board statuses, labels and sprints. Call this first in a conversation.",
+        "Who you are, which workspace this connection works in, and the reference lists other tools take as input: members (for assignees and reviewers), board statuses, labels, sprints and custom card fields. Call this first in a conversation.",
       input: {},
       kind: "read",
     },
     async () => {
       const p = principal();
       const me = await getCurrentUser();
-      const [ws, members, statuses, labels, sprints] = await Promise.all([
+      const [ws, members, statuses, labels, sprints, customFields] = await Promise.all([
         prisma.workspace.findUniqueOrThrow({ where: { id: p.workspaceId }, select: { id: true, name: true, slug: true } }),
         prisma.membership.findMany({
           where: { workspaceId: p.workspaceId, suspendedAt: null },
@@ -38,6 +38,7 @@ export function registerWorkspaceTools(server: McpServer) {
           orderBy: { createdAt: "desc" },
           select: { id: true, name: true, status: true, startDate: true, endDate: true, goal: true },
         }),
+        prisma.customField.findMany({ where: { workspaceId: p.workspaceId }, orderBy: { position: "asc" }, select: { name: true, type: true, options: true, allBoards: true } }),
       ]);
       return {
         workspace: { ...ws, url: link("/dashboard") },
@@ -47,6 +48,8 @@ export function registerWorkspaceTools(server: McpServer) {
         statuses,
         labels,
         sprints: sprints.map((s) => ({ ...s, startDate: day(s.startDate), endDate: day(s.endDate) })),
+        // Set them with update_card (fields: { name: value }); query them in search_cards ("Audience" = Managers).
+        customFields: customFields.map((f) => ({ name: f.name, type: f.type, ...(f.type.endsWith("select") ? { options: (f.options as { label: string }[]).map((o) => o.label) } : {}), allBoards: f.allBoards })),
       };
     },
   );

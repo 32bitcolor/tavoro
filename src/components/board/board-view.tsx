@@ -10,6 +10,8 @@ import {
   useSensor,
   useSensors,
   closestCorners,
+  pointerWithin,
+  type CollisionDetection,
   useDroppable,
   type DragStartEvent,
   type DragOverEvent,
@@ -38,6 +40,10 @@ import {
   MoreHorizontal,
   Paperclip,
   Plus,
+  Rows3,
+  Gauge,
+  ChevronDown,
+  ChevronRight,
   Trash2,
   X,
 } from "lucide-react";
@@ -52,7 +58,10 @@ import {
   renameBoard,
   deleteBoard,
   setBoardCardKeyPrefix,
+  setColumnWipLimit,
 } from "@/app/actions/boards";
+import { setCardPriority, setCardType, toggleCardAssignee } from "@/app/actions/cards";
+import { setCardEpic } from "@/app/actions/epics";
 import Link from "next/link";
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
 import type { MoveResult } from "@/components/board/move-card-dialog";
@@ -117,7 +126,11 @@ type Card = {
   attachments: number;
   deliverable: { name: string; review: { round: number; status: string } | null } | null;
 };
-type Column = { id: string; name: string; position: string; category: StatusCategory; cards: Card[] };
+type Column = { id: string; name: string; position: string; category: StatusCategory; wipLimit?: number | null; cards: Card[] };
+/** Swimlanes: rows across the board, by one of the card's attributes (?lanes=). */
+const LANE_MODES = ["none", "assignee", "epic", "priority", "type"] as const;
+type LaneMode = (typeof LANE_MODES)[number];
+const LANE = "lane::";
 type ViewMode = "board" | "list";
 type ListSort = "board" | "priority" | "estimate" | "due";
 
@@ -163,6 +176,28 @@ export function BoardView({
   const [view, setView] = useState<ViewMode>(() => (searchParams.get("view") === "list" ? "list" : "board"));
   // Which column's composer the header's "New card" button opened.
   const [composeIn, setComposeIn] = useState<string | null>(null);
+  // Swimlanes, also kept in the URL.
+  const [lanes, setLanes] = useState<LaneMode>(() => {
+    const l = searchParams.get("lanes");
+    return (LANE_MODES as readonly string[]).includes(l ?? "") ? (l as LaneMode) : "none";
+  });
+  const [collapsedLanes, setCollapsedLanes] = useState<Set<string>>(new Set());
+  // While dragging with lanes on: the lane the card started in, and the one it's over.
+  const [dragLane, setDragLane] = useState<{ cardId: string; from: string; to: string } | null>(null);
+  // A column a move took over its WIP limit.
+  const [wipNotice, setWipNotice] = useState<string | null>(null);
+  const [dragFromCol, setDragFromCol] = useState<string | null>(null);
+
+  function changeLanes(next: LaneMode) {
+    setLanes(next);
+    setCollapsedLanes(new Set());
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "none") params.delete("lanes");
+    else params.set("lanes", next);
+    params.delete("card");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
 
   function changeView(next: ViewMode) {
     setView(next);
@@ -330,9 +365,50 @@ export function BoardView({
   const colOfCard = (cardId: string, cols: Column[]) =>
     cols.find((c) => c.cards.some((card) => card.id === cardId));
 
+  /** Which lane a card sits in, for the current lane mode. */
+  const laneOf = (card: Card): string => {
+    if (dragLane && dragLane.cardId === card.id) return dragLane.to;
+    switch (lanes) {
+      case "assignee": {
+        const first = [...card.assignees].sort((a, b) => (a.name ?? a.email).localeCompare(b.name ?? b.email))[0];
+        return first?.id ?? "none";
+      }
+      case "epic":
+        return card.epic?.id ?? "none";
+      case "priority":
+        return card.priority ?? "none";
+      case "type":
+        return card.type;
+      default:
+        return "all";
+    }
+  };
+
+  /** What a drop target means: a column (lanes off), a lane cell, or a card. */
+  function targetOf(overId: string, cols: Column[]): { col: Column; overCardId: string | null; lane: string | null } | null {
+    if (overId.startsWith(LANE)) {
+      const [, lane, colId] = overId.split("::");
+      const col = cols.find((c) => c.id === colId);
+      return col ? { col, overCardId: null, lane } : null;
+    }
+    const direct = cols.find((c) => c.id === overId);
+    if (direct) return { col: direct, overCardId: null, lane: null };
+    const col = colOfCard(overId, cols);
+    if (!col) return null;
+    const card = col.cards.find((c) => c.id === overId)!;
+    return { col, overCardId: overId, lane: lanes === "none" ? null : laneOf(card) };
+  }
+
   function onDragStart(e: DragStartEvent) {
     const id = String(e.active.id);
-    setActiveCard(colOfCard(id, columns)?.cards.find((c) => c.id === id) ?? null);
+    const card = colOfCard(id, columns)?.cards.find((c) => c.id === id) ?? null;
+    setActiveCard(card);
+    setWipNotice(null);
+    setDragFromCol(colOfCard(id, columns)?.id ?? null);
+    if (card && lanes !== "none") {
+      const l = laneOf(card);
+      setDragLane({ cardId: id, from: l, to: l });
+    }
   }
 
   function onDragOver(e: DragOverEvent) {
@@ -340,15 +416,18 @@ export function BoardView({
     if (!over) return;
     const activeId = String(active.id);
     const overId = String(over.id);
+    const t = targetOf(overId, columns);
+    if (t?.lane && lanes !== "none") setDragLane((d) => (d && d.cardId === activeId && d.to !== t.lane ? { ...d, to: t.lane! } : d));
 
     setColumns((prev) => {
       const from = colOfCard(activeId, prev);
       if (!from) return prev;
-      const to = prev.find((c) => c.id === overId) ?? colOfCard(overId, prev);
+      const tt = targetOf(overId, prev);
+      const to = tt?.col;
       if (!to || to.id === from.id) return prev;
 
       const card = from.cards.find((c) => c.id === activeId)!;
-      const overCardIndex = to.cards.findIndex((c) => c.id === overId);
+      const overCardIndex = tt.overCardId ? to.cards.findIndex((c) => c.id === tt.overCardId) : -1;
       const insertAt = overCardIndex >= 0 ? overCardIndex : to.cards.length;
 
       return prev.map((c) => {
@@ -363,6 +442,8 @@ export function BoardView({
   function onDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     setActiveCard(null);
+    const lane = dragLane;
+    setDragLane(null);
     if (!over) return;
     const activeId = String(active.id);
     const overId = String(over.id);
@@ -370,12 +451,13 @@ export function BoardView({
     let working = columns;
     const activeCol = colOfCard(activeId, working);
     if (!activeCol) return;
-    const overCol = working.find((c) => c.id === overId) ?? colOfCard(overId, working);
-    if (!overCol) return;
+    const t = targetOf(overId, working);
+    if (!t) return;
+    const overCol = t.col;
 
-    if (activeCol.id === overCol.id) {
+    if (activeCol.id === overCol.id && t.overCardId) {
       const oldIndex = activeCol.cards.findIndex((c) => c.id === activeId);
-      const newIndex = activeCol.cards.findIndex((c) => c.id === overId);
+      const newIndex = activeCol.cards.findIndex((c) => c.id === t.overCardId);
       if (newIndex >= 0 && oldIndex !== newIndex) {
         const reordered = arrayMove(activeCol.cards, oldIndex, newIndex);
         working = working.map((c) => (c.id === activeCol.id ? { ...c, cards: reordered } : c));
@@ -386,6 +468,51 @@ export function BoardView({
     const finalCol = colOfCard(activeId, working)!;
     const finalIndex = finalCol.cards.findIndex((c) => c.id === activeId);
     startTransition(() => void moveCard(activeId, finalCol.id, finalIndex));
+    if (finalCol.id !== dragFromCol) checkWip(finalCol);
+    if (lane && lane.cardId === activeId && lane.to !== lane.from) void changeLane(activeId, lane.from, lane.to);
+  }
+
+  /** With lanes, the target is what's under the pointer (a card, else its lane cell):
+   *  nearest-corner matching can pick the next lane over. */
+  const laneCollision: CollisionDetection = (args) => {
+    const hits = pointerWithin(args);
+    const onCards = hits.filter((h) => !String(h.id).startsWith(LANE));
+    if (onCards.length) return onCards;
+    if (hits.length) return hits;
+    return closestCorners(args);
+  };
+
+  /** Warn (not block, like Jira) when a move takes a column past its limit. */
+  function checkWip(col: Column) {
+    if (col.wipLimit && col.cards.length > col.wipLimit) setWipNotice(`${col.name} is over its limit: ${col.cards.length} cards, limit ${col.wipLimit}.`);
+  }
+
+  /** Dropping into another swimlane changes that attribute of the card. */
+  async function changeLane(cardId: string, from: string, to: string) {
+    const card = colOfCard(cardId, columns)?.cards.find((c) => c.id === cardId);
+    if (!card) return;
+    const patchLocal = (p: Partial<Card>) => setColumns((cols) => cols.map((c) => ({ ...c, cards: c.cards.map((x) => (x.id === cardId ? { ...x, ...p } : x)) })));
+    let res: { error?: string } | undefined | null | void;
+    if (lanes === "assignee") {
+      const member = availableMembers.find((m) => m.id === to);
+      patchLocal({ assignees: [...card.assignees.filter((a) => a.id !== from), ...(member && !card.assignees.some((a) => a.id === to) ? [member] : [])] });
+      if (from !== "none") res = await toggleCardAssignee(cardId, from, false);
+      if (!res?.error && to !== "none") res = await toggleCardAssignee(cardId, to, true);
+    } else if (lanes === "epic") {
+      const epic = availableEpics.find((e) => e.id === to) ?? null;
+      patchLocal({ epic: to === "none" ? null : epic });
+      res = await setCardEpic(cardId, to === "none" ? null : to);
+    } else if (lanes === "priority") {
+      patchLocal({ priority: to === "none" ? null : (to as Priority) });
+      res = await setCardPriority(cardId, to === "none" ? null : to);
+    } else if (lanes === "type") {
+      patchLocal({ type: to as CardType });
+      res = await setCardType(cardId, to);
+    }
+    if (res && "error" in res && res.error) {
+      setWipNotice(res.error);
+      router.refresh();
+    }
   }
 
   // ── Mutations (optimistic local state + persisted server action) ──
@@ -490,7 +617,43 @@ export function BoardView({
     const first = columns[0];
     if (!first) return;
     if (view === "list") changeView("board");
+    // The composer lives in the plain column layout.
+    if (lanes !== "none") changeLanes("none");
     setComposeIn(first.id);
+  }
+
+  // ── Swimlanes ──
+  const [wipEdit, setWipEdit] = useState<string | null>(null);
+  const laneList = useMemo(() => {
+    if (lanes === "none") return [];
+    const keys = new Map<string, string>();
+    for (const col of filteredColumns) for (const card of col.cards) {
+      const k = laneOf(card);
+      if (keys.has(k)) continue;
+      let label = k;
+      if (lanes === "assignee") label = k === "none" ? "Unassigned" : (() => {
+        const m = card.assignees.find((a) => a.id === k) ?? availableMembers.find((a) => a.id === k);
+        return m ? (m.name ?? m.email) : "Someone";
+      })();
+      else if (lanes === "epic") label = k === "none" ? "No epic" : (card.epic?.id === k ? card.epic.title : availableEpics.find((e) => e.id === k)?.title ?? "Epic");
+      else if (lanes === "priority") label = k === "none" ? "No priority" : PRIORITY_LABEL[k as Priority];
+      else if (lanes === "type") label = k[0].toUpperCase() + k.slice(1);
+      keys.set(k, label);
+    }
+    const order = (k: string) =>
+      lanes === "priority" ? (k === "none" ? 9 : priorityRank(k as Priority)) : lanes === "type" ? ["story", "task", "bug", "epic"].indexOf(k) : k === "none" ? 1 : 0;
+    return [...keys.entries()]
+      .map(([key, label]) => ({ key, label }))
+      .sort((a, b) => order(a.key) - order(b.key) || a.label.localeCompare(b.label));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredColumns, lanes, dragLane, availableMembers, availableEpics]);
+
+  async function saveWip(columnId: string, limit: number | null) {
+    const res = await setColumnWipLimit(columnId, limit);
+    if (res && "error" in res && res.error) return res.error;
+    setColumns((cols) => cols.map((c) => (c.id === columnId ? { ...c, wipLimit: limit } : c)));
+    setWipEdit(null);
+    return null;
   }
 
   // Which column the open card sits in (top-level cards only; a subtask has none).
@@ -559,13 +722,42 @@ export function BoardView({
         onApplyView={applyView}
       />
 
+      {view === "board" && (
+        <div className="-mt-2 flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Rows3 className="size-3.5" aria-hidden="true" />
+            Swimlanes
+            <select
+              value={lanes}
+              onChange={(e) => changeLanes(e.target.value as LaneMode)}
+              className="h-7 rounded-md border border-border bg-surface px-1.5 text-xs text-foreground"
+            >
+              <option value="none">None</option>
+              <option value="assignee">By assignee</option>
+              <option value="epic">By epic</option>
+              <option value="priority">By priority</option>
+              <option value="type">By type</option>
+            </select>
+          </label>
+          {wipNotice && (
+            <p role="status" className="flex items-center gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-xs text-warning-ink">
+              <Gauge className="size-3.5" aria-hidden="true" />
+              {wipNotice}
+              <button type="button" onClick={() => setWipNotice(null)} aria-label="Dismiss" className="ml-1">
+                <X className="size-3" aria-hidden="true" />
+              </button>
+            </p>
+          )}
+        </div>
+      )}
+
       {view === "list" ? (
         <ListView columns={filteredColumns} cardKeyPrefix={cardKeyPrefix} openCardId={openCardId} onOpen={openCard} />
       ) : (
         <DndContext
           id={dndId}
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={lanes === "none" ? closestCorners : laneCollision}
           onDragStart={onDragStart}
           onDragOver={onDragOver}
           onDragEnd={onDragEnd}
@@ -573,6 +765,26 @@ export function BoardView({
           {/* `relative` makes this scroller the containing block for the cards' sr-only
               (absolutely positioned) text — otherwise those resolve against <main>
               and stretch the whole page sideways on narrow screens. */}
+          {lanes !== "none" ? (
+            <LanesBoard
+              columns={filteredColumns}
+              fullColumns={columns}
+              lanes={laneList}
+              laneOf={laneOf}
+              collapsed={collapsedLanes}
+              onToggle={(k) => setCollapsedLanes((s) => {
+                const n = new Set(s);
+                if (n.has(k)) n.delete(k);
+                else n.add(k);
+                return n;
+              })}
+              cardKeyPrefix={cardKeyPrefix}
+              openCardId={openCardId}
+              onDeleteCard={handleDeleteCard}
+              onOpenCard={openCard}
+              onSetWip={setWipEdit}
+            />
+          ) : (
           <div className="relative -mx-6 flex min-w-0 flex-1 items-start gap-3 overflow-x-auto px-6 pb-2">
             {filteredColumns.map((col, i) => (
               <ColumnView
@@ -594,13 +806,24 @@ export function BoardView({
                 onRename={handleRenameColumn}
                 onDelete={handleDeleteColumn}
                 onMove={handleMoveColumn}
+                total={columns.find((c) => c.id === col.id)?.cards.length ?? col.cards.length}
+                onSetWip={() => setWipEdit(col.id)}
               />
             ))}
             <AddColumn onAdd={handleAddColumn} />
           </div>
+          )}
 
           <DragOverlay>{activeCard ? <CardShell card={activeCard} cardKeyPrefix={cardKeyPrefix} dragging /> : null}</DragOverlay>
         </DndContext>
+      )}
+
+      {wipEdit && (
+        <WipDialog
+          column={columns.find((c) => c.id === wipEdit)!}
+          onClose={() => setWipEdit(null)}
+          onSave={(limit) => saveWip(wipEdit, limit)}
+        />
       )}
 
       {openCardId && (
@@ -866,7 +1089,12 @@ function ColumnView({
   onRename,
   onDelete,
   onMove,
+  total,
+  onSetWip,
 }: {
+  /** Cards in the column before filters, for the WIP limit. */
+  total: number;
+  onSetWip: () => void;
   column: Column;
   cardKeyPrefix: string | null;
   canMoveLeft: boolean;
@@ -900,7 +1128,7 @@ function ColumnView({
           ariaLabel="Column name"
           className="text-sm font-semibold tracking-normal"
         />
-        <span className="shrink-0 text-xs font-medium text-muted-foreground">{column.cards.length}</span>
+        <WipCount count={column.cards.length} total={total} limit={column.wipLimit ?? null} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon-xs" className="size-6 text-muted-foreground" aria-label={`${column.name} column options`}>
@@ -915,6 +1143,10 @@ function ColumnView({
             <DropdownMenuItem disabled={!canMoveRight} onSelect={() => onMove(column.id, 1)}>
               <ArrowRight className="size-4" />
               Move right
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={onSetWip}>
+              <Gauge className="size-4" />
+              {column.wipLimit ? `WIP limit: ${column.wipLimit}…` : "Set WIP limit…"}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onSelect={() => setDeleteOpen(true)}>
@@ -1406,5 +1638,168 @@ function PrivateTag() {
       <Lock className="size-3" aria-hidden="true" />
       Private
     </span>
+  );
+}
+
+
+/** "4" or, with a WIP limit, "4 / 5" — amber at the limit, red over it. */
+function WipCount({ count, total, limit }: { count: number; total: number; limit: number | null }) {
+  if (!limit) return <span className="shrink-0 text-xs font-medium text-muted-foreground">{count}</span>;
+  const state = total > limit ? "over" : total === limit ? "at" : "under";
+  return (
+    <span
+      title={state === "over" ? `Over its WIP limit of ${limit}` : state === "at" ? `At its WIP limit of ${limit}` : `WIP limit ${limit}`}
+      className={cn(
+        "shrink-0 rounded px-1 text-xs font-medium tabular-nums",
+        state === "over" ? "bg-destructive/10 text-destructive-ink" : state === "at" ? "bg-warning/15 text-warning-ink" : "text-muted-foreground",
+      )}
+    >
+      {total} / {limit}
+      <span className="sr-only">{state === "over" ? " — over the limit" : state === "at" ? " — at the limit" : ""}</span>
+    </span>
+  );
+}
+
+function WipDialog({ column, onClose, onSave }: { column: Column; onClose: () => void; onSave: (limit: number | null) => Promise<string | null> }) {
+  const [value, setValue] = useState(column.wipLimit ? String(column.wipLimit) : "");
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-sm">
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const v = value.trim();
+            const n = v === "" ? null : Number(v);
+            if (n !== null && (!Number.isInteger(n) || n < 1)) return setError("Use a whole number of 1 or more, or leave it empty.");
+            setError(await onSave(n));
+          }}
+          className="flex flex-col gap-4"
+        >
+          <DialogHeader>
+            <DialogTitle>WIP limit for {column.name}</DialogTitle>
+            <DialogDescription>How many cards should be in this column at once. Over the limit, its count turns red; nothing is blocked. Leave empty for no limit.</DialogDescription>
+          </DialogHeader>
+          <Input aria-label="WIP limit" inputMode="numeric" value={value} onChange={(e) => setValue(e.target.value)} placeholder="No limit" autoFocus />
+          {error && (
+            <p role="alert" className="text-sm text-destructive-ink">
+              {error}
+            </p>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit">Save</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function LanesBoard({
+  columns,
+  fullColumns,
+  lanes,
+  laneOf,
+  collapsed,
+  onToggle,
+  cardKeyPrefix,
+  openCardId,
+  onDeleteCard,
+  onOpenCard,
+  onSetWip,
+}: {
+  columns: Column[];
+  fullColumns: Column[];
+  lanes: { key: string; label: string }[];
+  laneOf: (c: Card) => string;
+  collapsed: Set<string>;
+  onToggle: (key: string) => void;
+  cardKeyPrefix: string | null;
+  openCardId: string | null;
+  onDeleteCard: (id: string) => unknown;
+  onOpenCard: (id: string) => void;
+  onSetWip: (columnId: string) => void;
+}) {
+  return (
+    <div className="relative -mx-6 min-w-0 flex-1 overflow-x-auto px-6 pb-2">
+      <div className="flex w-max min-w-full flex-col gap-3">
+        <div className="sticky top-0 z-10 flex gap-3">
+          {columns.map((col) => {
+            const total = fullColumns.find((c) => c.id === col.id)?.cards.length ?? col.cards.length;
+            return (
+              <div key={col.id} className="flex w-64 shrink-0 items-center gap-2 rounded-lg bg-surface-muted px-3 py-2">
+                <StatusDot category={col.category} />
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold">{col.name}</span>
+                <WipCount count={col.cards.length} total={total} limit={col.wipLimit ?? null} />
+                <Button variant="ghost" size="icon-xs" className="size-6 text-muted-foreground" aria-label={`WIP limit for ${col.name}`} onClick={() => onSetWip(col.id)}>
+                  <Gauge className="size-3.5" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+        {lanes.map((lane) => {
+          const count = columns.reduce((n, col) => n + col.cards.filter((c) => laneOf(c) === lane.key).length, 0);
+          const open = !collapsed.has(lane.key);
+          return (
+            <section key={lane.key} aria-label={`Swimlane: ${lane.label}`} className="flex flex-col gap-1.5">
+              <button type="button" onClick={() => onToggle(lane.key)} aria-expanded={open} className="flex items-center gap-1.5 self-start rounded px-1 text-sm font-semibold hover:bg-hover">
+                {open ? <ChevronDown className="size-4" aria-hidden="true" /> : <ChevronRight className="size-4" aria-hidden="true" />}
+                {lane.label}
+                <span className="text-xs font-normal text-muted-foreground">{count}</span>
+              </button>
+              {open && (
+                <div className="flex gap-3">
+                  {columns.map((col) => (
+                    <LaneCell
+                      key={col.id}
+                      id={`${LANE}${lane.key}::${col.id}`}
+                      label={`${lane.label}, ${col.name}`}
+                      cards={col.cards.filter((c) => laneOf(c) === lane.key)}
+                      cardKeyPrefix={cardKeyPrefix}
+                      openCardId={openCardId}
+                      onDeleteCard={onDeleteCard}
+                      onOpenCard={onOpenCard}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function LaneCell({
+  id,
+  label,
+  cards,
+  cardKeyPrefix,
+  openCardId,
+  onDeleteCard,
+  onOpenCard,
+}: {
+  id: string;
+  label: string;
+  cards: Card[];
+  cardKeyPrefix: string | null;
+  openCardId: string | null;
+  onDeleteCard: (id: string) => unknown;
+  onOpenCard: (id: string) => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id, data: { type: "lane" } });
+  return (
+    <div ref={setNodeRef} aria-label={label} role="group" className={cn("flex min-h-16 w-64 shrink-0 flex-col gap-2 rounded-lg p-2 transition-colors", isOver ? "bg-accent/10 ring-1 ring-accent/40" : "bg-surface-muted/60")}>
+      <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+        {cards.map((card) => (
+          <SortableCard key={card.id} card={card} cardKeyPrefix={cardKeyPrefix} disabled={false} selected={card.id === openCardId} onDelete={onDeleteCard} onOpen={onOpenCard} />
+        ))}
+      </SortableContext>
+    </div>
   );
 }

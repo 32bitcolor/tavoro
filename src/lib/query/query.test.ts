@@ -126,3 +126,35 @@ describe("suggest", () => {
     expect(at("order by priority ").items.map((s) => s.label)).toEqual(["DESC", "ASC", ","]);
   });
 });
+
+describe("custom fields in queries", () => {
+  const cctx = {
+    ...ctx,
+    customFields: [
+      { id: "f-aud", name: "Audience", type: "select", options: [{ id: "o-mgr", label: "Managers" }, { id: "o-new", label: "New hires" }] },
+      { id: "f-min", name: "Seat time", type: "number", options: [] },
+      { id: "f-code", name: "Course code", type: "text", options: [] },
+    ],
+  };
+  const w = async (q: string) => (await compileQuery(q, cctx)).where;
+  it("matches by name, case-insensitively, quoted when it has spaces", async () => {
+    expect(await w("audience = managers")).toEqual({ fieldValues: { some: { fieldId: "f-aud", optionIds: { hasSome: ["o-mgr"] } } } });
+    expect(await w('"Seat time" >= 30')).toEqual({ fieldValues: { some: { fieldId: "f-min", number: { gte: 30 } } } });
+    expect(await w('"course code" ~ SEC')).toEqual({ fieldValues: { some: { fieldId: "f-code", text: { contains: "SEC", mode: "insensitive" } } } });
+  });
+  it("handles empty and != like the built-in fields", async () => {
+    expect(await w("audience is empty")).toEqual({ NOT: { fieldValues: { some: { fieldId: "f-aud", NOT: { optionIds: { isEmpty: true } } } } } });
+    expect(await w('audience != "New hires"')).toEqual({
+      AND: [{ fieldValues: { some: { fieldId: "f-aud", NOT: { optionIds: { isEmpty: true } } } } }, { NOT: { fieldValues: { some: { fieldId: "f-aud", optionIds: { hasSome: ["o-new"] } } } } }],
+    });
+  });
+  it("explains unknown options and operators", async () => {
+    await expect(compileQuery("audience = Execs", cctx)).rejects.toThrow(/No option of “Audience” “Execs”. Try: Managers, New hires/);
+    await expect(compileQuery('"seat time" ~ 3', cctx)).rejects.toThrow(/can’t use “~”/);
+  });
+  it("suggests custom fields and their options", () => {
+    const d = { statuses: [], labels: [], members: [], sprints: [], boards: [], projects: [], epics: [], customFields: cctx.customFields };
+    expect(suggest("", 0, d).items.map((s) => s.insert)).toContain('"Seat time"');
+    expect(suggest('"Audience" = ', 13, d).items.map((s) => s.insert)).toEqual(["Managers", '"New hires"']);
+  });
+});

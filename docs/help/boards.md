@@ -114,6 +114,16 @@ The filter bar above the columns narrows what’s visible without changing anyth
 
 Once you’ve set up a combination of filters you keep coming back to, open **Views** and choose **Save current filters…** to name it. Pick it from that menu any time to re-apply the whole combination; **Clear view** goes back to everything. Saved views are **yours**, not shared with the workspace, and a board’s views stay with that board. Saving over a name you’ve already used updates that view, and changing a filter by hand detaches the view so the menu never names one while showing something else. The team sprint board has its own **Views** menu that works the same way.
 
+## Swimlanes and WIP limits
+
+**Swimlanes** (above the board) splits it into rows: by assignee, epic, priority or type. Each row keeps the board’s columns, collapses with its heading, and only appears if it has cards. Dragging a card into another row changes that attribute — into Jordan’s row reassigns it from the row’s person to Jordan, into the High row makes it high priority. The choice is part of the page’s address, so a link keeps it.
+
+A column can have a **WIP limit** (work in progress): open the column’s **⋯** menu → **Set WIP limit…**. Its count then reads *3 / 4*, turns amber at the limit and red over it, and moving a card past the limit shows a note. Nothing is blocked — the limit is a signal to finish work before starting more.
+
+## Custom fields
+
+Admins can add fields to cards in **Settings → Cards & labels → Custom fields**: text, a number, a date, a checkbox, a person, or a list of options to pick one or several from. Each field shows on every board or only the boards you choose, in the card panel under **Fields**, where anyone who can edit the card sets it. Changes are recorded in the card’s History. On the Cards page, query a field by its name (`"Audience" = Managers`, `"Seat time" >= 30`) and add it as a column. Deleting a field deletes its values.
+
 ## Sharing a board publicly
 
 A public link lets people outside the workspace (a stakeholder, a client, the rest of the company) follow a board without an account. They see it read-only: they can’t change anything, and the link never leads anywhere else in Tavoro.
