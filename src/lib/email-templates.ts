@@ -516,3 +516,14 @@ export function bulkDigest(params: { actorName: string; count: number; items: { 
     text: `${actorName} made a bulk change:\n\n${shown.map((i) => `- ${i.subject}${i.url ? `\n  ${i.url}` : ""}`).join("\n")}${more > 0 ? `\n…and ${more} more.` : ""}`,
   };
 }
+
+/** An automation rule's "Email people" action. */
+export function automationNotice(params: { ruleName: string; cardTitle: string; cardKey: string | null; message: string }): Email {
+  const { ruleName, cardTitle, cardKey, message } = params;
+  const what = cardKey ? `${cardKey} ${cardTitle}` : cardTitle;
+  return {
+    subject: `${what} — ${ruleName}`,
+    html: layout(esc(what), `<p style="white-space:pre-wrap">${esc(message)}</p><p style="color:#666;font-size:13px">Sent by the automation rule “${esc(ruleName)}”.</p>`),
+    text: `${what}\n\n${message}\n\nSent by the automation rule “${ruleName}”.`,
+  };
+}

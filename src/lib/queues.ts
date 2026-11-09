@@ -65,3 +65,26 @@ if (process.env.NODE_ENV !== "production") globalForImport.importQueue = importQ
 export async function enqueueJiraImport(kind: "scan" | "import", importId: string): Promise<void> {
   await importQueue.add(kind, { importId }, { jobId: `${kind}-${importId}-${Date.now()}`, attempts: 3, backoff: { type: "exponential", delay: 30_000 }, removeOnComplete: 100, removeOnFail: 100 });
 }
+
+// Automation (lib/automation/engine.ts): card changes become events the worker matches
+// against rules. Fail-open like email: a Redis hiccup never fails the change itself.
+export type AutomationEvent = {
+  cardId: string;
+  trigger: "card_created" | "status_changed" | "field_changed" | "comment_added" | "subtasks_done";
+  field?: string;
+  data?: Record<string, unknown>;
+  /** How many rule runs led here (a rule's own changes are depth + 1). */
+  depth: number;
+};
+const globalForAutomation = globalThis as unknown as { automationQueue?: Queue };
+export const automationQueue = globalForAutomation.automationQueue ?? new Queue("automation", { connection });
+if (process.env.NODE_ENV !== "production") globalForAutomation.automationQueue = automationQueue;
+
+export async function enqueueAutomation(ev: AutomationEvent): Promise<void> {
+  if (process.env.AUTOMATION_DISABLED === "1") return;
+  try {
+    await automationQueue.add("event", ev, { removeOnComplete: 1000, removeOnFail: 500, attempts: 2, backoff: { type: "exponential", delay: 5000 } });
+  } catch (err) {
+    console.error("[automation] failed to enqueue", err);
+  }
+}

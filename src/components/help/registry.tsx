@@ -21,6 +21,7 @@ import {
   LayoutTemplate,
   CloudDownload,
   ListFilter,
+  Workflow,
   type LucideIcon,
 } from "lucide-react";
 
@@ -41,6 +42,7 @@ import AiMcp from "@/components/help/topics/ai-mcp";
 import Sso from "@/components/help/topics/sso";
 import JiraImport from "@/components/help/topics/jira-import";
 import Cards from "@/components/help/topics/cards";
+import Automation from "@/components/help/topics/automation";
 import Reports from "@/components/help/topics/reports";
 import Content from "@/components/help/topics/content";
 import Assets from "@/components/help/topics/assets";
@@ -211,6 +213,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     icon: ChartColumn,
     group: "Modules",
     Body: Reports,
+  },
+  {
+    slug: "automation",
+    title: "Automation rules",
+    summary: "When something happens to a card, if it matches, then change it or tell someone.",
+    icon: Workflow,
+    group: "Modules",
+    Body: Automation,
   },
   {
     slug: "jira-import",

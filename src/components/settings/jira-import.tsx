@@ -140,7 +140,7 @@ export function JiraRunList({ runs }: { runs: { id: string; site: string; status
               <span className="text-muted-foreground">{r.site}</span>
               <Badge status={r.status} />
               <span className="ml-auto text-xs text-muted-foreground">
-                {new Date(r.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                <span suppressHydrationWarning>{new Date(r.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</span>
                 {r.by && <> · {r.by}</>}
               </span>
             </Link>

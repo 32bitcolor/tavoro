@@ -3,6 +3,8 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import type { ActivityData, ActivityKind } from "@/lib/card-activity-text";
+import { eventForActivity } from "@/lib/automation/rules";
+import { enqueueAutomation, type AutomationEvent } from "@/lib/queues";
 
 // Writes a card's History (docs/JIRA-PARITY.md) and keeps its watchers. Every server
 // action that changes a card calls recordActivity, so the UI and MCP are recorded alike.
@@ -21,6 +23,9 @@ export async function recordActivity(cardId: string, actorId: string | null | un
     if (recent) return;
   }
   await db.cardActivity.create({ data: { cardId, actorId: actorId ?? null, kind, data: data as Prisma.InputJsonValue } });
+  // Automation rules react to card changes (lib/automation). A person's change is depth 0.
+  const ev = eventForActivity(kind);
+  if (ev) await enqueueAutomation({ cardId, trigger: ev.trigger as AutomationEvent["trigger"], field: ev.field, data: data as Record<string, unknown>, depth: 0 });
 }
 
 /** Add watchers (ignoring ones already watching). */

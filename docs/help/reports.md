@@ -55,4 +55,4 @@ The Time report is built from the **Time tracking** section of each project, so 
 
 ---
 
-← [Single sign-on & provisioning](sso.md) · [All guides](README.md) · [Import from Jira](jira-import.md) →
+← [Single sign-on & provisioning](sso.md) · [All guides](README.md) · [Automation rules](automation.md) →

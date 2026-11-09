@@ -87,6 +87,7 @@ model Workspace {
   sprints              Sprint[]
   jiraImports          JiraImport[]
   customFields         CustomField[]
+  automationRules      AutomationRule[]
   labels               Label[]
   savedViews           SavedView[]
   contentItems         ContentItem[]
@@ -753,6 +754,8 @@ model Comment {
   // Imported from Jira with no matching member: authorId is whoever ran the import, and
   // this is the original author's name, shown as "Jane Doe (from Jira)".
   importedAuthor String?
+  // Posted by an automation rule: importedAuthor then holds the rule's name.
+  automation     Boolean  @default(false)
   createdAt      DateTime @default(now())
   card           Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
   author         User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -1403,4 +1406,43 @@ model CardFieldValue {
 
   @@id([cardId, fieldId])
   @@index([fieldId])
+}
+
+// ── Automation (docs/JIRA-PARITY.md, phase 9) ────────────────────────────────
+
+// "When <trigger>, if the card matches <condition>, do <actions>." Run by the worker.
+// Statuses, people, labels and fields are named (not ids) in trigger and actions, so a
+// rule reads in a backup and still works after a restore (lib/automation/rules.ts).
+model AutomationRule {
+  id          String          @id @default(cuid())
+  workspaceId String
+  name        String
+  enabled     Boolean         @default(true)
+  boardId     String? // null = every board
+  trigger     Json // lib/automation/rules.ts Trigger
+  condition   String          @default("") // a card query (lib/query); empty = every card
+  actions     Json            @default("[]") // Action[]
+  createdById String?
+  lastRunAt   DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  runs        AutomationRun[]
+
+  @@index([workspaceId, enabled])
+}
+
+// What a rule did, newest first; the worker keeps the last 200 per rule.
+model AutomationRun {
+  id      String         @id @default(cuid())
+  ruleId  String
+  cardId  String?
+  cardKey String?
+  ok      Boolean
+  message String
+  at      DateTime       @default(now())
+  rule    AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, at])
+  @@index([cardId, at])
 }

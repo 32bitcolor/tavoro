@@ -10,6 +10,7 @@ import { sweepOAuth } from "../src/lib/oauth-sweep";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Cancelled, failImport, runImport, scanImport } from "../src/lib/jira/engine";
 import { snapshotActiveSprints } from "../src/lib/sprint-stats";
+import { handleEvent, runScheduled } from "../src/lib/automation/engine";
 import { JiraError } from "../src/lib/jira/client";
 
 // Background job runner. Phase 5 registers real LearnUpon sync jobs here; for
@@ -159,6 +160,27 @@ const sprintDaysWorker = new Worker(
 );
 sprintDaysWorker.on("failed", (job, err) => console.error(`[worker] sprint-days job ${job?.id} failed:`, err));
 
+// Automation rules (docs/JIRA-PARITY.md, phase 9): card-change events, and a daily run
+// at 07:00 UTC for "due in N days" and scheduled rules.
+const automationWorker = new Worker(
+  "automation",
+  async (job) => {
+    if (job.name === "daily") {
+      const r = await runScheduled(prisma);
+      console.log(`[worker] automation daily: ${r.ran} rule run(s)`);
+      return r;
+    }
+    return handleEvent(prisma, job.data);
+  },
+  { connection, concurrency: 1 },
+);
+automationWorker.on("failed", (job, err) => console.error(`[worker] automation job ${job?.id} failed:`, err));
+const automationQueue = new Queue("automation", { connection });
+automationQueue
+  .add("daily", {}, { repeat: { pattern: "0 7 * * *" }, removeOnComplete: true, removeOnFail: 50 })
+  .then(() => console.log("[worker] scheduled daily automation (07:00 UTC)"))
+  .catch((err) => console.error("[worker] failed to schedule automation:", err));
+
 console.log("[worker] starting…");
 
 async function shutdown() {
@@ -170,6 +192,8 @@ async function shutdown() {
   await importWorker.close();
   await sprintDaysWorker.close();
   await sprintDaysQueue.close();
+  await automationWorker.close();
+  await automationQueue.close();
   await lmsQueue.close();
   await remindersQueue.close();
   await maintenanceQueue.close();

@@ -31,6 +31,7 @@ The guides built into Tavoro (the **Help** link in the app's sidebar), as Markdo
 - [AI assistants (MCP)](ai-mcp.md) — Connect Claude, ChatGPT, and other AI assistants to your workspace over MCP.
 - [Single sign-on & provisioning](sso.md) — Sign in through your identity provider, provision members with SCIM, and set roles from groups.
 - [Reports](reports.md) — Admins & managers: intake, delivery and time numbers for the team.
+- [Automation rules](automation.md) — When something happens to a card, if it matches, then change it or tell someone.
 - [Import from Jira](jira-import.md) — Bring Jira Cloud projects over as boards, and top them up later.
 - [Members, groups & access](members-access.md) — Admin: manage members, groups, and group-based access.
 - [Account & themes](account-themes.md) — Change your password and pick from 17 built-in themes.

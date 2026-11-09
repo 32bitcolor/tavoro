@@ -66,6 +66,8 @@ type CommentT = {
   author: { id: string; name: string | null; email: string };
   /** Imported from Jira with no matching member: the original author's name. */
   importedAuthor?: string | null;
+  /** Posted by an automation rule (importedAuthor is the rule's name). */
+  automation?: boolean;
 };
 export type CardFacePatch = {
   title?: string;
@@ -1090,7 +1092,7 @@ export function CardDrawer({
                       <span className="text-xs font-medium">
                         {c.importedAuthor ? (
                           <span title={`Imported by ${c.author.name ?? c.author.email}`}>
-                            {c.importedAuthor} <span className="font-normal text-muted-foreground">(from Jira)</span>
+                            {c.importedAuthor} <span className="font-normal text-muted-foreground">{c.automation ? "(automation)" : "(from Jira)"}</span>
                           </span>
                         ) : (
                           (c.author.name ?? c.author.email)
@@ -1252,6 +1254,7 @@ function SubtaskRow({
         type="checkbox"
         checked={item.done}
         onChange={onToggleDone}
+        aria-label={`Done: ${item.title}`}
         className="h-4 w-4 shrink-0"
       />
       <button

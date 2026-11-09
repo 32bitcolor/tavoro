@@ -9,7 +9,7 @@ import { getBoardForUser, getCardForUser, projectVisibilityWhere, whiteboardVisi
 import { parseAnchor } from "@/lib/review-anchor";
 import { excerpt, quoteOf } from "@/lib/review-feedback";
 import { positionBetween } from "@/lib/ordering";
-import { enqueueEmail } from "@/lib/queues";
+import { enqueueAutomation, enqueueEmail } from "@/lib/queues";
 import { subtaskAssigned, cardAssigned, smeAssigned, commentPosted, mentioned, withLink } from "@/lib/email-templates";
 import { appUrl } from "@/lib/app-url";
 import { extractMentionIds, extractText } from "@/lib/mentions";
@@ -95,6 +95,7 @@ export async function getCardDetail(cardId: string) {
             body: true,
             createdAt: true,
             importedAuthor: true,
+            automation: true,
             author: { select: { id: true, name: true, email: true } },
           },
         },
@@ -240,6 +241,7 @@ export async function getCardDetail(cardId: string) {
       createdAt: c.createdAt.toISOString(),
       author: c.author,
       importedAuthor: c.importedAuthor,
+      automation: c.automation,
     })),
     attachments: card.attachments.map((a) => ({
       id: a.id,
@@ -755,6 +757,8 @@ export async function toggleSubtask(cardId: string, done: boolean) {
   await prisma.card.update({ where: { id: cardId }, data: { done } });
   revalidatePath(boardPath(card.boardId));
 
+  // Rules can react to a card's last subtask being finished.
+  if (card.parentCardId && done && !before?.done) await enqueueAutomation({ cardId: card.parentCardId, trigger: "subtasks_done", depth: 0 });
   if (card.parentCardId && before?.done !== done) {
     const board = await prisma.board.findUnique({ where: { id: card.boardId }, select: { workspaceId: true } });
     if (board) {
@@ -802,6 +806,7 @@ export async function addComment(cardId: string, body: string) {
     },
   });
   await watch(cardId, [user.id]);
+  await enqueueAutomation({ cardId, trigger: "comment_added", depth: 0 });
   revalidatePath(boardPath(card.boardId));
 
   // Notify: @-mentions get a mention email; the card's assignees, SMEs and watchers
@@ -919,7 +924,7 @@ export async function getCardHistory(cardId: string, limit = 100) {
   return {
     entries: rows.map((r) => ({
       id: r.id,
-      actor: r.actor ? (r.actor.name ?? r.actor.email) : "Tavoro",
+      actor: r.actor ? (r.actor.name ?? r.actor.email) : (r.data as { automation?: string } | null)?.automation ? `Automation · ${(r.data as { automation: string }).automation}` : "Tavoro",
       text: describeActivity(r.kind, (r.data ?? {}) as ActivityData),
       kind: r.kind,
       at: r.createdAt.toISOString(),

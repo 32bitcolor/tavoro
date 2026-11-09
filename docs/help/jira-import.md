@@ -49,4 +49,4 @@ If a project goes into an existing board with a different prefix, its cards get 
 
 ---
 
-← [Reports](reports.md) · [All guides](README.md) · [Members, groups & access](members-access.md) →
+← [Automation rules](automation.md) · [All guides](README.md) · [Members, groups & access](members-access.md) →

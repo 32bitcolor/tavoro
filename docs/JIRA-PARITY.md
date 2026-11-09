@@ -1,6 +1,6 @@
 # Jira parity: boards that can replace Jira for an ID team
 
-**Status:** Phases 1–5 (Tier 1) shipped to prod. Phase 6 (Tier 3) on prod. Phase 7 (query language, Cards page, bulk edit) on test. Phase 8 (swimlanes, WIP limits, custom fields) built.
+**Status:** Phases 1–5 (Tier 1) shipped to prod. Phase 6 (Tier 3) on prod. Phase 7 (query language, Cards page, bulk edit) on test. Phase 8 (swimlanes, WIP limits, custom fields) on test. Phase 9 (automation) built — all four tiers done.
 **Owner:** @32bitcolor
 
 ## Why
@@ -323,6 +323,14 @@ once), then power, then automation (whose conditions reuse the query language).
   "Automation: <rule name>". Loop guard: a chain stops after 10 rule runs per card per
   minute. Each rule keeps a run log (last 200: when, card, result, error).
 - **MCP:** `list_automation_rules` (read); rules are edited in the app only.
+- *As built:* `AutomationRule` / `AutomationRun`; `lib/automation/rules.ts` (triggers,
+  actions, summaries) and `engine.ts` (worker queue `automation`, daily 07:00 UTC job).
+  Rules name statuses, labels, fields and people instead of holding ids, so they survive
+  a backup and restore; names are checked when saving, and a renamed one shows in the run
+  log. Events come from `recordActivity` (so the UI and MCP alike), new comments and
+  finished subtasks — not from Jira imports. A rule's changes don't send the usual
+  notifications; the "Email people" action does. Chains stop at depth 3 and 10 runs per
+  card per minute. Scheduled rules need a condition and touch at most 200 cards a run.
 
 ## Phases
 

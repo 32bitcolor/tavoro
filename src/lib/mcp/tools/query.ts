@@ -7,6 +7,7 @@ import { bulkUpdateCards, type BulkChange } from "@/app/actions/card-query";
 import { link, principal, resolveCardId, tool, ToolError } from "@/lib/mcp/util";
 import { resolveMember, resolveSprint } from "@/lib/mcp/tools/cards";
 import { cardHref } from "@/lib/mcp/tools/workspace";
+import { Action, Trigger, describeRule } from "@/lib/automation/rules";
 
 // The card query language over MCP (docs/JIRA-PARITY.md, phase 7).
 
@@ -129,6 +130,40 @@ export function registerQueryTools(server: McpServer) {
         out.push({ change: c.label, updated: ok.updated, failed: ok.failed });
       }
       return { cards: ids.length, changes: out };
+    },
+  );
+
+  tool(
+    server,
+    "list_automation_rules",
+    {
+      title: "List automation rules",
+      description: "The workspace's automation rules (When … if … then …), whether each is on, and its last few runs. Rules are edited in the app (Settings → Automation), not over MCP.",
+      input: {},
+      kind: "read",
+    },
+    async () => {
+      const rules = await prisma.automationRule.findMany({
+        where: { workspaceId: principal().workspaceId },
+        orderBy: { createdAt: "asc" },
+        include: { runs: { orderBy: { at: "desc" }, take: 5, select: { at: true, ok: true, message: true, cardKey: true } } },
+      });
+      return {
+        url: link("/settings/automation"),
+        rules: rules.map((r) => {
+          const t = Trigger.safeParse(r.trigger);
+          const actions = (Array.isArray(r.actions) ? r.actions : []).flatMap((a) => {
+            const p = Action.safeParse(a);
+            return p.success ? [p.data] : [];
+          });
+          return {
+            name: r.name,
+            on: r.enabled,
+            summary: t.success ? describeRule({ trigger: t.data, condition: r.condition, actions }) : "(an invalid trigger)",
+            recentRuns: r.runs.map((x) => ({ at: x.at.toISOString(), ok: x.ok, card: x.cardKey ?? undefined, result: x.message })),
+          };
+        }),
+      };
     },
   );
 }

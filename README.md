@@ -139,6 +139,15 @@ review that.
   (`assignee = me AND priority >= high AND due < 7d ORDER BY rank`) with suggestions as you type,
   sortable columns, saved queries, and **bulk edit** (status, people, priority, sprint, epic,
   labels, board…) that sends one email per person instead of one per card.
+- **Automation**: admins write rules — *when* a card is created, changes status or a field,
+  gets a comment, finishes its subtasks, comes due, or on a schedule; *if* it matches a query;
+  *then* move it, assign, label, set fields or dates, comment, add a subtask, or email people.
+  Each card's History shows what a rule did, and each rule keeps a run log.
+- **Automation**: admins write rules — *when* a card is created, changes status or a field, gets
+  a comment, finishes its subtasks, comes due, or on a schedule; *if* it matches a query; *then*
+  move it, assign, set priority, labels, fields or a due date, comment, add a subtask, watch, or
+  email people. They run on the worker, show in each card's History, keep a run log, and stop
+  themselves if rules start feeding each other.
 - **Sprints**: workspace-wide, time-boxed iterations with a goal and dates.
   - The **Backlog** ranks open work across every board in one order. Drag cards to rank them and
     to plan them into sprints, with card counts and points per sprint and an **Epics** panel.
@@ -206,7 +215,7 @@ review that.
     you pick the workspace and read-only or read-and-change access.
   - Claude Code, Codex, Cursor, VS Code, Gemini CLI and other tools connect the same way, or with a
     personal token.
-  - 94 tools cover search and fetch (whole items as Markdown documents, the shape ChatGPT's deep
+  - 95 tools cover search and fetch (whole items as Markdown documents, the shape ChatGPT's deep
     research reads), My Work, boards and cards (epics, links, watchers, history), projects,
     storyboards, review rounds, intake, sprints and the backlog, with rich text as Markdown. There are also resources for each project, board, storyboard,
     card and round, and prompts for status reports, review-feedback summaries, storyboard drafts,

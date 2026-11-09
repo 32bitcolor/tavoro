@@ -13,7 +13,7 @@ import { IntakeFieldList } from "@/lib/intake-fields";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 26; // bump when the shape changes (22: Card.rank; 23: ImportedCard, Comment.importedAuthor, Board.externalRef; 24: sprints; 25: sprint days, Card.startDate; 26: custom fields, Column.wipLimit)
+export const BACKUP_FORMAT = 27; // bump when the shape changes (22: Card.rank; 23: ImportedCard, Comment.importedAuthor, Board.externalRef; 24: sprints; 25: sprint days, Card.startDate; 26: custom fields, Column.wipLimit; 27: automation rules, Comment.automation)
 
 const WS = "__ws";
 const USER = "__user";
@@ -257,6 +257,9 @@ const SPECS: Spec[] = [
   { key: "customField", model: "customField", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS }, json: ["options"] },
   { key: null, model: "customFieldBoard", where: (w) => ({ field: { workspaceId: w } }), fks: { fieldId: "customField", boardId: "board" } },
   { key: null, model: "cardFieldValue", where: (w) => ({ field: { workspaceId: w } }), fks: { cardId: "card", fieldId: "customField", userId: USER } },
+  // Automation rules (format 27+). They name statuses, labels, fields and people rather
+  // than pointing at rows, so they work in the restored copy as they are. Run logs stay behind.
+  { key: "automationRule", model: "automationRule", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS, boardId: "board", createdById: USER }, json: ["trigger", "actions"] },
   // Cards that came from Jira (format 23+), so importing again into a restored copy
   // updates them instead of making duplicates. The snapshot's field values name rows of
   // the original workspace, so they're dropped: the next import treats every field as
