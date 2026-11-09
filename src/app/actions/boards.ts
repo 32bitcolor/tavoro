@@ -10,6 +10,12 @@ import { boardVisibilityWhere, getBoardForUser, getColumnForUser, getCardForUser
 import { positionBetween, positionsAfter, positionForIndex } from "@/lib/ordering";
 import { pickStatusIdForName } from "@/lib/status";
 import { notifyCardStatusChange } from "@/lib/notify";
+import { recordActivity, watch } from "@/lib/card-activity";
+
+async function statusNameOf(id: string | null | undefined) {
+  if (!id) return null;
+  return (await prisma.workspaceStatus.findUnique({ where: { id }, select: { name: true } }))?.name ?? null;
+}
 
 const Name = z.string().trim().min(1, "Required").max(120);
 const Title = z.string().trim().min(1, "Required").max(280);
@@ -360,6 +366,9 @@ export async function createCard(columnId: string, title: string) {
     },
     select: { id: true, columnId: true, title: true, description: true, position: true, keySeq: true },
   });
+  const me = await getCurrentUser();
+  await recordActivity(card.id, me?.id, "created");
+  await watch(card.id, [me?.id]);
   revalidatePath(boardPath(column.boardId));
   return { card };
 }
@@ -369,7 +378,10 @@ export async function renameCard(cardId: string, title: string) {
   if (!card) return { error: "Card not found." };
   const parsed = Title.safeParse(title);
   if (!parsed.success) return { error: "Card title is required." };
+  const before = await prisma.card.findUnique({ where: { id: cardId }, select: { title: true } });
+  if (before?.title === parsed.data) return;
   await prisma.card.update({ where: { id: cardId }, data: { title: parsed.data } });
+  await recordActivity(cardId, (await getCurrentUser())?.id, "title", { from: before?.title ?? null, to: parsed.data });
   revalidatePath(boardPath(card.boardId));
 }
 
@@ -415,6 +427,7 @@ export async function setCardStatus(cardId: string, statusId: string) {
 
   if (before?.statusId !== statusId) {
     const actor = await getCurrentUser();
+    await recordActivity(cardId, actor?.id, "status", { from: await statusNameOf(before?.statusId), to: status.name });
     await notifyCardStatusChange({
       cardId,
       boardId: card.boardId,
@@ -464,7 +477,7 @@ export async function moveCardToBoard(cardId: string, toColumnId: string) {
   if (target.boardId === card.boardId) return { error: "The card is already on that board." };
 
   const [fromBoard, toBoard, current] = await Promise.all([
-    prisma.board.findUnique({ where: { id: card.boardId }, select: { workspaceId: true } }),
+    prisma.board.findUnique({ where: { id: card.boardId }, select: { workspaceId: true, name: true, cardKeyPrefix: true } }),
     prisma.board.findUnique({
       where: { id: target.boardId },
       select: { workspaceId: true, name: true, cardKeyPrefix: true, project: { select: { sprintsEnabled: true } } },
@@ -526,6 +539,16 @@ export async function moveCardToBoard(cardId: string, toColumnId: string) {
   revalidatePath(boardPath(target.boardId));
   revalidatePath("/sprints", "layout");
 
+  const mover = await getCurrentUser();
+  await recordActivity(cardId, mover?.id, "moved", {
+    from: fromBoard.name,
+    to: toBoard.name,
+    oldKey: fromBoard.cardKeyPrefix && current.keySeq != null ? `${fromBoard.cardKeyPrefix}-${current.keySeq}` : null,
+  });
+  if (target.statusId && current.statusId !== target.statusId) {
+    await recordActivity(cardId, mover?.id, "status", { from: await statusNameOf(current.statusId), to: await statusNameOf(target.statusId) });
+  }
+
   if (target.statusId && current.statusId !== target.statusId) {
     const status = await prisma.workspaceStatus.findUnique({ where: { id: target.statusId }, select: { name: true } });
     if (status) {
@@ -578,6 +601,7 @@ export async function moveCard(cardId: string, toColumnId: string, targetIndex: 
     });
     if (status) {
       const actor = await getCurrentUser();
+      await recordActivity(cardId, actor?.id, "status", { from: await statusNameOf(before?.statusId), to: status.name });
       await notifyCardStatusChange({
         cardId,
         boardId: card.boardId,

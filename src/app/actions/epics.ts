@@ -1,5 +1,7 @@
 "use server";
 
+import { recordActivity } from "@/lib/card-activity";
+import { getCurrentUser } from "@/lib/dal";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getCardForUser } from "@/lib/authz";
@@ -19,7 +21,7 @@ export async function setCardEpic(cardId: string, epicId: string | null) {
   const card = await getCardForUser(cardId);
   if (!card) return { error: "Card not found." };
   if (card.parentCardId) return { error: "A subtask belongs to its card’s epic, not one of its own." };
-  const row = await prisma.card.findUnique({ where: { id: cardId }, select: { type: true, epicId: true } });
+  const row = await prisma.card.findUnique({ where: { id: cardId }, select: { type: true, epicId: true, epic: { select: { title: true } } } });
   if (row?.type === "epic") return { error: "An epic can’t be in another epic." };
 
   let epic: { id: string; title: string; boardId: string } | null = null;
@@ -34,6 +36,9 @@ export async function setCardEpic(cardId: string, epicId: string | null) {
   }
 
   await prisma.card.update({ where: { id: cardId }, data: { epicId } });
+  if ((row?.epicId ?? null) !== epicId) {
+    await recordActivity(cardId, (await getCurrentUser())?.id, "epic", { from: row?.epic?.title ?? null, to: epic?.title ?? null });
+  }
   revalidatePath(`/boards/${card.boardId}`);
   if (epic && epic.boardId !== card.boardId) revalidatePath(`/boards/${epic.boardId}`);
   if (row?.epicId) {

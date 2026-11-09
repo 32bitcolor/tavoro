@@ -13,7 +13,10 @@ import { enqueueEmail } from "@/lib/queues";
 import { subtaskAssigned, cardAssigned, smeAssigned, commentPosted, mentioned, withLink } from "@/lib/email-templates";
 import { appUrl } from "@/lib/app-url";
 import { extractMentionIds, extractText } from "@/lib/mentions";
-import { notificationsEnabled, notifySubtaskStatusChange } from "@/lib/notify";
+import { notificationsEnabled, notifySubtaskStatusChange, notifyWatchers } from "@/lib/notify";
+import { recordActivity, watch } from "@/lib/card-activity";
+import { describeActivity, type ActivityData } from "@/lib/card-activity-text";
+import { CARD_TYPE_LABEL, PRIORITY_LABEL, formatEstimate } from "@/lib/card-fields";
 import { nextCardKeySeq } from "@/lib/card-keys";
 import { EPIC_REF_SELECT, epicRefOf } from "@/lib/epics";
 import { CardTypeSchema, EstimateSchema, EstimateUnitSchema, PrioritySchema, asCardType, asPriority, type EstimateUnit } from "@/lib/card-fields";
@@ -139,6 +142,11 @@ export async function getCardDetail(cardId: string) {
           select: { id: true, name: true, email: true },
         });
 
+  const [watching, watcherCount] = await Promise.all([
+    prisma.cardWatcher.findUnique({ where: { cardId_userId: { cardId, userId: me.id } }, select: { userId: true } }),
+    prisma.cardWatcher.count({ where: { cardId } }),
+  ]);
+
   const whiteboards = await prisma.whiteboard.findMany({
     where: { cardId, ...(await whiteboardVisibilityWhere()) },
     orderBy: { updatedAt: "desc" },
@@ -210,6 +218,8 @@ export async function getCardDetail(cardId: string) {
     })),
     currentUserId: me.id,
     isAdmin: membership?.role === "ADMIN",
+    watching: !!watching,
+    watcherCount,
     subtasks: card.subtasks.map((s) => ({
       id: s.id,
       title: s.title,
@@ -241,10 +251,9 @@ export async function updateCardDescription(cardId: string, description: string 
   if (!card) return { error: "Card not found." };
 
   const prev = await prisma.card.findUnique({ where: { id: cardId }, select: { description: true, title: true } });
-  await prisma.card.update({
-    where: { id: cardId },
-    data: { description: description && description.trim() ? description : null },
-  });
+  const nextDescription = description && description.trim() ? description : null;
+  await prisma.card.update({ where: { id: cardId }, data: { description: nextDescription } });
+  if ((prev?.description ?? null) !== nextDescription) await recordActivity(cardId, (await getCurrentUser())?.id, "description");
   revalidatePath(boardPath(card.boardId));
 
   // Notify only newly-added @-mentions — not on every autosave.
@@ -286,7 +295,12 @@ export async function setCardDueDate(cardId: string, iso: string | null) {
   if (!card) return { error: "Card not found." };
   const dueDate = iso ? new Date(iso) : null;
   if (iso && Number.isNaN(dueDate!.getTime())) return { error: "Invalid date." };
+  const before = await prisma.card.findUnique({ where: { id: cardId }, select: { dueDate: true } });
   await prisma.card.update({ where: { id: cardId }, data: { dueDate } });
+  const ymd = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
+  if (ymd(before?.dueDate) !== ymd(dueDate)) {
+    await recordActivity(cardId, (await getCurrentUser())?.id, "due", { from: ymd(before?.dueDate), to: ymd(dueDate) });
+  }
   revalidatePath(boardPath(card.boardId));
 }
 
@@ -306,6 +320,9 @@ export async function setCardType(cardId: string, type: string) {
   // stops being an epic lets its cards go (they keep everything else).
   const [row, released] = await prisma.$transaction(async (tx) => {
     const before = await tx.card.findUnique({ where: { id: cardId }, select: { type: true } });
+    if (before && before.type !== parsed.data) {
+      await recordActivity(cardId, (await getCurrentUser())?.id, "type", { from: CARD_TYPE_LABEL[asCardType(before.type)], to: CARD_TYPE_LABEL[parsed.data] }, tx);
+    }
     const released =
       before?.type === "epic" && !becomesEpic ? (await tx.card.updateMany({ where: { epicId: cardId }, data: { epicId: null } })).count : 0;
     const row = await tx.card.update({
@@ -325,7 +342,24 @@ export async function setCardPriority(cardId: string, priority: string | null) {
   if (!card) return { error: "Card not found." };
   const parsed = PrioritySchema.safeParse(priority || null);
   if (!parsed.success) return { error: "Unknown priority." };
+  const before = await prisma.card.findUnique({ where: { id: cardId }, select: { priority: true } });
   await prisma.card.update({ where: { id: cardId }, data: { priority: parsed.data } });
+  if ((before?.priority ?? null) !== parsed.data) {
+    const actor = await getCurrentUser();
+    const from = before?.priority ? PRIORITY_LABEL[asPriority(before.priority)!] : null;
+    const to = parsed.data ? PRIORITY_LABEL[parsed.data] : null;
+    await recordActivity(cardId, actor?.id, "priority", { from, to });
+    const board = await prisma.board.findUnique({ where: { id: card.boardId }, select: { workspaceId: true } });
+    if (board) {
+      await notifyWatchers({
+        cardId,
+        boardId: card.boardId,
+        workspaceId: board.workspaceId,
+        actor: actor ? { id: actor.id, name: actor.name, email: actor.email } : null,
+        change: `changed the priority from ${from ?? "none"} to ${to ?? "none"}`,
+      });
+    }
+  }
   revalidatePath(boardPath(card.boardId));
   revalidatePath("/sprints");
   return { priority: asPriority(parsed.data) };
@@ -336,7 +370,16 @@ export async function setCardEstimate(cardId: string, estimate: number | null) {
   if (!card) return { error: "Card not found." };
   const parsed = EstimateSchema.safeParse(estimate);
   if (!parsed.success) return { error: "An estimate is a number from 0 to 10,000." };
+  const before = await prisma.card.findUnique({
+    where: { id: cardId },
+    select: { estimate: true, column: { select: { board: { select: { workspace: { select: { estimateUnit: true } } } } } } },
+  });
   await prisma.card.update({ where: { id: cardId }, data: { estimate: parsed.data } });
+  if ((before?.estimate ?? null) !== parsed.data) {
+    const unit = before?.column?.board.workspace.estimateUnit === "hours" ? "hours" : "points";
+    const fmt = (n: number | null | undefined) => (n == null ? null : formatEstimate(n, unit));
+    await recordActivity(cardId, (await getCurrentUser())?.id, "estimate", { from: fmt(before?.estimate), to: fmt(parsed.data) });
+  }
   revalidatePath(boardPath(card.boardId));
   revalidatePath("/sprints");
   return { estimate: parsed.data };
@@ -468,9 +511,11 @@ export async function toggleCardLabel(cardId: string, labelId: string, on: boole
   if (!board) return { error: "Card not found." };
   const label = await prisma.label.findFirst({
     where: { id: labelId, workspaceId: board.workspaceId },
-    select: { id: true },
+    select: { id: true, name: true },
   });
   if (!label) return { error: "Label not found." };
+  const had = await prisma.cardLabel.findUnique({ where: { cardId_labelId: { cardId, labelId } }, select: { labelId: true } });
+  if (!!had !== on) await recordActivity(cardId, (await getCurrentUser())?.id, "label", on ? { added: label.name } : { removed: label.name });
 
   if (on) {
     await prisma.cardLabel.upsert({
@@ -514,8 +559,25 @@ export async function toggleCardAssignee(cardId: string, userId: string, on: boo
       create: { cardId, userId },
       update: {},
     });
+    await watch(cardId, [userId]);
   } else {
     await prisma.cardAssignee.deleteMany({ where: { cardId, userId } });
+  }
+  if (on !== !!wasAssigned) {
+    const [actor, who] = await Promise.all([
+      getCurrentUser(),
+      prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
+    ]);
+    const name = who?.name ?? who?.email ?? "someone";
+    await recordActivity(cardId, actor?.id, "assignee", on ? { added: name } : { removed: name });
+    await notifyWatchers({
+      cardId,
+      boardId: card.boardId,
+      workspaceId: board.workspaceId,
+      actor: actor ? { id: actor.id, name: actor.name, email: actor.email } : null,
+      change: on ? `assigned ${name}` : `unassigned ${name}`,
+      except: [userId], // the assignee gets their own email
+    });
   }
 
   // Notify the assignee on a new assignment (skip assigning yourself). Subtasks
@@ -597,6 +659,11 @@ export async function toggleCardSme(cardId: string, userId: string, on: boolean)
   } else {
     await prisma.cardSme.deleteMany({ where: { cardId, userId } });
   }
+  if (on !== !!wasSme) {
+    const who = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } });
+    const name = who?.name ?? who?.email ?? "someone";
+    await recordActivity(cardId, (await getCurrentUser())?.id, "sme", on ? { added: name } : { removed: name });
+  }
 
   revalidatePath(boardPath(card.boardId));
 
@@ -643,6 +710,9 @@ export async function addSubtask(parentCardId: string, title: string) {
     data: { parentCardId, title: parsed.data, keySeq, position: positionBetween(last?.position ?? null, null) },
     select: { id: true, title: true, done: true, dueDate: true, keySeq: true },
   });
+  const me = await getCurrentUser();
+  await recordActivity(parentCardId, me?.id, "subtask", { added: item.title });
+  await recordActivity(item.id, me?.id, "created");
   revalidatePath(boardPath(parent.boardId));
   return {
     item: {
@@ -679,7 +749,9 @@ export async function toggleSubtask(cardId: string, done: boolean) {
 export async function deleteSubtask(cardId: string) {
   const card = await getCardForUser(cardId);
   if (!card) return { error: "Item not found." };
+  const row = await prisma.card.findUnique({ where: { id: cardId }, select: { title: true } });
   await prisma.card.delete({ where: { id: cardId } });
+  if (card.parentCardId && row) await recordActivity(card.parentCardId, (await getCurrentUser())?.id, "subtask", { removed: row.title });
   revalidatePath(boardPath(card.boardId));
 }
 
@@ -704,10 +776,11 @@ export async function addComment(cardId: string, body: string) {
       author: { select: { id: true, name: true, email: true } },
     },
   });
+  await watch(cardId, [user.id]);
   revalidatePath(boardPath(card.boardId));
 
-  // Notify: @-mentions get a mention email; the card's assignees + SMEs (minus
-  // the commenter and anyone already mentioned) get a comment email.
+  // Notify: @-mentions get a mention email; the card's assignees, SMEs and watchers
+  // (minus the commenter and anyone already mentioned) get a comment email.
   const [cardRow, boardRow] = await Promise.all([
     prisma.card.findUnique({ where: { id: cardId }, select: { title: true } }),
     prisma.board.findUnique({ where: { id: card.boardId }, select: { name: true, workspaceId: true } }),
@@ -742,7 +815,8 @@ export async function addComment(cardId: string, body: string) {
     const others = await prisma.user.findMany({
       where: {
         id: { notIn: [...notified] },
-        OR: [{ assignedCards: { some: { cardId } } }, { smeCards: { some: { cardId } } }],
+        OR: [{ assignedCards: { some: { cardId } } }, { smeCards: { some: { cardId } } }, { watchedCards: { some: { cardId } } }],
+        memberships: { some: { workspaceId: boardRow.workspaceId, suspendedAt: null } },
       },
       select: { name: true, email: true },
     });
@@ -782,3 +856,49 @@ export async function deleteComment(commentId: string) {
   await prisma.comment.delete({ where: { id: commentId } });
   revalidatePath(boardPath(card.boardId));
 }
+
+// ── Watching and history (docs/JIRA-PARITY.md) ──────────────────────────────
+
+/** Start or stop watching a card. */
+export async function setWatching(cardId: string, on: boolean) {
+  const card = await getCardForUser(cardId);
+  const me = await getCurrentUser();
+  if (!card || !me) return { error: "Card not found." };
+  if (on) await watch(cardId, [me.id]);
+  else await prisma.cardWatcher.deleteMany({ where: { cardId, userId: me.id } });
+  return { watching: on, watcherCount: await prisma.cardWatcher.count({ where: { cardId } }) };
+}
+
+/** Who watches a card (names only), for the watch button's tooltip and MCP. */
+export async function listWatchers(cardId: string) {
+  const card = await getCardForUser(cardId);
+  if (!card) return { watchers: [] };
+  const rows = await prisma.cardWatcher.findMany({
+    where: { cardId },
+    orderBy: { createdAt: "asc" },
+    select: { user: { select: { id: true, name: true, email: true } } },
+  });
+  return { watchers: rows.map((r) => ({ id: r.user.id, name: r.user.name ?? r.user.email })) };
+}
+
+/** A card's History, newest first. */
+export async function getCardHistory(cardId: string, limit = 100) {
+  const card = await getCardForUser(cardId);
+  if (!card) return { entries: [] };
+  const rows = await prisma.cardActivity.findMany({
+    where: { cardId },
+    orderBy: { createdAt: "desc" },
+    take: Math.min(Math.max(limit, 1), 500),
+    select: { id: true, kind: true, data: true, createdAt: true, actor: { select: { name: true, email: true } } },
+  });
+  return {
+    entries: rows.map((r) => ({
+      id: r.id,
+      actor: r.actor ? (r.actor.name ?? r.actor.email) : "Tavoro",
+      text: describeActivity(r.kind, (r.data ?? {}) as ActivityData),
+      kind: r.kind,
+      at: r.createdAt.toISOString(),
+    })),
+  };
+}
+

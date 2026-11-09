@@ -1,3 +1,6 @@
+import { addCardLink, getCardLinks, removeCardLink } from "@/app/actions/card-links";
+import { getCardHistory, listWatchers, setWatching } from "@/app/actions/cards";
+import { LINK_CHOICES } from "@/lib/card-links";
 import { epicChildren, listEpics } from "@/lib/epics";
 import { setCardEpic } from "@/app/actions/epics";
 import { CARD_TYPES, PRIORITIES, asCardType } from "@/lib/card-fields";
@@ -155,6 +158,18 @@ export async function loadCard(ref: string) {
     whiteboards: d.whiteboards.map((w) => ({ ...w, url: link(`/whiteboards/${w.id}`) })),
     reviewFeedback: d.reviewFeedback,
     ...(d.card.type === "epic" && !d.isSubtask ? { epicCards: await epicCardsFor(d.card.id) } : {}),
+    ...(await linksAndWatchers(d.card.id, d.watching)),
+  };
+}
+
+async function linksAndWatchers(cardId: string, watching: boolean) {
+  const [{ links, hidden }, { watchers }] = await Promise.all([getCardLinks(cardId), listWatchers(cardId)]);
+  return {
+    links: links.map((l) => ({ linkId: l.id, relation: l.label, card: { id: l.other.id, key: l.other.key, title: l.other.title, status: l.other.status, done: l.other.done } })),
+    ...(hidden ? { hiddenLinks: hidden } : {}),
+    blocked: links.some((l) => l.label === "is blocked by" && !l.other.done),
+    watchers: watchers.map((w) => w.name),
+    youAreWatching: watching,
   };
 }
 
@@ -257,6 +272,81 @@ export async function loadBoard(boardId: string, includeDone: boolean) {
 export function registerCardTools(server: McpServer) {
   tool(
     server,
+    "link_cards",
+    {
+      title: "Link two cards",
+      description:
+        "Link a card to another, read from `card`: blocks, blocked_by, relates, duplicates, duplicated_by, clones, cloned_by. A card blocked by one that isn't done shows as Blocked. Links can cross boards.",
+      input: {
+        card: cardRef,
+        link: z.enum(LINK_CHOICES.map((c) => c.value) as unknown as ["blocks", "blocked_by", "relates", "duplicates", "duplicated_by", "clones", "cloned_by"]),
+        other: cardRef.describe("The other card's id or key"),
+      },
+      kind: "write",
+    },
+    async ({ card, link, other }) => {
+      const a = await resolveCardId(card);
+      const b = await resolveCardId(other);
+      check(await addCardLink(a, b, link));
+      return loadCard(a);
+    },
+  );
+
+  tool(
+    server,
+    "unlink_cards",
+    {
+      title: "Remove a link between cards",
+      description: "Remove the link(s) between two cards. Give `relation` (as get_card shows it, e.g. 'is blocked by') to remove just that one.",
+      input: { card: cardRef, other: cardRef.describe("The other card's id or key"), relation: z.string().optional() },
+      kind: "destructive",
+    },
+    async ({ card, other, relation }) => {
+      const a = await resolveCardId(card);
+      const b = await resolveCardId(other);
+      const { links } = await getCardLinks(a);
+      const hits = links.filter((l) => l.other.id === b && (!relation || l.label === relation.trim().toLowerCase()));
+      if (hits.length === 0) throw new ToolError("Those cards aren't linked" + (relation ? ` as "${relation}".` : "."));
+      for (const l of hits) check(await removeCardLink(l.id));
+      return loadCard(a);
+    },
+  );
+
+  tool(
+    server,
+    "watch_card",
+    {
+      title: "Watch or stop watching a card",
+      description: "Watchers are emailed when a card's status, assignee or priority changes, or someone comments.",
+      input: { card: cardRef, watching: z.boolean() },
+      kind: "write",
+      idempotent: true,
+    },
+    async ({ card, watching }) => {
+      const id = await resolveCardId(card);
+      return check(await setWatching(id, watching));
+    },
+  );
+
+  tool(
+    server,
+    "get_card_history",
+    {
+      title: "A card's history",
+      description: "What changed on a card and who changed it, newest first: status, assignees, priority, estimate, type, due date, sprint, epic, links, title, board moves, description edits.",
+      input: { card: cardRef, limit: z.number().int().min(1).max(500).default(50) },
+      kind: "read",
+    },
+    async ({ card, limit }) => {
+      const id = await resolveCardId(card);
+      if (!(await getCardForUser(id))) throw new ToolError("Card not found, or you can't see it.");
+      const { entries } = await getCardHistory(id, limit);
+      return { history: entries.map((e) => ({ at: e.at, who: e.actor, what: e.text })) };
+    },
+  );
+
+  tool(
+    server,
     "list_epics",
     {
       title: "List epics",
@@ -326,7 +416,7 @@ export function registerCardTools(server: McpServer) {
     {
       title: "Get a card",
       description:
-        "Everything on a card: type, priority, estimate, epic (and, on an epic, its cards and progress), description (Markdown), status, due date, labels, assignees, SMEs, sprint, subtasks, comments, attachments, and any review comments it was made from.",
+        "Everything on a card: type, priority, estimate, epic (and, on an epic, its cards and progress), links to other cards, whether it's blocked, watchers, description (Markdown), status, due date, labels, assignees, SMEs, sprint, subtasks, comments, attachments, and any review comments it was made from.",
       input: { card: cardRef },
       kind: "read",
     },

@@ -1,5 +1,6 @@
 "use server";
 
+import { recordActivity, watch } from "@/lib/card-activity";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -155,7 +156,7 @@ export async function sendCommentsToBoard(input: SendToBoardInput) {
   let position = last?.position ?? null;
   async function newCard(title: string, description: string) {
     position = positionBetween(position, null);
-    return prisma.card.create({
+    const created = await prisma.card.create({
       data: {
         columnId,
         title,
@@ -166,6 +167,10 @@ export async function sendCommentsToBoard(input: SendToBoardInput) {
       },
       select: { id: true, keySeq: true },
     });
+    const me = await getCurrentUser();
+    await recordActivity(created.id, me?.id, "created", { from: "review feedback" });
+    await watch(created.id, [me?.id]);
+    return created;
   }
   const linked: LinkedComment[] = [];
   const ref = (card: { id: string; keySeq: number | null }): CardRef => ({

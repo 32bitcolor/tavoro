@@ -1,5 +1,7 @@
 "use server";
 
+import { recordActivity } from "@/lib/card-activity";
+import { getCurrentUser } from "@/lib/dal";
 import { asCardType, asPriority } from "@/lib/card-fields";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -137,7 +139,12 @@ export async function assignCardToSprint(cardId: string, sprintId: string | null
     const row = await prisma.card.findUnique({ where: { id: cardId }, select: { type: true } });
     if (row?.type === "epic") return { error: "Epics aren\u2019t planned in sprints; their cards are." };
   }
+  const before = await prisma.card.findUnique({ where: { id: cardId }, select: { sprint: { select: { id: true, name: true } } } });
   await prisma.card.update({ where: { id: cardId }, data: { sprintId } });
+  if ((before?.sprint?.id ?? null) !== sprintId) {
+    const to = sprintId ? (await prisma.sprint.findUnique({ where: { id: sprintId }, select: { name: true } }))?.name ?? null : null;
+    await recordActivity(cardId, (await getCurrentUser())?.id, "sprint", { from: before?.sprint?.name ?? null, to });
+  }
   revalidatePath(`/boards/${card.boardId}`);
   revalidatePath("/sprints");
   return { ok: true };

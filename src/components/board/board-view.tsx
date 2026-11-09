@@ -85,7 +85,7 @@ import {
 import { REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/methodology";
 import { AvatarStack, DueChip, LabelPill, StatusDot, type StatusCategory } from "@/components/shared/work-item";
 import { cn } from "@/lib/utils";
-import { EpicTag, EstimateChip, PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
+import { BlockedTag, EpicTag, EstimateChip, PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
 import { PRIORITY_LABEL, priorityRank, type CardType, type EstimateUnit, type Priority } from "@/lib/card-fields";
 
 /** What card estimates count in this workspace, for every card face on the board. */
@@ -107,6 +107,8 @@ type Card = {
   epic: { id: string; title: string } | null;
   /** On an epic: how many of its cards are done. */
   epicProgress?: { done: number; total: number } | null;
+  /** Blocked by a card that isn't done. */
+  blocked?: boolean;
   labels: Label[];
   assignees: Member[];
   smes: Member[];
@@ -1066,7 +1068,12 @@ function CardShell({
         {card.title}
       </button>
 
-      {card.epic && <EpicTag title={card.epic.title} />}
+      {(card.epic || card.blocked) && (
+        <span className="flex flex-wrap gap-1">
+          {card.blocked && <BlockedTag />}
+          {card.epic && <EpicTag title={card.epic.title} />}
+        </span>
+      )}
 
       {card.type === "epic" && card.epicProgress && card.epicProgress.total > 0 && (
         <EpicProgressBar done={card.epicProgress.done} total={card.epicProgress.total} />
@@ -1240,6 +1247,7 @@ function ListView({
                   <td className="px-4 py-2 text-xs tabular-nums">{card.estimate ?? ""}</td>
                   <td className="px-4 py-2">
                     <span className="flex flex-wrap gap-1 overflow-hidden">
+                      {card.blocked && <BlockedTag />}
                       {card.epic && <EpicTag title={card.epic.title} />}
                       {card.type === "epic" && card.epicProgress && card.epicProgress.total > 0 && (
                         <span className="text-xs text-muted-foreground">

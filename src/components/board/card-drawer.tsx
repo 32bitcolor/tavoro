@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { X, Check, MessageSquare, Paperclip, ArrowUp, ChevronUp, ChevronDown, Globe, Lock } from "lucide-react";
+import { X, Check, MessageSquare, Paperclip, ArrowUp, ChevronUp, ChevronDown, Globe, Lock, Eye } from "lucide-react";
 import { createWhiteboardForCard } from "@/app/actions/whiteboards";
 import {
   getCardDetail,
@@ -20,6 +20,8 @@ import {
   setCardType,
   setCardPriority,
   setCardEstimate,
+  setWatching,
+  getCardHistory,
 } from "@/app/actions/cards";
 import { renameCard, deleteCard } from "@/app/actions/boards";
 import {
@@ -31,6 +33,7 @@ import { assignCardToSprint } from "@/app/actions/sprints";
 import { CARD_TYPES, CARD_TYPE_LABEL, PRIORITIES, PRIORITY_LABEL, type CardType, type EstimateUnit, type Priority } from "@/lib/card-fields";
 import { PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
 import { EpicCardsSection, EpicField, type EpicChip } from "@/components/board/epic-panels";
+import { CardLinksSection } from "@/components/board/card-links-section";
 import type { EpicRef } from "@/lib/epics";
 import { setCardPrivate } from "@/app/actions/board-share";
 import { MoveCardDialog, type MoveResult } from "@/components/board/move-card-dialog";
@@ -73,6 +76,7 @@ export type CardFacePatch = {
   estimate?: number | null;
   epic?: EpicChip | null;
   epicProgress?: { done: number; total: number };
+  blocked?: boolean;
   comments?: number;
   attachments?: number;
 };
@@ -131,6 +135,10 @@ export function CardDrawer({
   const [epicCount, setEpicCount] = useState(0);
   const [pendingType, setPendingType] = useState<CardType | null>(null);
   const [typeNote, setTypeNote] = useState<string | null>(null);
+  const [watching, setWatchingState] = useState(false);
+  const [watcherCount, setWatcherCount] = useState(0);
+  const [activityTab, setActivityTab] = useState<"comments" | "history">("comments");
+  const [history, setHistory] = useState<{ id: string; actor: string; text: string; at: string }[] | null>(null);
   const [statusId, setStatusId] = useState<string | null>(null);
   const [sprints, setSprints] = useState<{ id: string; name: string }[]>([]);
   const [sprintsEnabled, setSprintsEnabled] = useState(false);
@@ -175,6 +183,10 @@ export function CardDrawer({
       setEstimateError(null);
       setEstimateUnit(d.estimateUnit);
       setEpic(d.card.epic);
+      setWatchingState(d.watching);
+      setWatcherCount(d.watcherCount);
+      setActivityTab("comments");
+      setHistory(null);
       setEpicCount(0);
       setPendingType(null);
       setTypeNote(null);
@@ -297,6 +309,25 @@ export function CardDrawer({
     });
   }
 
+  async function toggleWatching() {
+    const next = !watching;
+    setWatchingState(next);
+    setWatcherCount((n) => n + (next ? 1 : -1));
+    const res = await setWatching(cardId, next);
+    if ("error" in res) {
+      setWatchingState(!next);
+      setWatcherCount((n) => n + (next ? -1 : 1));
+    } else {
+      setWatcherCount(res.watcherCount);
+    }
+  }
+
+  async function showHistory() {
+    setActivityTab("history");
+    const r = await getCardHistory(cardId);
+    setHistory(r.entries);
+  }
+
   function changeDueDate(value: string) {
     const iso = value ? new Date(value).toISOString() : null;
     setDueDate(iso);
@@ -395,6 +426,10 @@ export function CardDrawer({
       const next = [...comments, res.comment];
       setComments(next);
       onPatch(cardId, { comments: next.length });
+      if (!watching) {
+        setWatchingState(true);
+        setWatcherCount((n) => n + 1);
+      }
     }
   }
 
@@ -520,6 +555,23 @@ export function CardDrawer({
           </SheetTitle>
           <SheetDescription className="sr-only">Card details</SheetDescription>
           <div className="flex shrink-0 items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleWatching}
+              aria-pressed={watching}
+              title={watching ? "You get emails about changes and comments. Click to stop watching." : "Get emails about changes and comments on this card."}
+              className="h-8 gap-1.5 px-2 text-xs"
+            >
+              <Eye className={`size-4 ${watching ? "text-accent" : ""}`} aria-hidden="true" />
+              {watching ? "Watching" : "Watch"}
+              {watcherCount > 0 && (
+                <span className="text-muted-foreground">
+                  · {watcherCount}
+                  <span className="sr-only"> {watcherCount === 1 ? "watcher" : "watchers"}</span>
+                </span>
+              )}
+            </Button>
             {position && onStep && (
               <>
                 <Button
@@ -601,6 +653,18 @@ export function CardDrawer({
                   ))}
                 </div>
                 <InlineComposer placeholder="Add a subtask…" buttonLabel="Add" onSubmit={addItem} />
+              </Section>
+            )}
+
+            {boardId && (
+              <Section title="Linked cards">
+                <CardLinksSection
+                  key={cardId}
+                  cardId={cardId}
+                  boardId={boardId}
+                  onNavigate={onNavigate}
+                  onBlockedChange={(blocked) => onPatch(cardId, { blocked })}
+                />
               </Section>
             )}
 
@@ -909,7 +973,49 @@ export function CardDrawer({
               </form>
             </Section>
 
-            <Section title="Comments">
+            <Section title="Activity">
+              <div role="tablist" aria-label="Activity" className="mb-3 flex gap-1">
+                {(
+                  [
+                    ["comments", `Comments${comments.length ? ` · ${comments.length}` : ""}`],
+                    ["history", "History"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={activityTab === key}
+                    onClick={() => (key === "history" ? showHistory() : setActivityTab("comments"))}
+                    className={`h-7 rounded-md px-2.5 text-xs font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
+                      activityTab === key ? "bg-hover text-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {activityTab === "history" ? (
+                <div role="tabpanel" aria-label="History">
+                  {history === null ? (
+                    <p className="text-sm text-muted-foreground">Loading…</p>
+                  ) : history.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No history yet. Changes made from now on are recorded here.</p>
+                  ) : (
+                    <ol className="flex flex-col gap-2">
+                      {history.map((h) => (
+                        <li key={h.id} className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+                          <span className="min-w-0">
+                            <span className="font-medium">{h.actor}</span> {h.text}
+                          </span>
+                          <span className="shrink-0 text-xs text-muted-foreground">{formatTime(h.at)}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              ) : (
+              <div role="tabpanel" aria-label="Comments">
               <div className="flex flex-col gap-3">
                 {comments.length === 0 && <p className="text-sm text-muted-foreground">No comments yet.</p>}
                 {comments.map((c) => (
@@ -937,6 +1043,8 @@ export function CardDrawer({
               <div className="mt-1">
                 <CommentComposer mentionMembers={mentionable} onSubmit={postComment} />
               </div>
+              </div>
+              )}
             </Section>
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-border pt-4">

@@ -1,4 +1,4 @@
-import { BookmarkCheck, Bug, ChevronDown, ChevronsDown, ChevronsUp, ChevronUp, Equal, SquareCheck, Zap } from "lucide-react";
+import { Ban, BookmarkCheck, Bug, ChevronDown, ChevronsDown, ChevronsUp, ChevronUp, Equal, SquareCheck, Zap } from "lucide-react";
 
 import { CARD_TYPE_LABEL, PRIORITY_LABEL, formatEstimate, type CardType, type EstimateUnit, type Priority } from "@/lib/card-fields";
 import { cn } from "@/lib/utils";
@@ -64,6 +64,19 @@ export function EpicTag({ title }: { title: string }) {
       <Zap className="size-3 shrink-0" aria-hidden="true" />
       <span className="sr-only">Epic: </span>
       <span className="truncate">{title}</span>
+    </span>
+  );
+}
+
+/** On a card blocked by an unfinished card (a "blocks" link). */
+export function BlockedTag() {
+  return (
+    <span
+      className="inline-flex h-5 items-center gap-1 self-start rounded-full bg-destructive/10 px-2 text-[11px] font-semibold text-destructive-ink"
+      title="Blocked by a card that isn’t done"
+    >
+      <Ban className="size-3 shrink-0" aria-hidden="true" />
+      Blocked
     </span>
   );
 }

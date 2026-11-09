@@ -19,6 +19,11 @@ export const NOTIFICATION_TYPES = [
     description: "New comments on a card you're assigned to or an SME on.",
   },
   {
+    key: "watching",
+    label: "Cards you watch",
+    description: "When a card someone watches gets a new assignee or priority. (Status changes and comments on watched cards follow those settings.)",
+  },
+  {
     key: "mention",
     label: "Mentions",
     description: "When you're @-mentioned in a comment or a card description.",

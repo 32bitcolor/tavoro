@@ -385,6 +385,21 @@ export function statusChanged(params: {
   };
 }
 
+/** A watched card changed: "Sam changed the priority from Medium to High". */
+export function watchedCardChanged(params: { recipientName: string; actorName: string; cardTitle: string; boardName: string; change: string }): Email {
+  const { recipientName, actorName, cardTitle, boardName, change } = params;
+  return {
+    subject: `"${cardTitle}": ${actorName} ${change}`,
+    html: layout(
+      "A card you watch changed",
+      `<p>Hi ${esc(recipientName)},</p>
+<p>${esc(actorName)} ${esc(change)} on <strong>${esc(cardTitle)}</strong>.</p>
+<p>On board ${esc(boardName)}. You get these because you watch this card; open it to stop watching.</p>`,
+    ),
+    text: `Hi ${recipientName},\n\n${actorName} ${change} on "${cardTitle}".\n\nOn board ${boardName}. You get these because you watch this card; open it to stop watching.`,
+  };
+}
+
 export function subtaskStatusChanged(params: {
   recipientName: string;
   actorName: string;

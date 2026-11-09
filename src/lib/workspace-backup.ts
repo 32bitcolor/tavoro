@@ -13,7 +13,7 @@ import { IntakeFieldList } from "@/lib/intake-fields";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 20; // bump when the shape changes
+export const BACKUP_FORMAT = 21; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -208,6 +208,28 @@ const SPECS: Spec[] = [
   },
   { key: null, model: "cardAssignee", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", userId: USER } },
   { key: null, model: "cardSme", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", userId: USER } },
+  // Jira parity phase 3: links, watchers, history (format 21+).
+  {
+    key: null,
+    model: "cardLink",
+    where: (w) => ({ from: cardInWorkspace(w) }),
+    fks: { fromId: "card", toId: "card", createdById: USER },
+    // New ids sort differently: keep a "relates" link lower-id-first (a CHECK requires it).
+    prepare: async (d) => {
+      if (!d.fromId || !d.toId) return false;
+      if (d.type === "relates" && d.fromId > d.toId) [d.fromId, d.toId] = [d.toId, d.fromId];
+      return true;
+    },
+  },
+  {
+    key: null,
+    model: "cardWatcher",
+    where: (w) => ({ card: cardInWorkspace(w) }),
+    fks: { cardId: "card", userId: USER },
+    // Two watchers who don't map to a member both become the importer: keep one.
+    prepare: async (d) => !!d.cardId && !(await prisma.cardWatcher.findUnique({ where: { cardId_userId: { cardId: d.cardId, userId: d.userId } } })),
+  },
+  { key: null, model: "cardActivity", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", actorId: USER }, json: ["data"] },
   { key: null, model: "boardGroup", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board", groupId: "group" } },
   { key: null, model: "projectGroup", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", groupId: "group" } },
   { key: null, model: "storyboardGroup", where: (w) => ({ storyboard: { workspaceId: w } }), fks: { storyboardId: "storyboard", groupId: "group" } },

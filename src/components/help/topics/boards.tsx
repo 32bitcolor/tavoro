@@ -152,6 +152,25 @@ export default function Boards() {
           <UI>+ New whiteboard</UI> creates an Excalidraw canvas linked to this card, and lists any
           already linked — handy for wireframing a flow in context.
         </Def>
+        <Def term="Linked cards">
+          Connect this card to others, on any board: <UI>blocks</UI>, <UI>is blocked by</UI>,{" "}
+          <UI>relates to</UI>, <UI>duplicates</UI> or <UI>clones</UI> (and their opposites). Choose{" "}
+          <UI>Link a card</UI>, pick how they relate, then find the other card by title or key. The link shows
+          on both cards, each from its own side. A card blocked by one that isn&rsquo;t done shows a red{" "}
+          <UI>Blocked</UI> tag on the board.
+        </Def>
+        <Def term="Watch">
+          The <UI>Watch</UI> button at the top of the card. Watchers are emailed when the card moves to a new
+          status, gets a new assignee or priority, or someone comments. You start watching a card when you
+          create it, comment on it, or are assigned to it; choose <UI>Watching</UI> to stop. The number next to
+          it is how many people watch the card.
+        </Def>
+        <Def term="History">
+          Under <UI>Activity</UI>, switch from <UI>Comments</UI> to <UI>History</UI> to see what changed and who
+          changed it: status, assignees and SMEs, labels, priority, estimate, type, due date, sprint, epic,
+          links, title, moves between boards, and description edits (one entry per person per ten minutes).
+          History starts from when this was added; earlier changes aren&rsquo;t in it.
+        </Def>
         <Def term="Comments">
           A rich-text discussion thread. Type <UI>@</UI> to mention someone (they&rsquo;re emailed); the
           card&rsquo;s assignees and SMEs are notified of new comments. You can delete your own comments,

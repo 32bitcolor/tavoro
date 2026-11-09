@@ -26,6 +26,9 @@ model User {
   /// Sessions signed before this are void (password changed or reset).
   sessionsValidAfter      DateTime?
   ownedContent            ContentItem[]       @relation("ContentOwner")
+  cardLinksCreated        CardLink[]          @relation("CardLinkCreator")
+  watchedCards            CardWatcher[]       @relation("CardWatching")
+  cardActivity            CardActivity[]      @relation("CardActivityActor")
   uploadedAssets          Asset[]             @relation("AssetUploader")
   bankItems               BankItem[]          @relation("BankItemCreator")
   contentDependencies     ContentDependency[] @relation("DependencyCreator")
@@ -219,6 +222,10 @@ model Card {
   subtasks       Card[]           @relation("CardSubtasks")
   epic           Card?            @relation("EpicCards", fields: [epicId], references: [id], onDelete: SetNull)
   epicCards      Card[]           @relation("EpicCards")
+  linksOut       CardLink[]       @relation("CardLinkFrom")
+  linksIn        CardLink[]       @relation("CardLinkTo")
+  watchers       CardWatcher[]
+  activity       CardActivity[]
   status         WorkspaceStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
   sprint         Sprint?          @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   labels         CardLabel[]
@@ -1212,4 +1219,52 @@ model Template {
   createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, kind])
+}
+
+// ── Jira parity phase 3 (docs/JIRA-PARITY.md) ────────────────────────────────
+
+/// A link between two cards, read from `from`: "<from> blocks <to>". Shown from both
+/// sides with the inverse wording. `relates` is symmetric and stored once, the lower
+/// id first. Links can cross boards (same workspace).
+model CardLink {
+  id          String   @id @default(cuid())
+  fromId      String
+  toId        String
+  type        String // blocks / relates / duplicates / clones (lib/card-links.ts)
+  createdById String?
+  createdAt   DateTime @default(now())
+  from        Card     @relation("CardLinkFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to          Card     @relation("CardLinkTo", fields: [toId], references: [id], onDelete: Cascade)
+  createdBy   User?    @relation("CardLinkCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([fromId, toId, type])
+  @@index([toId])
+}
+
+/// Someone who gets emailed about changes and comments on a card. Creating,
+/// commenting on, or being assigned to a card adds you; you can stop watching.
+model CardWatcher {
+  cardId    String
+  userId    String
+  createdAt DateTime @default(now())
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user      User     @relation("CardWatching", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, userId])
+  @@index([userId])
+}
+
+/// One entry in a card's History. `data` holds display values ({ from, to } names,
+/// not ids), so history still reads right after a rename or delete.
+model CardActivity {
+  id        String   @id @default(cuid())
+  cardId    String
+  actorId   String? // null = the system (import, automation)
+  kind      String // lib/card-activity.ts
+  data      Json     @default("{}")
+  createdAt DateTime @default(now())
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  actor     User?    @relation("CardActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([cardId, createdAt])
 }

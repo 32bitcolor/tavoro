@@ -1,5 +1,6 @@
 "use server";
 
+import { recordActivity } from "@/lib/card-activity";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, getWorkspaceAdmin } from "@/lib/dal";
@@ -97,7 +98,11 @@ export async function setCardPrivate(cardId: string, isPrivate: boolean) {
   const card = await getCardForUser(cardId);
   if (!card) return { error: "Card not found." };
   if (card.parentCardId) return { error: "Subtasks follow their card; make the card private instead." };
+  const before = await prisma.card.findUnique({ where: { id: cardId }, select: { private: true } });
   await prisma.card.update({ where: { id: cardId }, data: { private: isPrivate } });
+  if (before && before.private !== isPrivate) {
+    await recordActivity(cardId, (await getCurrentUser())?.id, "private", { to: isPrivate ? "private" : "not private" });
+  }
   revalidatePath(`/boards/${card.boardId}`);
   return { ok: true as const };
 }

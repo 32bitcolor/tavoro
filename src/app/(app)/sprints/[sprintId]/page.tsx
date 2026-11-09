@@ -4,6 +4,7 @@ import { getActiveMembership } from "@/lib/dal";
 import { boardVisibilityWhere } from "@/lib/authz";
 import { SprintBoard } from "@/components/sprint/sprint-board";
 import { asCardType, asPriority } from "@/lib/card-fields";
+import { blockedCardIds } from "@/lib/card-blocked";
 
 export const metadata = { title: "Sprint board · Tavoro" };
 
@@ -63,6 +64,7 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
     prisma.workspace.findUnique({ where: { id: wsId }, select: { estimateUnit: true } }),
   ]);
 
+  const blocked = await blockedCardIds(cards.map((c) => c.id));
   const items = cards.map((c) => ({
     id: c.id,
     title: c.title,
@@ -73,6 +75,7 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
     priority: asPriority(c.priority),
     estimate: c.estimate,
     epic: c.epic,
+    blocked: blocked.has(c.id),
     boardId: c.column!.board.id,
     cardKeyPrefix: c.column!.board.cardKeyPrefix,
     project: c.column!.board.project,

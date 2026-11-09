@@ -16,9 +16,11 @@ There are eight categories of notification. Each one can be switched on or off f
 
 **Assignments** — When someone is assigned to a card, subtask or intake request, or named as an SME.
 
-**Status changes** — When a card moves to a new status, or a subtask is completed or reopened.
+**Status changes** — When a card moves to a new status, or a subtask is completed or reopened. Goes to the card’s assignees, SMEs and watchers.
 
-**Comments** — New comments on a card you’re assigned to or an SME on.
+**Comments** — New comments on a card you’re assigned to, an SME on, or watching.
+
+**Cards you watch** — When a card you watch gets a new assignee or priority. (You watch a card you created, commented on, or were assigned to; use **Watch** on the card to change that.)
 
 **Mentions** — When you’re @-mentioned in a comment or a card description.
 

@@ -3,7 +3,8 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { enqueueEmail } from "@/lib/queues";
 import { appUrl } from "@/lib/app-url";
-import { statusChanged, subtaskStatusChanged, withLink } from "@/lib/email-templates";
+import { statusChanged, subtaskStatusChanged, watchedCardChanged, withLink } from "@/lib/email-templates";
+import { watchersOf } from "@/lib/card-activity";
 import { notificationEnabled, type NotificationType } from "@/lib/notifications";
 
 type Actor = { id: string; name: string | null; email: string } | null;
@@ -49,7 +50,8 @@ export async function notifyCardStatusChange(opts: {
   const link = appUrl(`/boards/${opts.boardId}?card=${opts.cardId}`);
   const seen = new Set<string>(opts.actor ? [opts.actor.id] : []);
 
-  for (const { user } of [...card.assignees, ...card.smes]) {
+  const watchers = (await watchersOf(opts.cardId, opts.workspaceId)).map((user) => ({ user }));
+  for (const { user } of [...card.assignees, ...card.smes, ...watchers]) {
     if (seen.has(user.id) || !user.email) continue;
     seen.add(user.id);
     await enqueueEmail({
@@ -118,6 +120,34 @@ export async function notifySubtaskStatusChange(opts: {
         }),
         link,
       ),
+    });
+  }
+}
+
+/** Tell a card's watchers about a change (assignee, priority), except the person who made
+ *  it and anyone in `except` (already told some other way). */
+export async function notifyWatchers(opts: {
+  cardId: string;
+  boardId: string;
+  workspaceId: string;
+  actor: Actor;
+  change: string;
+  except?: string[];
+}): Promise<void> {
+  if (!(await notificationsEnabled(opts.workspaceId, "watching"))) return;
+  const card = await prisma.card.findUnique({
+    where: { id: opts.cardId },
+    select: { title: true, column: { select: { board: { select: { name: true } } } }, parentCard: { select: { column: { select: { board: { select: { name: true } } } } } } },
+  });
+  if (!card) return;
+  const boardName = card.column?.board.name ?? card.parentCard?.column?.board.name ?? "";
+  const link = appUrl(`/boards/${opts.boardId}?card=${opts.cardId}`);
+  const skip = [...(opts.except ?? []), ...(opts.actor ? [opts.actor.id] : [])];
+  for (const user of await watchersOf(opts.cardId, opts.workspaceId, skip)) {
+    if (!user.email) continue;
+    await enqueueEmail({
+      to: user.email,
+      ...withLink(watchedCardChanged({ recipientName: user.name ?? user.email, actorName: actorName(opts.actor), cardTitle: card.title, boardName, change: opts.change }), link),
     });
   }
 }

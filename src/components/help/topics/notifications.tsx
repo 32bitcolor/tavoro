@@ -34,10 +34,15 @@ export default function Notifications() {
           When someone is assigned to a card, subtask or intake request, or named as an SME.
         </Def>
         <Def term="Status changes">
-          When a card moves to a new status, or a subtask is completed or reopened.
+          When a card moves to a new status, or a subtask is completed or reopened. Goes to the card&rsquo;s
+          assignees, SMEs and watchers.
         </Def>
         <Def term="Comments">
-          New comments on a card you&rsquo;re assigned to or an SME on.
+          New comments on a card you&rsquo;re assigned to, an SME on, or watching.
+        </Def>
+        <Def term="Cards you watch">
+          When a card you watch gets a new assignee or priority. (You watch a card you created, commented on,
+          or were assigned to; use <UI>Watch</UI> on the card to change that.)
         </Def>
         <Def term="Mentions">
           When you&rsquo;re @-mentioned in a comment or a card description.

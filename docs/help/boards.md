@@ -72,6 +72,12 @@ Opening a card slides in a drawer with everything about it. Changes save as you 
 
 **Whiteboards** — **+ New whiteboard** creates an Excalidraw canvas linked to this card, and lists any already linked — handy for wireframing a flow in context.
 
+**Linked cards** — Connect this card to others, on any board: **blocks**, **is blocked by**, **relates to**, **duplicates** or **clones** (and their opposites). Choose **Link a card**, pick how they relate, then find the other card by title or key. The link shows on both cards, each from its own side. A card blocked by one that isn’t done shows a red **Blocked** tag on the board.
+
+**Watch** — The **Watch** button at the top of the card. Watchers are emailed when the card moves to a new status, gets a new assignee or priority, or someone comments. You start watching a card when you create it, comment on it, or are assigned to it; choose **Watching** to stop. The number next to it is how many people watch the card.
+
+**History** — Under **Activity**, switch from **Comments** to **History** to see what changed and who changed it: status, assignees and SMEs, labels, priority, estimate, type, due date, sprint, epic, links, title, moves between boards, and description edits (one entry per person per ten minutes). History starts from when this was added; earlier changes aren’t in it.
+
 **Comments** — A rich-text discussion thread. Type **@** to mention someone (they’re emailed); the card’s assignees and SMEs are notified of new comments. You can delete your own comments, and admins can delete any.
 
 To remove a card, use **Delete card** at the bottom of the drawer, or the **×** that appears when you hover over a card on the board.

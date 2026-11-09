@@ -23,7 +23,7 @@ import { SavedViewsMenu } from "@/components/shared/saved-views-menu";
 import { FilterChip } from "@/components/board/filter-bar";
 import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
 import { AvatarStack, DueChip, LabelPill, StatusDot, type StatusCategory } from "@/components/shared/work-item";
-import { EpicTag, EstimateChip, PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
+import { BlockedTag, EpicTag, EstimateChip, PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
 import { formatEstimate, type CardType, type EstimateUnit, type Priority } from "@/lib/card-fields";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +49,7 @@ export type SprintCard = {
   priority: Priority | null;
   estimate: number | null;
   epic?: { id: string; title: string } | null;
+  blocked?: boolean;
   boardId: string;
   cardKeyPrefix: string | null;
   project: { id: string; name: string } | null;
@@ -117,6 +118,7 @@ export function SprintBoard({
               ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
               ...(patch.estimate !== undefined ? { estimate: patch.estimate } : {}),
               ...(patch.epic !== undefined ? { epic: patch.epic } : {}),
+              ...(patch.blocked !== undefined ? { blocked: patch.blocked } : {}),
             }
           : c,
       ),
@@ -552,7 +554,12 @@ function SprintCardCell({
       >
         {card.title}
       </button>
-      {card.epic && <EpicTag title={card.epic.title} />}
+      {(card.epic || card.blocked) && (
+        <span className="flex flex-wrap gap-1">
+          {card.blocked && <BlockedTag />}
+          {card.epic && <EpicTag title={card.epic.title} />}
+        </span>
+      )}
       {card.labels.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {card.labels.map((l) => (
