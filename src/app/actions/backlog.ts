@@ -173,7 +173,8 @@ export async function completeSprint(sprintId: string, moveTo: string) {
       done,
       notDone,
       movedTo: dest,
-      addedAfterStart: prior.committed ? done.cardIds.filter((id) => !committed.has(id)).length : 0,
+      // A start recorded without ids (a restored backup) can't tell what was added.
+      addedAfterStart: prior.committed?.cardIds?.length ? done.cardIds.filter((id) => !committed.has(id)).length : 0,
     },
   };
 

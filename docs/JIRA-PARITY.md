@@ -133,7 +133,7 @@ cards. Starting a sprint records what it holds (`Sprint.report.committed`); comp
 records done / not done counts and points, where the unfinished cards went, and how many done
 cards were added after the start (`Sprint.report.completed`), for Tier 3 reports. A completed
 sprint is closed to new cards; `update_sprint` status changes go through start/complete.
-Sprints still aren't part of a workspace backup (ranks are).
+Sprints and ranks are both in workspace backups (sprints since format 24).
 
 ## Jira import
 

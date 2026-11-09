@@ -218,6 +218,8 @@ export function CardDrawer({
   }, [cardId]);
 
   function saveTitle() {
+    // While the next card loads, `title` still holds the previous card's title.
+    if (loading) return;
     const t = title.trim();
     if (!t) return;
     renameCard(cardId, t);
@@ -536,7 +538,7 @@ export function CardDrawer({
         <SheetHeader className="flex-row items-start justify-between gap-2 space-y-0 border-b border-border px-4 py-3">
           <SheetTitle asChild>
             <div className="min-w-0 flex-1">
-              {cardKeyPrefix && keySeq != null && (
+              {!loading && cardKeyPrefix && keySeq != null && (
                 <button
                   type="button"
                   onClick={copyShortLink}
@@ -548,7 +550,9 @@ export function CardDrawer({
                 </button>
               )}
               <textarea
-                value={title}
+                value={loading ? "" : title}
+                readOnly={loading}
+                aria-busy={loading}
                 onChange={(e) => setTitle(e.target.value)}
                 onBlur={saveTitle}
                 rows={1}

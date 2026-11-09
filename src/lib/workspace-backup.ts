@@ -13,7 +13,7 @@ import { IntakeFieldList } from "@/lib/intake-fields";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 23; // bump when the shape changes (22: Card.rank; 23: ImportedCard, Comment.importedAuthor, Board.externalRef)
+export const BACKUP_FORMAT = 24; // bump when the shape changes (22: Card.rank; 23: ImportedCard, Comment.importedAuthor, Board.externalRef; 24: sprints)
 
 const WS = "__ws";
 const USER = "__user";
@@ -47,6 +47,26 @@ function cardInWorkspace(w: string): any {
 const SPECS: Spec[] = [
   { key: "group", model: "group", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },
   { key: "workspaceStatus", model: "workspaceStatus", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },
+  // Sprints (format 24+), before cards so Card.sprintId remaps. A sprint's report lists
+  // card ids from the original workspace; the counts and points are kept, the id lists
+  // are dropped (completeSprint treats a start with no ids as "unknown", not "all added").
+  {
+    key: "sprint",
+    model: "sprint",
+    where: (w) => ({ workspaceId: w }),
+    fks: { workspaceId: WS },
+    json: ["report"],
+    prepare: async (d) => {
+      const r = d.report && typeof d.report === "object" && !Array.isArray(d.report) ? structuredClone(d.report) : null;
+      if (r?.committed) r.committed.cardIds = [];
+      if (r?.completed) {
+        if (r.completed.done) r.completed.done.cardIds = [];
+        if (r.completed.notDone) r.completed.notDone.cardIds = [];
+      }
+      d.report = r;
+      return true;
+    },
+  },
   // Project before Board so Board.projectId can remap on import; both before
   // Column/Card so their statusId → workspaceStatus remaps too.
   { key: "project", model: "project", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },
@@ -86,7 +106,7 @@ const SPECS: Spec[] = [
     key: "card",
     model: "card",
     where: cardInWorkspace,
-    fks: { columnId: "column", parentCardId: "card", statusId: "workspaceStatus", epicId: "card" },
+    fks: { columnId: "column", parentCardId: "card", statusId: "workspaceStatus", epicId: "card", sprintId: "sprint" },
     // Epics first (other cards point at them through epicId), then the rest of the
     // top-level cards, then subtasks (they point at their parent).
     sort: (rows) => {
@@ -539,8 +559,7 @@ const isPrimitive = (v: unknown) => v === null || v instanceof Date || ["string"
  *  this password and make them admin of some other workspace"), and a foreign key the
  *  spec doesn't remap would point at another workspace's rows. Only declared Json
  *  columns may hold objects; every other "…Id" column is dropped unless remapped
- *  (in these tables every column ending in Id is a foreign key — Card.sprintId, say,
- *  as sprints aren't part of a backup). */
+ *  (in these tables every column ending in Id is a foreign key). */
 function safeRow(row: Record<string, unknown>, spec: Spec): Record<string, any> {
   const d: Record<string, any> = {};
   for (const [col, v] of Object.entries(row)) {

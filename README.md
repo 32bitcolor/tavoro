@@ -94,6 +94,11 @@ review that.
   - press `J`/`K` to step between cards
   - a rich-text description with @-mentions
   - status, sprint, due date, **assignees and SMEs**, and workspace-wide **labels**
+  - **type** (task, story, bug, epic), **priority** and an **estimate** in story points or hours
+  - **epics** that group cards from any board, with progress
+  - **links** between cards (blocks, relates to, duplicates, clones); a card blocked by an
+    unfinished one shows **Blocked**
+  - **watchers**, who get emails about changes, and a **History** of who changed what
   - subtasks, comments, file attachments and linked whiteboards
 
   Boards that belong to a project show a strip with the current phase, the next milestone and
@@ -127,9 +132,13 @@ review that.
     card offers to resolve the comments it came from.
   - **Export** a round, with each comment beside the field or page it's about, to **Word** or
     **PDF**. Storyboards export the same way.
-- **Sprints**: workspace-wide, time-boxed iterations (planned → active → completed) with a goal and
-  dates. A **team sprint board** pulls cards from every board into one view, grouped by status,
-  with the same filters and saved views.
+- **Sprints**: workspace-wide, time-boxed iterations with a goal and dates.
+  - The **Backlog** ranks open work across every board in one order. Drag cards to rank them and
+    to plan them into sprints, with card counts and points per sprint and an **Epics** panel.
+  - **Start sprint** and **Complete sprint**: completing moves unfinished cards to the next sprint,
+    a new one or the backlog, and keeps the sprint's result (*8 of 10 cards done · 21 of 26 pts*).
+  - A **team sprint board** pulls a sprint's cards from every board into one view, grouped by
+    status, with the same filters and saved views.
 - **Alignment spine**: write measurable **learning objectives** on a project and connect them to
   storyboard **screens** and **assessment items**. Coverage and gap analysis shows what's untaught
   or unassessed.
@@ -172,8 +181,13 @@ review that.
 - **Reports** (admins and managers): intake (time to decision, approval rate), delivery (cycle
   time, milestones on time), reviews (SME turnaround, on-time decisions, rounds to approval, who's
   waiting) and time logged.
+- **Import from Jira**: admins bring Jira Cloud projects over as boards — keys, types, priorities,
+  points, epics, sub-tasks, sprints, links, comments, attachments and watchers — after a dry run
+  and a mapping of statuses, people and issue types. Running it again picks up what changed in
+  Jira without overwriting what changed in Tavoro. ([docs/JIRA-PARITY.md](docs/JIRA-PARITY.md))
 - **Workspace admin**:
-  - **backup and restore**, including attachments, review files, library assets and the question bank
+  - **backup and restore**, including attachments, review files, library assets, the question bank
+    and sprints
   - workspace **labels**
   - a one-click **self-update** (pull, rebuild, migrate) from **Settings → Updates**
 - **Single sign-on and provisioning**: connect a SAML 2.0 identity provider (tested with JumpCloud) so
@@ -185,9 +199,9 @@ review that.
     you pick the workspace and read-only or read-and-change access.
   - Claude Code, Codex, Cursor, VS Code, Gemini CLI and other tools connect the same way, or with a
     personal token.
-  - 50 tools cover search and fetch (whole items as Markdown documents, the shape ChatGPT's deep
-    research reads), My Work, boards and cards, projects, storyboards, review rounds, intake and
-    sprints, with rich text as Markdown. There are also resources for each project, board, storyboard,
+  - 89 tools cover search and fetch (whole items as Markdown documents, the shape ChatGPT's deep
+    research reads), My Work, boards and cards (epics, links, watchers, history), projects,
+    storyboards, review rounds, intake, sprints and the backlog, with rich text as Markdown. There are also resources for each project, board, storyboard,
     card and round, and prompts for status reports, review-feedback summaries, storyboard drafts,
     intake triage and sprint planning.
   - Assistants act as you, see only what you can see, and can be disconnected any time in
@@ -475,5 +489,7 @@ the shell.
   file review, with the decisions behind them and what's left.
 - [docs/PROJECTS-BOARDS-REDESIGN.md](docs/PROJECTS-BOARDS-REDESIGN.md): the item-first model that
   connects projects, boards and the team sprint board.
+- [docs/JIRA-PARITY.md](docs/JIRA-PARITY.md): the Jira-parity work (issue types, epics, links,
+  watchers and history, the Backlog, the Jira importer) and the tiers still to come.
 - [docs/MCP.md](docs/MCP.md): the MCP server, covering authentication, how it reuses the app's permission
   model, and every tool, resource and prompt.
