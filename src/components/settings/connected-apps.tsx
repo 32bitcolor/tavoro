@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Copy, ExternalLink, Unplug } from "lucide-react";
+import { Check, Copy, ExternalLink, KeyRound, Unplug } from "lucide-react";
 
-import { connectApp, disconnectApp } from "@/app/actions/connected-apps";
+import { connectApp, disconnectApp, rotateAppKey } from "@/app/actions/connected-apps";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +56,7 @@ export function ConnectedApps({ apps, workspaceName }: { apps: AppRow[]; workspa
 
       {key && (
         <section role="status" className="flex flex-col gap-2 rounded-lg border border-accent/40 bg-accent/5 p-4 text-sm">
-          <p className="font-medium">Connected. Copy this key into CourseForge</p>
+          <p className="font-medium">Copy this key into CourseForge</p>
           <p className="text-muted-foreground">
             In CourseForge, open <span className="font-medium text-foreground">Admin → Settings → Sign in with Tavoro</span> and paste it.
             It’s shown only once.
@@ -88,9 +88,27 @@ export function ConnectedApps({ apps, workspaceName }: { apps: AppRow[]; workspa
                   Key ending …{a.secretHint} · last sign-in {when(a.lastUsedAt)} · last member sync {when(a.lastSyncAt)}
                 </p>
               </div>
+              <div className="flex flex-wrap gap-2">
+              <ConfirmDelete
+                title={`Give ${a.name} a new key?`}
+                description={`The current key stops working at once: paste the new key into ${a.name} (Admin → Settings → Sign in with Tavoro) straight away. Cards stay linked to their courses.`}
+                confirmLabel="New key"
+                onConfirm={async () => {
+                  const r = await rotateAppKey(a.id);
+                  if ("key" in r && r.key) setKey(r.key);
+                  router.refresh();
+                  return r;
+                }}
+                trigger={
+                  <Button type="button" variant="outline" size="sm">
+                    <KeyRound className="size-4" aria-hidden />
+                    New key
+                  </Button>
+                }
+              />
               <ConfirmDelete
                 title={`Disconnect ${a.name}?`}
-                description={`People can no longer sign in to ${a.name} with Tavoro, and its key stops working. Their ${a.name} accounts stay; an owner there can still sign in with a password.`}
+                description={`People can no longer sign in to ${a.name} with Tavoro, its key stops working, and cards lose their links to its courses. Their ${a.name} accounts and courses stay.`}
                 confirmLabel="Disconnect"
                 onConfirm={async () => {
                   const r = await disconnectApp(a.id);
@@ -104,6 +122,7 @@ export function ConnectedApps({ apps, workspaceName }: { apps: AppRow[]; workspa
                   </Button>
                 }
               />
+              </div>
             </div>
           ))}
         </section>

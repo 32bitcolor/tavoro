@@ -21,7 +21,8 @@ export type ActivityKind =
   | "description"
   | "subtask"
   | "private"
-  | "imported";
+  | "imported"
+  | "course";
 
 export type ActivityData = {
   from?: string | null;
@@ -75,6 +76,8 @@ export function describeActivity(kind: string, data: ActivityData): string {
       return data.added ? `added the subtask ${q(data.added)}` : `removed the subtask ${q(data.removed)}`;
     case "private":
       return data.to === "private" ? "made it private" : "made it not private";
+    case "course":
+      return data.to ? (data.from ? `changed the course from ${q(data.from)} to ${q(data.to)}` : `linked the course ${q(data.to)}`) : `unlinked the course ${q(data.from)}`;
     case "imported":
       return `imported it from ${v(data.source as string)}`;
     default:

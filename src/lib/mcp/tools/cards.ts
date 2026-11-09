@@ -3,6 +3,7 @@ import { displayValue } from "@/lib/custom-fields";
 import { addCardLink, getCardLinks, removeCardLink } from "@/app/actions/card-links";
 import { getCardHistory, listWatchers, setWatching } from "@/app/actions/cards";
 import { LINK_CHOICES } from "@/lib/card-links";
+import { courseLine, createCourseForCard, findCourses, getCardCourse, linkCourse, unlinkCourse } from "@/lib/card-courses";
 import { epicChildren, listEpics } from "@/lib/epics";
 import { setCardEpic } from "@/app/actions/epics";
 import { CARD_TYPES, PRIORITIES, asCardType } from "@/lib/card-fields";
@@ -166,7 +167,16 @@ export async function loadCard(ref: string) {
     ...(d.card.type === "epic" && !d.isSubtask ? { epicCards: await epicCardsFor(d.card.id) } : {}),
     ...(await linksAndWatchers(d.card.id, d.watching)),
     ...(await customFieldsOf(d.card.id, member)),
+    ...(await courseOf(d.card.id)),
   };
+}
+
+/** The card's CourseForge course (docs/SUITE.md, step 2), as last synced. */
+async function courseOf(cardId: string) {
+  const r = await getCardCourse(cardId);
+  if ("error" in r || !r.course) return {};
+  const c = r.course;
+  return { course: { id: c.courseId, title: c.title, url: c.summary?.url ?? `${c.app.url}/courses/${c.courseId}`, status: courseLine(c.summary, c.missing), syncedAt: c.syncedAt } };
 }
 
 /** The card's custom field values by field name (only the fields its board shows). */
@@ -284,6 +294,57 @@ export async function loadBoard(boardId: string, includeDone: boolean) {
 }
 
 export function registerCardTools(server: McpServer) {
+  tool(
+    server,
+    "find_courses",
+    {
+      title: "Find CourseForge courses",
+      description:
+        "Courses you can edit in the CourseForge connected to this workspace, newest first, with their status (draft / in review / live in an LMS), lessons, open review comments and problems. Use an id with link_course. You need to have signed in to CourseForge with Tavoro once.",
+      input: { card: cardRef.describe("A card on a board in the workspace (the course is looked up for it)"), query: z.string().max(100).optional() },
+      kind: "read",
+    },
+    async ({ card, query }) => {
+      const id = await resolveCardId(card);
+      const r = check(await findCourses(id, principal().userId, query ?? ""));
+      return { courses: r.courses.map((c) => ({ id: c.id, title: c.title, url: c.url, status: courseLine(c, c.deleted), owner: c.owner, updatedAt: c.updatedAt })) };
+    },
+  );
+
+  tool(
+    server,
+    "link_course",
+    {
+      title: "Link a card to a CourseForge course",
+      description:
+        "Attach a CourseForge course to a card (replacing any course it had). The card then shows the course and its live status, and the course shows the card in CourseForge. Give `course_id` from find_courses, or `create: true` to start a new blank course named after the card.",
+      input: { card: cardRef, course_id: z.string().optional(), create: z.boolean().optional() },
+      kind: "write",
+    },
+    async ({ card, course_id, create }) => {
+      const id = await resolveCardId(card);
+      if (!course_id && !create) throw new ToolError("Give course_id (from find_courses) or create: true.");
+      check(create ? await createCourseForCard(id, principal().userId) : await linkCourse(id, principal().userId, course_id!));
+      return loadCard(id);
+    },
+  );
+
+  tool(
+    server,
+    "unlink_course",
+    {
+      title: "Unlink a card's CourseForge course",
+      description: "Remove the course from a card. The course itself stays in CourseForge.",
+      input: { card: cardRef },
+      kind: "write",
+    },
+    async ({ card }) => {
+      const id = await resolveCardId(card);
+      check(await unlinkCourse(id, principal().userId));
+      return loadCard(id);
+    },
+  );
+
   tool(
     server,
     "link_cards",

@@ -215,8 +215,8 @@ review that.
     you pick the workspace and read-only or read-and-change access.
   - Claude Code, Codex, Cursor, VS Code, Gemini CLI and other tools connect the same way, or with a
     personal token.
-  - 95 tools cover search and fetch (whole items as Markdown documents, the shape ChatGPT's deep
-    research reads), My Work, boards and cards (epics, links, watchers, history), projects,
+  - 98 tools cover search and fetch (whole items as Markdown documents, the shape ChatGPT's deep
+    research reads), My Work, boards and cards (epics, links, watchers, history, linked CourseForge courses), projects,
     storyboards, review rounds, intake, sprints and the backlog, with rich text as Markdown. There are also resources for each project, board, storyboard,
     card and round, and prompts for status reports, review-feedback summaries, storyboard drafts,
     intake triage and sprint planning.

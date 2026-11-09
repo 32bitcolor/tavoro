@@ -10,6 +10,7 @@ import { sweepOAuth } from "../src/lib/oauth-sweep";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Cancelled, failImport, runImport, scanImport } from "../src/lib/jira/engine";
 import { snapshotActiveSprints } from "../src/lib/sprint-stats";
+import { refreshCardCourses } from "../src/lib/courseforge";
 import { handleEvent, runScheduled } from "../src/lib/automation/engine";
 import { JiraError } from "../src/lib/jira/client";
 
@@ -160,6 +161,20 @@ const sprintDaysWorker = new Worker(
 );
 sprintDaysWorker.on("failed", (job, err) => console.error(`[worker] sprint-days job ${job?.id} failed:`, err));
 
+// Course summaries on linked cards (docs/SUITE.md, step 2): every ten minutes, the
+// stale ones are refreshed from their connected app, so board badges stay current.
+const suiteQueue = new Queue("suite", { connection });
+suiteQueue
+  .add("refresh-courses", {}, { repeat: { pattern: "*/10 * * * *" }, removeOnComplete: true, removeOnFail: 50 })
+  .then(() => console.log("[worker] scheduled course refresh (every 10 min)"))
+  .catch((err) => console.error("[worker] failed to schedule course refresh:", err));
+const suiteWorker = new Worker(
+  "suite",
+  async () => ({ ok: true, refreshed: await refreshCardCourses(prisma, { staleOnly: true }) }),
+  { connection, concurrency: 1 },
+);
+suiteWorker.on("failed", (job, err) => console.error(`[worker] suite job ${job?.id} failed:`, err));
+
 // Automation rules (docs/JIRA-PARITY.md, phase 9): card-change events, and a daily run
 // at 07:00 UTC for "due in N days" and scheduled rules.
 const automationWorker = new Worker(
@@ -193,6 +208,8 @@ async function shutdown() {
   await sprintDaysWorker.close();
   await sprintDaysQueue.close();
   await automationWorker.close();
+  await suiteWorker.close();
+  await suiteQueue.close();
   await automationQueue.close();
   await lmsQueue.close();
   await remindersQueue.close();

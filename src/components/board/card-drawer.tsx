@@ -34,6 +34,7 @@ import { assignCardToSprint } from "@/app/actions/sprints";
 import { CARD_TYPES, CARD_TYPE_LABEL, PRIORITIES, PRIORITY_LABEL, type CardType, type EstimateUnit, type Priority } from "@/lib/card-fields";
 import { PriorityIcon, TypeIcon } from "@/components/shared/card-fields";
 import { EpicCardsSection, EpicField, type EpicChip } from "@/components/board/epic-panels";
+import { CardCourseSection } from "@/components/board/card-course-section";
 import { CardLinksSection } from "@/components/board/card-links-section";
 import { CardFieldsSection } from "@/components/board/card-fields-section";
 import type { EpicRef } from "@/lib/epics";
@@ -87,6 +88,8 @@ export type CardFacePatch = {
   sprintId?: string | null;
   comments?: number;
   attachments?: number;
+  /** Its CourseForge course (docs/SUITE.md, step 2). */
+  course?: { title: string; state: "draft" | "review" | "live" | null } | null;
 };
 
 export function CardDrawer({
@@ -693,6 +696,8 @@ export function CardDrawer({
                 <InlineComposer placeholder="Add a subtask…" buttonLabel="Add" onSubmit={addItem} />
               </Section>
             )}
+
+            <CardCourseSection key={`course-${cardId}`} cardId={cardId} onLinkedChange={(course) => onPatch(cardId, { course })} />
 
             {boardId && (
               <Section title="Linked cards">

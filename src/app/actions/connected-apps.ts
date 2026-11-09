@@ -17,7 +17,7 @@ export async function connectApp(rawUrl: string, kind: keyof typeof KINDS = "cou
   if (!url) return { error: "Enter the app’s web address, starting with https://." };
   if (!(kind in KINDS)) return { error: "Unknown kind of app." };
   if (await prisma.connectedApp.findFirst({ where: { workspaceId: m.workspaceId, url } })) {
-    return { error: "That app is already connected. To get a new key, disconnect it and connect it again." };
+    return { error: "That app is already connected. Use New key on it to get a fresh key." };
   }
   const clientId = newClientId();
   const secret = newSecret();
@@ -26,10 +26,25 @@ export async function connectApp(rawUrl: string, kind: keyof typeof KINDS = "cou
   });
   revalidatePath("/settings/apps");
   revalidatePath("/", "layout"); // the sidebar's app switcher
+  return { ok: true as const, key: connectionKey(await base(), clientId, secret) };
+}
+
+async function base() {
   const h = await headers();
   const proto = h.get("x-forwarded-proto")?.split(",")[0] ?? "http";
-  const base = process.env.APP_URL?.replace(/\/+$/, "") || `${proto}://${h.get("x-forwarded-host") ?? h.get("host")}`;
-  return { ok: true as const, key: connectionKey(base, clientId, secret) };
+  return process.env.APP_URL?.replace(/\/+$/, "") || `${proto}://${h.get("x-forwarded-host") ?? h.get("host")}`;
+}
+
+/** A new secret for an app (the old one stops working at once); links to its courses stay. */
+export async function rotateAppKey(id: string) {
+  const m = await getWorkspaceAdmin();
+  if (!m) return { error: "Only workspace admins can change app keys." };
+  const app = await prisma.connectedApp.findFirst({ where: { id, workspaceId: m.workspaceId }, select: { clientId: true } });
+  if (!app) return { error: "App not found." };
+  const secret = newSecret();
+  await prisma.connectedApp.update({ where: { id }, data: { secretSealed: seal(secret), secretHint: secret.slice(-4) } });
+  revalidatePath("/settings/apps");
+  return { ok: true as const, key: connectionKey(await base(), app.clientId, secret) };
 }
 
 export async function disconnectApp(id: string) {

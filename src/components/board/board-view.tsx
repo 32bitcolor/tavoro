@@ -31,6 +31,7 @@ import {
   ArrowRightLeft,
   Columns3,
   FileCheck2,
+  GraduationCap,
   Globe,
   Hash,
   List,
@@ -64,6 +65,7 @@ import { setCardPriority, setCardType, toggleCardAssignee } from "@/app/actions/
 import { setCardEpic } from "@/app/actions/epics";
 import Link from "next/link";
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
+import { StatePill } from "@/components/board/card-course-section";
 import type { MoveResult } from "@/components/board/move-card-dialog";
 import { ShareDialog } from "@/components/board/share-dialog";
 import { ProjectContextStrip, type ProjectContext } from "@/components/board/project-context-strip";
@@ -125,6 +127,8 @@ type Card = {
   comments: number;
   attachments: number;
   deliverable: { name: string; review: { round: number; status: string } | null } | null;
+  /** Its CourseForge course (docs/SUITE.md, step 2); state null = deleted there. */
+  course?: { title: string; state: "draft" | "review" | "live" | null } | null;
 };
 type Column = { id: string; name: string; position: string; category: StatusCategory; wipLimit?: number | null; cards: Card[] };
 /** Swimlanes: rows across the board, by one of the card's attributes (?lanes=). */
@@ -1318,6 +1322,14 @@ function CardShell({
             {card.deliverable.name}
             {card.deliverable.review && <> · {reviewLabel(card.deliverable.review)}</>}
           </span>
+        </span>
+      )}
+
+      {card.course && (
+        <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" title={`CourseForge course: ${card.course.title}`}>
+          <GraduationCap className="size-3.5 shrink-0 text-accent" aria-hidden="true" />
+          <span className="truncate">{card.course.title}</span>
+          {card.course.state ? <StatePill state={card.course.state} className="shrink-0 px-1.5 py-0 text-[10px]" /> : <span className="shrink-0 text-destructive">deleted</span>}
         </span>
       )}
 

@@ -8,7 +8,7 @@ export default function ConnectedApps() {
         connected, <UI>CourseForge</UI> appears under <UI>Apps</UI> in the sidebar and opens it already signed in.
       </Lead>
 
-      <Callout tone="note">Admin-only. Everything here lives in <UI>Settings → Connected apps</UI>.</Callout>
+      <Callout tone="note">Connecting is admin-only, in <UI>Settings → Connected apps</UI>. Linking courses to cards is for everyone.</Callout>
 
       <H2>Connect CourseForge</H2>
       <Steps>
@@ -24,6 +24,18 @@ export default function ConnectedApps() {
       </Steps>
       <P>From then on, the CourseForge sign-in page has a <UI>Sign in with Tavoro</UI> button.</P>
 
+      <H2>Link a card to its course</H2>
+      <P>
+        Open a card and find <UI>Course</UI>. <UI>Link a course</UI> lists the CourseForge courses you can edit;{" "}
+        <UI>New course in CourseForge</UI> starts a blank one named after the card. The card then shows the course&rsquo;s
+        state (Draft, In review, Live in LMS), its lessons, open review comments and anything CourseForge&rsquo;s check
+        flags, and the board shows a course badge on the card. The status refreshes when you open the card and every
+        few minutes. In CourseForge, the course&rsquo;s editor shows a <UI>Tavoro</UI> link back to the card.
+      </P>
+      <Callout tone="tip">
+        The first time, open CourseForge once from <UI>Apps</UI> in the sidebar, so it knows who you are there.
+      </Callout>
+
       <H2>Who can sign in</H2>
       <UL>
         <LI>Members of this workspace. Anyone else signed in to Tavoro is told they don&rsquo;t have access.</LI>
@@ -33,9 +45,16 @@ export default function ConnectedApps() {
         </LI>
         <LI>
           The first time someone signs in, CourseForge links their existing account with the same email, or creates one
-          (an owner there can turn that off, or choose Viewer as the role for new accounts).
+          (an owner there can turn that off).
         </LI>
       </UL>
+
+      <H2>Roles</H2>
+      <P>
+        Roles follow Tavoro: workspace admins here are owners in CourseForge, and everyone else is an Editor (or Viewer,
+        if a CourseForge owner chooses). They update at each sign-in and every few minutes, so making someone an admin
+        here makes them an owner there. A CourseForge owner can turn this off to manage roles there instead.
+      </P>
 
       <H2>Suspending and removing people</H2>
       <P>
@@ -46,8 +65,9 @@ export default function ConnectedApps() {
 
       <H2>Disconnecting</H2>
       <P>
-        <UI>Disconnect</UI> stops the key working at once. People keep their CourseForge accounts and work, but can&rsquo;t
-        sign in with Tavoro until you connect again and paste the new key. Backups don&rsquo;t include connected apps, so
+        <UI>New key</UI> replaces the key (paste the new one into CourseForge straight away); cards stay linked.{" "}
+        <UI>Disconnect</UI> stops the key working at once and removes every card&rsquo;s course link. People keep their
+        CourseForge accounts and work, but can&rsquo;t sign in with Tavoro until you connect again and paste the new key. Backups don&rsquo;t include connected apps, so
         a restored copy of the workspace needs connecting again too.
       </P>
     </>

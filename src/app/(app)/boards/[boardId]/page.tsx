@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { STALE_MS, refreshCardCourses, type CourseState } from "@/lib/courseforge";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getBoardForUser } from "@/lib/authz";
@@ -57,10 +59,15 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
             },
           },
           _count: { select: { comments: true, attachments: true } },
+          // Its CourseForge course (docs/SUITE.md, step 2): cached title and state.
+          course: { select: { id: true, title: true, summary: true, missing: true, syncedAt: true } },
         },
       },
     },
   });
+  // Stale course summaries refresh after this response, so the next look is current.
+  const staleCourses = raw.flatMap((c) => c.cards.flatMap((k) => (k.course && Date.now() - k.course.syncedAt.getTime() > STALE_MS ? [k.course.id] : [])));
+  if (staleCourses.length) after(() => refreshCardCourses(prisma, { ids: staleCourses }).catch(() => {}));
 
   // Progress for the epics on this board, shown on their card faces.
   const progress = await epicProgress(raw.flatMap((c) => c.cards.filter((k) => k.type === "epic").map((k) => k.id)));
@@ -96,6 +103,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
         comments: card._count.comments,
         attachments: card._count.attachments,
         deliverable: d ? { name: d.name, review: review ? { round: review.round, status: review.status } : null } : null,
+        course: card.course ? { title: card.course.title, state: card.course.missing ? null : (((card.course.summary as { state?: CourseState } | null)?.state ?? null) as CourseState | null) } : null,
       };
     }),
   }));

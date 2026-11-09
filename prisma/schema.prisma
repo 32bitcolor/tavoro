@@ -274,6 +274,7 @@ model Card {
   keyAliases     CardKeyAlias[]
   imported       ImportedCard?
   fieldValues    CardFieldValue[]
+  course         CardCourse?
 
   @@index([columnId, position])
   @@index([parentCardId, position])
@@ -1468,6 +1469,7 @@ model ConnectedApp {
   lastSyncAt   DateTime?
   workspace    Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   codes        ConnectedAppCode[]
+  cardCourses  CardCourse[]
 
   @@index([workspaceId])
 }
@@ -1484,4 +1486,26 @@ model ConnectedAppCode {
   usedAt        DateTime?
   createdAt     DateTime     @default(now())
   app           ConnectedApp @relation(fields: [appId], references: [id], onDelete: Cascade)
+}
+
+// A card's course in a connected app (docs/SUITE.md, step 2). One per card. The
+// summary (title, lessons, draft/review/live, open comments, checks, cover, owner,
+// last edit) is a cache refreshed when the card is opened and every few minutes by
+// the worker; the app stays the source of truth.
+model CardCourse {
+  id         String       @id @default(cuid())
+  cardId     String       @unique
+  appId      String
+  courseId   String
+  title      String
+  summary    Json         @default("{}")
+  syncedAt   DateTime     @default(now())
+  // The app no longer has the course (deleted there), as of the last sync.
+  missing    Boolean      @default(false)
+  linkedById String?
+  createdAt  DateTime     @default(now())
+  card       Card         @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  app        ConnectedApp @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@index([appId, courseId])
 }

@@ -14,8 +14,8 @@ Each step below is useful on its own, and a later merge stays possible.
 
 1. **One sign-in** ✅ (this document, below). CourseForge signs people in with Tavoro; each app
    links to the other.
-2. **Linking.** A Tavoro project or card links to its CourseForge course and shows its status;
-   "Open in CourseForge" from Tavoro.
+2. **Linking** ✅ (below). A card links to its CourseForge course and shows its live status;
+   the board shows a course badge; CourseForge's editor links back to the card.
 3. **Storyboard → course.** An approved storyboard becomes a CourseForge draft: screens to
    lessons, objectives carried along.
 4. **Reviews.** CourseForge review comments arrive as Tavoro cards, so SME turnaround reporting
@@ -41,10 +41,15 @@ OpenID Connect's authorization code flow, kept small (both ends are ours):
 | 4 | Tavoro `POST /api/suite/token` | Client secret (Basic or form) + code + `code_verifier`. Returns an `id_token`: HS256 with the client secret (OIDC Core §10.1), 5 minutes, claims `iss aud sub nonce email name role workspace{id,name}`. |
 | 5 | CourseForge | Verifies the token, finds the account by `tavoroSub`, else by email (and links it), else creates one (if allowed, with the chosen role), starts a session. |
 
+Roles (CourseForge setting **Roles follow Tavoro**, on by default): Tavoro ADMIN → CourseForge
+OWNER, MANAGER/MEMBER → the configured role (Editor or Viewer), at sign-in and on every sync;
+locked in CourseForge's Members while on. CourseForge never demotes or suspends its last active
+owner.
+
 Membership sync: CourseForge's scheduler calls Tavoro `GET /api/suite/members` (client secret)
 every 5 minutes (`TAVORO_SYNC_MS`). Linked accounts not listed as active are suspended
-(`disabledAt` + `tavoroSuspended`, sessions revoked) and restored when listed again. CourseForge
-owners are never suspended by sync. Names follow Tavoro.
+(`disabledAt` + `tavoroSuspended`, sessions revoked) and restored when listed again, except the
+last active owner. Names and (when on) roles follow Tavoro.
 
 **Tavoro-only** (CourseForge setting): `/login` goes straight to Tavoro; non-owners can't use a
 password. Owners can at `/login?password=1`, the way back in if Tavoro is down.
@@ -69,3 +74,47 @@ password. Owners can at `/login?password=1`, the way back in if Tavoro is down.
   set `APP_URL` on servers, or a key made on one hostname fails on another.
 - Local test: CourseForge `apps/studio/tests/tavoro.e2e.mjs` (43 checks) with Tavoro on :3100 and CourseForge studio on
   :3300 (`PUBLIC_URL=http://localhost:3300 SCHEDULER_TICK_MS=3000 TAVORO_SYNC_MS=4000 npx next dev -p 3300`).
+
+## Step 2: cards linked to courses
+
+A card has at most one course (`CardCourse`, unique on `cardId`). In the card drawer, **Course**
+shows the cover, title (opens CourseForge), Draft / In review / Live in LMS, lesson count, open
+review comments, problems from CourseForge's Check, and who edited it when. **Link a course**
+searches the courses the person can *edit* in CourseForge; **New course in CourseForge** starts a
+blank one named after the card (minus a leading "Course:"), owned by them. The board card face
+shows a graduation-cap badge with the course title and state. History records link, change and
+unlink. MCP: `find_courses`, `link_course` (`course_id` or `create: true`), `unlink_course`;
+`get_card` includes `course`.
+
+CourseForge's editor header shows **Tavoro SAE-3** (or "N cards") linking back to the card.
+
+### API
+
+| Direction | Endpoint | What |
+| --- | --- | --- |
+| Tavoro → CF | `GET /api/suite/courses?sub=&q=` | Courses that Tavoro person can edit (picker). `404 no_account` until they've signed in to CourseForge with Tavoro once. |
+| Tavoro → CF | `GET /api/suite/courses?ids=a,b[&sub=]` | Summaries; with `sub`, only those the person can edit (linking checks this, so a course id alone isn't permission). |
+| Tavoro → CF | `POST /api/suite/courses {sub,title}` | New blank course (with the default brand kit) owned by that person; viewers refused. |
+| CF → Tavoro | `GET /api/suite/course-links?course=` | Cards linked to a course (private cards' titles hidden). |
+
+All with the connection's client id + secret (HTTP Basic), both ways.
+
+Summary shape (`lib/courseforge.ts` `CourseSummary`): `id title url cover lessons micro
+state(draft|review|live) openComments checks{errors,warnings} owner updatedAt deleted`. "review"
+= an active review link; "live" = an active live package.
+
+### Freshness
+
+The summary is cached on `CardCourse`. It refreshes: when the card drawer opens (shown cached
+first, then refreshed); after a board render, for stale ones (`after()`); and every 10 minutes in
+the worker (`suite` queue) for anything older than `STALE_MS` (10 minutes). A course deleted in
+CourseForge shows as deleted on the card; unlink it or link another.
+
+### Keys
+
+Settings → Connected apps → **New key** rotates the secret without touching links (paste the
+new key into CourseForge straight away). **Disconnect** deletes the app and, with it, every
+card's course link.
+
+Test: CourseForge `apps/studio/tests/tavoro-courses.e2e.mjs` (25 checks; also needs the collab
+server on :3200 for the editor header check).
