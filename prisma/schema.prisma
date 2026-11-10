@@ -275,6 +275,7 @@ model Card {
   imported       ImportedCard?
   fieldValues    CardFieldValue[]
   course         CardCourse?
+  suiteItems     SuiteItem[]
 
   @@index([columnId, position])
   @@index([parentCardId, position])
@@ -1477,6 +1478,7 @@ model ConnectedApp {
   codes        ConnectedAppCode[]
   cardCourses  CardCourse[]
   storyboards  Storyboard[]
+  suiteItems   SuiteItem[]
 
   @@index([workspaceId])
 }
@@ -1515,4 +1517,24 @@ model CardCourse {
   app        ConnectedApp @relation(fields: [appId], references: [id], onDelete: Cascade)
 
   @@index([appId, courseId])
+}
+
+// A card (or subtask) that a connected app created and keeps in step (docs/SUITE.md, step 4):
+// CourseForge's review links become cards, and each reviewer's comments become subtasks.
+// `externalId` is the app's own id, so syncing is idempotent. If someone deletes the card
+// here, `cardId` goes null and the item stays as a tombstone, so it is not made again.
+model SuiteItem {
+  id         String       @id @default(cuid())
+  appId      String
+  kind       String // "review" | "review-comment"
+  externalId String
+  cardId     String?
+  // What was last synced (e.g. { resolved: true }), so a person's own edits here aren't overwritten.
+  state      Json         @default("{}")
+  createdAt  DateTime     @default(now())
+  app        ConnectedApp @relation(fields: [appId], references: [id], onDelete: Cascade)
+  card       Card?        @relation(fields: [cardId], references: [id], onDelete: SetNull)
+
+  @@unique([appId, kind, externalId])
+  @@index([cardId])
 }

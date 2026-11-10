@@ -18,7 +18,7 @@ Each step below is useful on its own, and a later merge stays possible.
    the board shows a course badge; CourseForge's editor links back to the card.
 3. **Storyboard → course** ✅ (below). A storyboard becomes a CourseForge first draft; builder
    notes arrive as review comments.
-4. **Reviews.** *Design (decided 2026-11-10): one card per review request, not per comment.*
+4. **Reviews** ✅ (below). *Design (decided 2026-11-10): one card per review request, not per comment.*
    Creating a review link in CourseForge creates a card in Tavoro (on the linked course's board,
    linked to that course); each reviewer's comments become subtasks under that card, and resolving
    a comment completes its subtask. SME turnaround reporting then covers built courses without
@@ -145,3 +145,37 @@ one-time copy: re-running makes a new course. Build notes count as open comments
 
 Test: CourseForge `apps/studio/tests/tavoro-storyboard.e2e.mjs` (31 checks) and
 `packages/import/src/storyboard.test.ts`.
+
+## Step 4: reviews → a card with subtasks
+
+Creating a **review link** in CourseForge makes **one** Tavoro card; each reviewer's **comment** is a
+**subtask** of it, ticked when the comment is resolved. Nothing is made per comment on the board.
+
+CourseForge `POST /api/suite/reviews { review }` (client secret) sends a review's **whole state**
+every time something changes (link created or revoked, comment added, resolved or re-opened), so
+Tavoro can repeat or miss a message without drifting:
+
+```
+review: { id, title, course: { id, title, url }, createdBy (Tavoro sub), expiresAt,
+          comments: [{ id, author, text, where, url, resolved }] }
+```
+
+Tavoro (`src/lib/suite-reviews.ts`) answers `{ card, subtasks: { created, updated } }`, or
+`{ card: null, reason }`:
+
+| What | Behaviour |
+| --- | --- |
+| Where the card goes | The board of the (earliest) card the course is linked to (`CardCourse`), in the board's **first column**. If the course isn't linked to a card, `no_linked_card`: CourseForge keeps the review **pending** and retries on its scheduler tick (30 days), so linking a card later still brings the review across. |
+| The card | "Review: {link title}", due on the link's expiry date, linked to the course (`CardCourse`) and **related** (`CardLink`) to the course's card. The person who made the link is assigned and watching, when they signed in with Tavoro. The review link's secret URL is never sent; the card links to the course in CourseForge. |
+| A comment | A subtask "{reviewer}: {comment}" (full text, where it is, and a link in its description). **Top-level comments only**: replies aren't mirrored, but a reviewer's reply that re-opens a resolved thread re-opens its subtask. New unresolved comments notify the card's watchers. |
+| Resolved / re-opened | Moves the subtask's **done** only when the comment's state *changes* in CourseForge (`SuiteItem.state`), so ticking a subtask yourself isn't undone by a later sync. The last subtask being ticked fires the board's `subtasks_done` automation as usual. |
+| Deleted here | Deleting the card or a subtask leaves a **tombstone** (`SuiteItem.cardId` null): it isn't made again, and CourseForge stops retrying. |
+
+`SuiteItem { appId, kind: review | review-comment, externalId, cardId, state }` maps CourseForge's ids to
+cards; `(appId, kind, externalId)` is unique, so two syncs at once can't make two cards.
+
+Not done: ticking a subtask in Tavoro doesn't resolve the comment in CourseForge; comments made
+before CourseForge was connected, and the studio's own (non-review) comments, aren't sent.
+
+Test: CourseForge `apps/studio/tests/tavoro-reviews.e2e.mjs` (29 checks).
+
