@@ -20,13 +20,14 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ScreensSection, type ScreenInit, type ProjectObjective } from "@/components/storyboard/screens-section";
 import { StoryboardWhiteboards, type LinkedWhiteboard } from "@/components/storyboard/storyboard-whiteboards";
+import { StoryboardCourse } from "@/components/storyboard/storyboard-course";
 
 type StoryboardMeta = {
   id: string;
   title: string;
   description: string | null;
   status: string;
-  deliverable: { id: string; name: string; projectId: string; projectName: string } | null;
+  deliverable: { id: string; name: string; projectId: string; projectName: string; cardId?: string | null } | null;
 };
 
 export function StoryboardView({
@@ -70,7 +71,12 @@ export function StoryboardView({
             </>
           ) : undefined
         }
-        actions={<ExportMenu wordHref={`/api/storyboards/${storyboard.id}/export`} printHref={`/print/storyboards/${storyboard.id}`} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <StoryboardCourse storyboardId={storyboard.id} status={status} hasCard={!!storyboard.deliverable?.cardId} />
+            <ExportMenu wordHref={`/api/storyboards/${storyboard.id}/export`} printHref={`/print/storyboards/${storyboard.id}`} />
+          </div>
+        }
       />
 
       <div className="mt-4 flex flex-wrap items-center gap-3">

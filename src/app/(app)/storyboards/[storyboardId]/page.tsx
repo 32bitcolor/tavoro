@@ -19,7 +19,7 @@ export default async function StoryboardPage({ params }: { params: Promise<{ sto
       description: true,
       status: true,
       deliverable: {
-        select: { id: true, name: true, projectId: true, project: { select: { name: true } } },
+        select: { id: true, name: true, projectId: true, cardId: true, project: { select: { name: true } } },
       },
       screens: {
         orderBy: { position: "asc" },
@@ -83,6 +83,7 @@ export default async function StoryboardPage({ params }: { params: Promise<{ sto
               name: storyboard.deliverable.name,
               projectId: storyboard.deliverable.projectId,
               projectName: storyboard.deliverable.project.name,
+              cardId: storyboard.deliverable.cardId,
             }
           : null,
       }}

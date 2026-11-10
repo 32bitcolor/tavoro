@@ -21,6 +21,7 @@ import {
 import { toggleScreenObjective } from "@/app/actions/objectives";
 import { fromMarkdown, toMarkdown } from "@/lib/markdown";
 import { check, link, principal, tool, ToolError } from "@/lib/mcp/util";
+import { createCourseFromStoryboard, storyboardCourseState } from "@/lib/storyboard-course";
 
 // Screen fields as tool arguments, in the words a designer uses.
 const FIELD_ARGS = {
@@ -82,7 +83,14 @@ export async function loadStoryboard(storyboardId: string) {
       ...Object.fromEntries(Object.entries(FIELD_ARGS).map(([arg, f]) => [arg, toMarkdown(s[f])])),
       objectives: s.objectives.map((o) => o.objective),
     })),
+    ...(await courseOfStoryboard(sb.id)),
   };
+}
+
+/** The CourseForge course drafted from it (docs/SUITE.md, step 3), if any. */
+async function courseOfStoryboard(id: string) {
+  const st = await storyboardCourseState(id);
+  return st?.course ? { course: { id: st.course.id, title: st.course.title, url: st.course.url, createdAt: st.course.at } } : {};
 }
 
 async function applyFields(screenId: string, fields: z.infer<typeof fieldsInput> | undefined) {
@@ -99,6 +107,23 @@ async function storyboardOfScreen(screenId: string) {
 }
 
 export function registerStoryboardTools(server: McpServer) {
+  tool(
+    server,
+    "create_course_from_storyboard",
+    {
+      title: "Create a CourseForge course from a storyboard",
+      description:
+        "Make a first-draft course in the CourseForge connected to this workspace, owned by you: each screen becomes a lesson built from its on-screen text (knowledge checks join the screen before), the project's objectives go on the cover, and narration, visual, interaction and developer notes plus the project's assessment items become build notes (review comments in the course). The storyboard, and its deliverable's card if that has no course yet, are linked to the new course. Running it again makes another course. You need to have signed in to CourseForge with Tavoro once.",
+      input: { storyboard_id: z.string().min(1) },
+      kind: "write",
+    },
+    async ({ storyboard_id }) => {
+      const r = await createCourseFromStoryboard(storyboard_id, principal().userId);
+      if ("error" in r) throw new ToolError(r.error);
+      return { course: { id: r.course.id, title: r.course.title, url: r.course.url, lessons: r.course.lessons }, buildNotes: r.notes, linkedCard: !!r.card };
+    },
+  );
+
   tool(
     server,
     "list_storyboards",

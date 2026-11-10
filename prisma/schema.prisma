@@ -623,9 +623,15 @@ model Storyboard {
   title         String
   description   String?
   status        String            @default("draft") // draft / in_review / approved
+  // The CourseForge course drafted from it (docs/SUITE.md, step 3), if any.
+  courseAppId   String?
+  courseId      String?
+  courseTitle   String?
+  courseAt      DateTime?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  courseApp     ConnectedApp?     @relation(fields: [courseAppId], references: [id], onDelete: SetNull)
   deliverable   Deliverable?      @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
   screens       Screen[]
   groupAccess   StoryboardGroup[]
@@ -1470,6 +1476,7 @@ model ConnectedApp {
   workspace    Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   codes        ConnectedAppCode[]
   cardCourses  CardCourse[]
+  storyboards  Storyboard[]
 
   @@index([workspaceId])
 }

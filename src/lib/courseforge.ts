@@ -66,6 +66,20 @@ export async function searchCourses(app: AppRef, sub: string, q: string) {
   return r.courses;
 }
 
+export interface StoryboardPayload {
+  title: string;
+  description?: string | null;
+  objectives?: string[];
+  screens: { id: string; title: string; type: string; onScreenText?: string | null; narration?: string | null; visualNotes?: string | null; interactionNotes?: string | null; developerNotes?: string | null; objectives?: string[] }[];
+  assessmentItems?: { prompt: string; type: string; objectives?: string[] }[];
+  source?: { url?: string; project?: string };
+}
+
+/** A first-draft course from a storyboard (docs/SUITE.md, step 3), owned by this person. */
+export async function courseFromStoryboard(app: AppRef, sub: string, storyboard: StoryboardPayload) {
+  return call<{ course: CourseSummary; notes: number }>(app, "/api/suite/storyboards", { method: "POST", body: JSON.stringify({ sub, storyboard }) });
+}
+
 /** A new blank course owned by this person in CourseForge. */
 export async function createCourse(app: AppRef, sub: string, title: string) {
   const r = await call<{ course: CourseSummary }>(app, "/api/suite/courses", { method: "POST", body: JSON.stringify({ sub, title }) });

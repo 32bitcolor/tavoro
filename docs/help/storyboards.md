@@ -71,6 +71,17 @@ Storyboards are strongest when tied to the project they serve. On a project’s 
 
 You can still create standalone storyboards from the **Storyboards** page for early exploration — they simply won’t show a project link until you build one through a deliverable.
 
+## Turn it into a course
+
+When CourseForge is connected (**Settings → Connected apps**), **Create course** at the top of a storyboard makes a first-draft course there, owned by you:
+
+- Each screen becomes a lesson, built from its on-screen text: headings, paragraphs, lists and bold or italic text carry over. A knowledge-check screen joins the lesson before it.
+- To get a real question, write it ending in “?”, then a bulleted list of answers, with `[x]` before the right ones and `[ ]` before the others.
+- Narration, visual, interaction and developer notes, the screen’s objectives, and the project’s assessment items become build notes: comments on each lesson in CourseForge, to resolve as you build. Learners never see them.
+- The project’s objectives go on the course’s cover, and the deliverable’s card is linked to the course if it doesn’t have one.
+
+It’s a one-time copy: later edits to the storyboard don’t reach the course. **Create again…** makes another course and leaves the first as it is. The first time, open CourseForge once from **Apps** in the sidebar so it knows who you are.
+
 ## Export
 
 **Export** at the top of a storyboard gives you a **Word document** (to edit or send) or a **PDF** (a print view: choose **Save as PDF** in the print dialog), screen by screen with every field that has content. To export a storyboard together with an SME’s comments, use **Export** on the review round instead.

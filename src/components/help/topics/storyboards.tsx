@@ -132,6 +132,22 @@ export default function Storyboards() {
         deliverable.
       </P>
 
+      <H2>Turn it into a course</H2>
+      <P>
+        When CourseForge is connected (<UI>Settings → Connected apps</UI>), <UI>Create course</UI> at the top of a storyboard
+        makes a first-draft course there, owned by you:
+      </P>
+      <UL>
+        <LI>Each screen becomes a lesson, built from its on-screen text: headings, paragraphs, lists and bold or italic text carry over. A knowledge-check screen joins the lesson before it.</LI>
+        <LI>To get a real question, write it ending in &ldquo;?&rdquo;, then a bulleted list of answers, with <code>[x]</code> before the right ones and <code>[ ]</code> before the others.</LI>
+        <LI>Narration, visual, interaction and developer notes, the screen&rsquo;s objectives, and the project&rsquo;s assessment items become build notes: comments on each lesson in CourseForge, to resolve as you build. Learners never see them.</LI>
+        <LI>The project&rsquo;s objectives go on the course&rsquo;s cover, and the deliverable&rsquo;s card is linked to the course if it doesn&rsquo;t have one.</LI>
+      </UL>
+      <P>
+        It&rsquo;s a one-time copy: later edits to the storyboard don&rsquo;t reach the course. <UI>Create again…</UI> makes another
+        course and leaves the first as it is. The first time, open CourseForge once from <UI>Apps</UI> in the sidebar so it knows who you are.
+      </P>
+
       <H2>Export</H2>
       <P>
         <UI>Export</UI> at the top of a storyboard gives you a <strong>Word document</strong> (to edit or

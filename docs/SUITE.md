@@ -16,8 +16,8 @@ Each step below is useful on its own, and a later merge stays possible.
    links to the other.
 2. **Linking** ✅ (below). A card links to its CourseForge course and shows its live status;
    the board shows a course badge; CourseForge's editor links back to the card.
-3. **Storyboard → course.** An approved storyboard becomes a CourseForge draft: screens to
-   lessons, objectives carried along.
+3. **Storyboard → course** ✅ (below). A storyboard becomes a CourseForge first draft; builder
+   notes arrive as review comments.
 4. **Reviews.** CourseForge review comments arrive as Tavoro cards, so SME turnaround reporting
    covers built courses.
 5. **Pillar 5 (LMS).** CourseForge publishes to the LMS; Tavoro's content inventory points at the
@@ -118,3 +118,27 @@ card's course link.
 
 Test: CourseForge `apps/studio/tests/tavoro-courses.e2e.mjs` (25 checks; also needs the collab
 server on :3200 for the editor header check).
+
+## Step 3: storyboard → course
+
+**Create course** on a storyboard (and MCP `create_course_from_storyboard`) sends the storyboard
+as Markdown to CourseForge `POST /api/suite/storyboards {sub, storyboard}`; CourseForge
+(`packages/import/src/storyboard.ts`, `storyboardToCourse`) decides what becomes what:
+
+| Storyboard | Course |
+| --- | --- |
+| Storyboard title / description | Course title / cover description |
+| Project objectives | "You'll be able to:" list on the cover |
+| Screen | Lesson (title = screen title) |
+| `knowledge_check` screen | Joins the previous lesson |
+| On-screen text | Blocks, through the Markdown importer: headings (pushed two levels down so they stay inside the lesson), paragraphs, lists, notes (`> [!TIP]`), and knowledge checks (a line ending in "?" then `- [x]` / `- [ ]` items) |
+| Narration, visual, interaction, developer notes; screen objectives; video / interaction / knowledge-check / assessment hints; empty screens | **Build notes**: OPEN review comments from "Storyboard", `context` = the label, anchored to the lesson's first block |
+| Project assessment items (prompt, kind, objectives) | One build note on the last lesson |
+
+Nothing written for the team becomes learner-facing content. The course uses the organisation's
+default brand kit and is owned by the person. Tavoro records `Storyboard.courseAppId/courseId/
+courseTitle/courseAt` and links the deliverable's card (`CardCourse`) when it has no course. It's a
+one-time copy: re-running makes a new course. Build notes count as open comments on the card.
+
+Test: CourseForge `apps/studio/tests/tavoro-storyboard.e2e.mjs` (31 checks) and
+`packages/import/src/storyboard.test.ts`.
