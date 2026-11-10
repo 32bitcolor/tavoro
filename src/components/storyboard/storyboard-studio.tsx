@@ -155,7 +155,7 @@ export function StoryboardStudio({
   }
 
   return (
-    <section aria-label="Screens" className="mt-6 grid gap-6 md:grid-cols-[15rem_minmax(0,1fr)] min-[1400px]:grid-cols-[15rem_minmax(0,1fr)_19rem]">
+    <section aria-label="Screens" className="mt-6 grid gap-6 md:max-[1399px]:grid-cols-[15rem_minmax(0,1fr)] min-[1400px]:grid-cols-[15rem_minmax(0,1fr)_19rem]">
       {/* Outline */}
       <nav aria-label="Outline" className="md:sticky md:top-16 md:max-h-[calc(100vh-5rem)] md:self-start md:overflow-y-auto">
         <div className="mb-2 flex items-center justify-between px-1">
@@ -401,7 +401,7 @@ function NotesPanel({
   const hidden = NOTES.filter((n) => !open.has(n.key) && !filled.has(n.key));
 
   return (
-    <aside aria-label="Team notes" className="flex min-w-0 flex-col gap-4 md:col-start-2 min-[1400px]:col-start-auto min-[1400px]:sticky min-[1400px]:top-16 min-[1400px]:max-h-[calc(100vh-5rem)] min-[1400px]:self-start min-[1400px]:overflow-y-auto">
+    <aside aria-label="Team notes" className="flex min-w-0 flex-col gap-4 md:max-[1399px]:col-start-2 min-[1400px]:sticky min-[1400px]:top-16 min-[1400px]:max-h-[calc(100vh-5rem)] min-[1400px]:self-start min-[1400px]:overflow-y-auto">
       <div>
         <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <MessageSquareText className="size-3.5" aria-hidden /> Team notes
