@@ -18,8 +18,11 @@ Each step below is useful on its own, and a later merge stays possible.
    the board shows a course badge; CourseForge's editor links back to the card.
 3. **Storyboard → course** ✅ (below). A storyboard becomes a CourseForge first draft; builder
    notes arrive as review comments.
-4. **Reviews.** CourseForge review comments arrive as Tavoro cards, so SME turnaround reporting
-   covers built courses.
+4. **Reviews.** *Design (decided 2026-11-10): one card per review request, not per comment.*
+   Creating a review link in CourseForge creates a card in Tavoro (on the linked course's board,
+   linked to that course); each reviewer's comments become subtasks under that card, and resolving
+   a comment completes its subtask. SME turnaround reporting then covers built courses without
+   flooding boards with a card for every comment.
 5. **Pillar 5 (LMS).** CourseForge publishes to the LMS; Tavoro's content inventory points at the
    live package; completion data flows back into Tavoro's reports.
 
