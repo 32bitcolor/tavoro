@@ -216,7 +216,8 @@ if (want("review-round", "feedback")) {
 if (want("storyboard")) {
   await openLink("/storyboards", SEED.storyboard);
   // The "Rise Lite" editor opens on the first screen; show the second, which has notes.
-  await page.getByRole("navigation", { name: "Outline" }).getByRole("button").nth(1).click();
+  await settle();
+  await page.getByRole("navigation", { name: "Outline" }).getByRole("button", { name: /^2 / }).click();
   await settle();
   await shot("storyboard");
 }
