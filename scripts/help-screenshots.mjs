@@ -215,9 +215,8 @@ if (want("review-round", "feedback")) {
 
 if (want("storyboard")) {
   await openLink("/storyboards", SEED.storyboard);
-  // Expand the first screen (its toggle controls the screen body; the sidebar's account
-  // menu also has aria-expanded, so match on aria-controls too).
-  await page.locator("main [aria-controls][aria-expanded='false']").first().click();
+  // The "Rise Lite" editor opens on the first screen; show the second, which has notes.
+  await page.getByRole("navigation", { name: "Outline" }).getByRole("button").nth(1).click();
   await settle();
   await shot("storyboard");
 }

@@ -48,30 +48,41 @@ export default function Storyboards() {
       </Callout>
 
       <H2>Screens</H2>
-      <Screenshot name="storyboard" alt="A storyboard with its first screen expanded, showing the Teaches chips and the on-screen text, narration and notes fields" caption="A storyboard with the first screen open." />
+      <Screenshot name="storyboard" alt="A storyboard: the outline of screens on the left, the selected screen as a lesson page in the middle, and team notes on the right" caption="The outline, the screen as learners will read it, and the team's notes." />
       <P>
-        Screens are the ordered building blocks of the course. Add one with <UI>Add a screen</UI>,
-        give it a title, and it appears at the end of the list, numbered in sequence. Click a
-        screen&rsquo;s arrow to expand it and edit its fields; collapse it again to keep the outline
-        scannable.
+        A storyboard works like a light version of a course editor. The <UI>Outline</UI> on the left lists the screens
+        in order; click one to open it in the middle as a lesson page, written the way learners will read it. The team&rsquo;s
+        notes for that screen sit on the right.
       </P>
       <UL>
         <LI>
-          <strong>Rename</strong> — click the screen title to edit it inline.
+          <strong>Add</strong>: <UI>Add screen</UI> under the outline adds one at the end; <UI>Screen after this</UI> under
+          the page adds one right after the current screen. Type its title straight away.
         </LI>
         <LI>
-          <strong>Reorder</strong> — use the up and down arrows to move a screen; the numbering
-          updates to match.
+          <strong>Write</strong>: type the title at the top of the page, then the on-screen text below it. Select text to
+          get the formatting bar: bold, italic, heading, subheading, lists and a callout.
         </LI>
         <LI>
-          <strong>Delete</strong> — the screen&rsquo;s delete button removes it (you&rsquo;ll be asked
-          to confirm).
+          <strong>Move around</strong>: click a screen in the outline, or use <UI>Previous</UI> and <UI>Next</UI>. The address
+          keeps the open screen, so a link or a reload lands on it.
+        </LI>
+        <LI>
+          <strong>Reorder</strong>: drag a screen by its handle in the outline (it appears when you point at the screen).
+        </LI>
+        <LI>
+          <strong>Delete</strong>: the bin icon at the top of the page (you&rsquo;ll be asked to confirm).
+        </LI>
+        <LI>
+          <strong>Preview</strong>: shows every screen&rsquo;s on-screen text, one after another, the way learners would
+          read it, without the team notes. Esc closes it.
         </LI>
       </UL>
+      <P>Everything saves automatically as you go.</P>
 
       <H3>Screen type</H3>
       <P>
-        The type dropdown on each screen labels its role in the course flow, so the whole sequence
+        The type picker at the top of each screen (its icon also shows in the outline) labels its role in the course flow, so the whole sequence
         reads as a lesson at a glance:
       </P>
       <DefList>
@@ -84,11 +95,11 @@ export default function Storyboards() {
         <Def term="Summary">Wrap-up, recap, and next steps.</Def>
       </DefList>
 
-      <H3>The per-screen fields</H3>
+      <H3>What learners see, and the team&rsquo;s notes</H3>
       <P>
-        Expand a screen to find five rich-text fields — each supports bold, italic, an H2 heading, and
-        bulleted or numbered lists, and saves automatically when you click out. Together they give a
-        developer everything needed to build the screen:
+        Each screen holds five pieces of writing. The <strong>on-screen text</strong> is the page in the middle. The other
+        four are <UI>Team notes</UI> on the right, for the people building and reviewing the course; learners never see
+        them. An empty note shows as a small button (like <UI>+ Narration</UI>): click it to start writing.
       </P>
       <DefList>
         <Def term="On-screen text">Exactly what the learner will read on the screen.</Def>
@@ -106,8 +117,8 @@ export default function Storyboards() {
 
       <H3>Which objectives a screen teaches</H3>
       <P>
-        On a storyboard linked to a project, each screen&rsquo;s <UI>Teaches</UI> control picks the
-        project&rsquo;s learning objectives it covers. That feeds the project&rsquo;s alignment view, so
+        On a storyboard linked to a project, <UI>Teaches</UI> at the top of the team notes lists the project&rsquo;s
+        learning objectives: click the ones this screen covers. That feeds the project&rsquo;s alignment view, so
         you can see which objectives are taught and assessed, and which aren&rsquo;t yet. See{" "}
         <em>Objectives &amp; alignment</em>.
       </P>

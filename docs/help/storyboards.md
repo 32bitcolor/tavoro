@@ -18,18 +18,23 @@ To start from a storyboard you’ve built before, pick it under **Start from** i
 
 ## Screens
 
-![A storyboard with its first screen expanded, showing the Teaches chips and the on-screen text, narration and notes fields](../../public/help-shots/storyboard.png)
-*A storyboard with the first screen open.*
+![A storyboard: the outline of screens on the left, the selected screen as a lesson page in the middle, and team notes on the right](../../public/help-shots/storyboard.png)
+*The outline, the screen as learners will read it, and the team's notes.*
 
-Screens are the ordered building blocks of the course. Add one with **Add a screen**, give it a title, and it appears at the end of the list, numbered in sequence. Click a screen’s arrow to expand it and edit its fields; collapse it again to keep the outline scannable.
+A storyboard works like a light version of a course editor. The **Outline** on the left lists the screens in order; click one to open it in the middle as a lesson page, written the way learners will read it. The team’s notes for that screen sit on the right.
 
-- **Rename** — click the screen title to edit it inline.
-- **Reorder** — use the up and down arrows to move a screen; the numbering updates to match.
-- **Delete** — the screen’s delete button removes it (you’ll be asked to confirm).
+- **Add**: **Add screen** under the outline adds one at the end; **Screen after this** under the page adds one right after the current screen. Type its title straight away.
+- **Write**: type the title at the top of the page, then the on-screen text below it. Select text to get the formatting bar: bold, italic, heading, subheading, lists and a callout.
+- **Move around**: click a screen in the outline, or use **Previous** and **Next**. The address keeps the open screen, so a link or a reload lands on it.
+- **Reorder**: drag a screen by its handle in the outline (it appears when you point at the screen).
+- **Delete**: the bin icon at the top of the page (you’ll be asked to confirm).
+- **Preview**: shows every screen’s on-screen text, one after another, the way learners would read it, without the team notes. Esc closes it.
+
+Everything saves automatically as you go.
 
 ### Screen type
 
-The type dropdown on each screen labels its role in the course flow, so the whole sequence reads as a lesson at a glance:
+The type picker at the top of each screen (its icon also shows in the outline) labels its role in the course flow, so the whole sequence reads as a lesson at a glance:
 
 **Intro** — Sets up the course or module — objectives, agenda, welcome.
 
@@ -45,9 +50,9 @@ The type dropdown on each screen labels its role in the course flow, so the whol
 
 **Summary** — Wrap-up, recap, and next steps.
 
-### The per-screen fields
+### What learners see, and the team’s notes
 
-Expand a screen to find five rich-text fields — each supports bold, italic, an H2 heading, and bulleted or numbered lists, and saves automatically when you click out. Together they give a developer everything needed to build the screen:
+Each screen holds five pieces of writing. The **on-screen text** is the page in the middle. The other four are **Team notes** on the right, for the people building and reviewing the course; learners never see them. An empty note shows as a small button (like **+ Narration**): click it to start writing.
 
 **On-screen text** — Exactly what the learner will read on the screen.
 
@@ -61,7 +66,7 @@ Expand a screen to find five rich-text fields — each supports bold, italic, an
 
 ### Which objectives a screen teaches
 
-On a storyboard linked to a project, each screen’s **Teaches** control picks the project’s learning objectives it covers. That feeds the project’s alignment view, so you can see which objectives are taught and assessed, and which aren’t yet. See *Objectives & alignment*.
+On a storyboard linked to a project, **Teaches** at the top of the team notes lists the project’s learning objectives: click the ones this screen covers. That feeds the project’s alignment view, so you can see which objectives are taught and assessed, and which aren’t yet. See *Objectives & alignment*.
 
 > **Tip.** Keep **On-screen text** and **Narration** distinct — reviewers read them differently, and separating them makes SME feedback far cleaner than one blended “script.”
 

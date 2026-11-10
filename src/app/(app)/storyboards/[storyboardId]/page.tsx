@@ -5,8 +5,9 @@ import { StoryboardView } from "@/components/storyboard/storyboard-view";
 
 export const metadata = { title: "Storyboard · Tavoro" };
 
-export default async function StoryboardPage({ params }: { params: Promise<{ storyboardId: string }> }) {
+export default async function StoryboardPage({ params, searchParams }: { params: Promise<{ storyboardId: string }>; searchParams: Promise<{ screen?: string }> }) {
   const { storyboardId } = await params;
+  const { screen: initialScreen } = await searchParams;
 
   const access = await getStoryboardForUser(storyboardId);
   if (!access) notFound();
@@ -71,6 +72,7 @@ export default async function StoryboardPage({ params }: { params: Promise<{ sto
 
   return (
     <StoryboardView
+      initialScreen={typeof initialScreen === "string" ? initialScreen : undefined}
       whiteboards={whiteboards}
       storyboard={{
         id: storyboard.id,

@@ -474,6 +474,66 @@ body {
 .text-link:hover {
   text-decoration-thickness: 2px;
 }
+/* Storyboard "Rise Lite" canvas (components/storyboard): a reading page, not a form. */
+.lesson-prose {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+}
+.lesson-prose p {
+  margin: 0 0 0.9rem;
+}
+.lesson-prose h2 {
+  font-size: 1.5rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 1.6rem 0 0.6rem;
+}
+.lesson-prose h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 1.3rem 0 0.5rem;
+}
+.lesson-prose ul,
+.lesson-prose ol {
+  margin: 0 0 0.9rem;
+}
+.lesson-prose li p {
+  margin: 0.15rem 0;
+}
+.lesson-prose blockquote {
+  margin: 1.1rem 0;
+  padding: 0.8rem 1rem;
+  border-left: 4px solid var(--accent);
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: color-mix(in oklab, var(--accent) 8%, var(--surface));
+}
+.lesson-prose blockquote p:last-child {
+  margin-bottom: 0;
+}
+.lesson-prose > :first-child {
+  margin-top: 0;
+}
+/* Team-note editors in the side panel: small and tight. */
+.lesson-prose.note-prose {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+.lesson-prose.note-prose p {
+  margin: 0 0 0.4rem;
+}
+.lesson-prose.note-prose h2,
+.lesson-prose.note-prose h3 {
+  font-size: 0.875rem;
+  margin: 0.5rem 0 0.25rem;
+}
+.tiptap.lesson-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: color-mix(in srgb, currentColor 40%, transparent);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
 .tiptap p.is-editor-empty:first-child::before {
   content: "Add a description…";
   color: color-mix(in srgb, currentColor 40%, transparent);
