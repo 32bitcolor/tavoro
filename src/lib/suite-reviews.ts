@@ -301,12 +301,13 @@ export async function syncReview(app: App, r: ReviewPayload, req: Request): Prom
               depth: 0,
             });
           updated++;
-        } else if (!st.author || !st.commentAt) {
+        } else if (!st.author || !st.commentAt || (st.resolved && !st.resolvedAt && c.resolvedAt)) {
           // Made before these were recorded: fill them in so reports can use it.
           const next: CommentState = {
             ...st,
             author: st.author ?? (oneLine(c.author) || "A reviewer"),
             commentAt: st.commentAt ?? c.createdAt ?? existing.createdAt.toISOString(),
+            resolvedAt: st.resolved ? (st.resolvedAt ?? c.resolvedAt ?? null) : null,
           };
           await prisma.suiteItem.update({
             where: { id: existing.id },

@@ -132,12 +132,13 @@ export async function loadCourseReviewReport(
       acc(reviews, parent.id, label, href),
       acc(reviewers, name.toLowerCase(), name, null),
     ];
-    const resolvedAt = st.resolved ? new Date(st.resolvedAt ?? made) : null;
+    const resolvedAt = st.resolved && st.resolvedAt ? new Date(st.resolvedAt) : null;
     for (const a of targets) {
       a.row.comments++;
-      if (resolvedAt) {
+      if (st.resolved) {
         a.row.resolved++;
-        a.turn.push(Math.max(0, (resolvedAt.getTime() - made.getTime()) / DAY));
+        // Resolved before the time was recorded: counted, but there is no turnaround to average.
+        if (resolvedAt) a.turn.push(Math.max(0, (resolvedAt.getTime() - made.getTime()) / DAY));
       } else {
         a.row.open++;
         const age = (now.getTime() - made.getTime()) / DAY;
