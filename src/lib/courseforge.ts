@@ -54,7 +54,7 @@ export class CourseForgeError extends Error {
 /** Refresh summaries this often (board badges); opening a card refreshes at once. */
 export const STALE_MS = 10 * 60 * 1000;
 
-async function call<T>(app: AppRef, path: string, init: RequestInit = {}): Promise<T> {
+export async function call<T>(app: AppRef, path: string, init: RequestInit = {}): Promise<T> {
   const auth = `Basic ${Buffer.from(`${encodeURIComponent(app.clientId)}:${encodeURIComponent(open(app.secretSealed))}`).toString("base64")}`;
   let res: Response;
   try {

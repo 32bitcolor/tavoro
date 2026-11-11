@@ -20,6 +20,7 @@ import { CARD_TYPE_LABEL, PRIORITY_LABEL, formatEstimate } from "@/lib/card-fiel
 import { nextCardKeySeq } from "@/lib/card-keys";
 import { EPIC_REF_SELECT, epicRefOf } from "@/lib/epics";
 import { CardTypeSchema, EstimateSchema, EstimateUnitSchema, PrioritySchema, asCardType, asPriority, type EstimateUnit } from "@/lib/card-fields";
+import { pushSubtaskDone } from "@/lib/suite-push";
 
 const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid color");
 const LabelName = z.string().trim().min(1).max(60);
@@ -756,6 +757,8 @@ export async function toggleSubtask(cardId: string, done: boolean) {
   const before = await prisma.card.findUnique({ where: { id: cardId }, select: { done: true } });
   await prisma.card.update({ where: { id: cardId }, data: { done } });
   revalidatePath(boardPath(card.boardId));
+  // A CourseForge reviewer's comment: resolve it there too.
+  if (card.parentCardId && before?.done !== done) await pushSubtaskDone(prisma, cardId, done).catch(() => {});
 
   // Rules can react to a card's last subtask being finished.
   if (card.parentCardId && done && !before?.done) await enqueueAutomation({ cardId: card.parentCardId, trigger: "subtasks_done", depth: 0 });

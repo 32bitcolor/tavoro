@@ -30,6 +30,7 @@ import { VelocityChart } from "@/components/reports/velocity-chart";
 import { loadVelocity } from "@/lib/sprint-report";
 import { prisma } from "@/lib/db";
 import { loadLearningReport } from "@/lib/learning-report";
+import { loadCourseReviewReport } from "@/lib/course-review-report";
 import { pct, STANDARD_LABEL } from "@/lib/learning";
 
 export const metadata = { title: "Reports · Tavoro" };
@@ -653,7 +654,83 @@ async function ReviewsTab({ ws, since, now, range }: TabProps) {
           counts once.
         </p>
       </section>
+      <CourseReviewsSection ws={ws} since={since} now={now} range={range} />
     </div>
+  );
+}
+
+async function CourseReviewsSection({ ws, since, now, range }: TabProps) {
+  const c = await loadCourseReviewReport(ws, since, now);
+  if (!c.comments) return null;
+  const head = (first: string) => [
+    { label: first },
+    { label: "Comments", num: true },
+    { label: "Resolved", num: true },
+    { label: "Median to resolve", num: true },
+    { label: "Open", num: true },
+    { label: "Oldest open", num: true },
+  ];
+  const cells = (r: (typeof c.byReview)[number]) => [
+    r.comments,
+    r.resolved,
+    fmtDays(r.medianDays),
+    r.open,
+    r.oldestOpenDays === null ? "—" : fmtDays(r.oldestOpenDays),
+  ];
+  return (
+    <>
+      <Stats
+        items={[
+          {
+            label: "CourseForge comments",
+            value: String(c.comments),
+            hint: `made in the last ${RANGE_LABEL[range]}, or still open`,
+          },
+          {
+            label: "Median to resolve",
+            value: fmtDays(c.medianDays),
+            hint: `${c.resolved} resolved`,
+          },
+          {
+            label: "Open comments",
+            value: String(c.open),
+            hint:
+              c.oldestOpenDays === null
+                ? "none waiting"
+                : `oldest ${fmtDays(c.oldestOpenDays)}`,
+          },
+        ]}
+      />
+      <section>
+        <SectionHeader>Course reviews (CourseForge)</SectionHeader>
+        <Table
+          head={head("Review")}
+          empty="No course reviews yet."
+          rows={c.byReview.map((r) => [
+            r.href ? (
+              <Link key="n" href={r.href} className="hover:underline">
+                {r.label}
+              </Link>
+            ) : (
+              r.label
+            ),
+            ...cells(r),
+          ])}
+        />
+        <SectionHeader className="mt-6">Reviewers on courses</SectionHeader>
+        <Table
+          head={head("Reviewer")}
+          empty="No reviewers yet."
+          rows={c.byReviewer.map((r) => [r.label, ...cells(r)])}
+        />
+        <p className="mt-2 text-xs text-muted-foreground">
+          Turnaround runs from when a reviewer wrote a comment to when it was
+          resolved in CourseForge or ticked off here. Reviewers on a CourseForge
+          review link are named by what they typed, so the same person under two
+          spellings counts twice.
+        </p>
+      </section>
+    </>
   );
 }
 

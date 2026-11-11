@@ -23,6 +23,12 @@ const Payload = z.object({
           where: z.string().max(400).optional(),
           url: z.string().max(500).optional(),
           resolved: z.boolean(),
+          createdAt: z.string().max(40).optional(),
+          resolvedAt: z.string().max(40).nullish(),
+          replies: z
+            .array(z.object({ id: z.string().min(1).max(100), author: z.string().max(200), text: z.string().max(5000), createdAt: z.string().max(40).optional() }))
+            .max(100)
+            .optional(),
         }),
       )
       .max(500),

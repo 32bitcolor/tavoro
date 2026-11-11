@@ -11,6 +11,7 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Cancelled, failImport, runImport, scanImport } from "../src/lib/jira/engine";
 import { snapshotActiveSprints } from "../src/lib/sprint-stats";
 import { refreshCardCourses } from "../src/lib/courseforge";
+import { retryPendingPushes } from "../src/lib/suite-push";
 import { handleEvent, runScheduled } from "../src/lib/automation/engine";
 import { JiraError } from "../src/lib/jira/client";
 
@@ -170,7 +171,7 @@ suiteQueue
   .catch((err) => console.error("[worker] failed to schedule course refresh:", err));
 const suiteWorker = new Worker(
   "suite",
-  async () => ({ ok: true, refreshed: await refreshCardCourses(prisma, { staleOnly: true }) }),
+  async () => ({ ok: true, refreshed: await refreshCardCourses(prisma, { staleOnly: true }), pushed: await retryPendingPushes(prisma) }),
   { connection, concurrency: 1 },
 );
 suiteWorker.on("failed", (job, err) => console.error(`[worker] suite job ${job?.id} failed:`, err));

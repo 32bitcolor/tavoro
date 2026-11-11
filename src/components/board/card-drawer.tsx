@@ -51,6 +51,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { LABEL_PALETTE as PALETTE } from "@/lib/label-colors";
 import { dueMeta, dueToneClass } from "@/lib/due";
 import { LocalTime } from "@/components/shared/local-time";
+import { commentSource } from "@/lib/comment-source";
 
 export type LabelT = { id: string; name: string; color: string };
 export type MemberT = { id: string; name: string | null; email: string };
@@ -1097,7 +1098,7 @@ export function CardDrawer({
                       <span className="text-xs font-medium">
                         {c.importedAuthor ? (
                           <span title={`Imported by ${c.author.name ?? c.author.email}`}>
-                            {c.importedAuthor} <span className="font-normal text-muted-foreground">{c.automation ? "(automation)" : "(from Jira)"}</span>
+                            {commentSource(c.importedAuthor, c.automation).name} <span className="font-normal text-muted-foreground">({commentSource(c.importedAuthor, c.automation).label})</span>
                           </span>
                         ) : (
                           (c.author.name ?? c.author.email)

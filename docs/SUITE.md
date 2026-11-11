@@ -175,10 +175,32 @@ Tavoro (`src/lib/suite-reviews.ts`) answers `{ card, subtasks: { created, update
 `SuiteItem { appId, kind: review | review-comment, externalId, cardId, state }` maps CourseForge's ids to
 cards; `(appId, kind, externalId)` is unique, so two syncs at once can't make two cards.
 
-Not done: ticking a subtask in Tavoro doesn't resolve the comment in CourseForge; comments made
-before CourseForge was connected, and the studio's own (non-review) comments, aren't sent.
+### Both ways, replies, older reviews, reports
 
-Test: CourseForge `apps/studio/tests/tavoro-reviews.e2e.mjs` (29 checks).
+- **Ticking a subtask here resolves the comment there.** `toggleSubtask` calls `pushSubtaskDone`
+  (`lib/suite-push.ts`), which POSTs `{comment, resolved}` to CourseForge's
+  `/api/suite/review-comments`. The item is marked `pending` in `SuiteItem.state` first: while a tick
+  hasn't reached CourseForge, a sync from there can't undo it, and the worker's 10-minute `suite` job
+  tries again. CourseForge then sends the review back, which finds it already in step. It isn't done
+  "as" a person (Tavoro names no one to CourseForge).
+- **Replies** (a reviewer answering in a thread) become **comments on that comment's subtask**, not
+  more subtasks: a reply has no state of its own, and a subtask for each would flood the board.
+  They are credited to the reviewer ("Priya Shah (CourseForge reviewer)", `lib/comment-source.ts`),
+  posted under the link's creator (else whoever connected the app, else an admin), and notify the
+  card's watchers. `SuiteItem kind=review-reply` makes each reply arrive once. A reply still re-opens
+  the thread, so the subtask un-ticks.
+- **Reviews from before the connection.** CourseForge marks reviews that were never sent (and are
+  still in use: not turned off, not expired) as pending once it is connected, and its scheduler sends
+  them with all their comments. Finished or turned-off links are left out: they would only drop old
+  work into boards.
+- **Reports → Reviews → Course reviews (CourseForge).** Turnaround for comments, from the reviewer
+  writing it to it being resolved (there or here): comments, resolved, median days, open, oldest open,
+  by review card and by reviewer. Reviewers are the names they typed, so one person under two
+  spellings counts twice. Comments are in the range if made in it or still open.
+
+Not sent: the studio's own (non-review) comments.
+
+Test: CourseForge `apps/studio/tests/tavoro-reviews.e2e.mjs` (43 checks).
 
 
 ## Step 5: live packages and learner results

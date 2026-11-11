@@ -1,5 +1,6 @@
 import { getCardFields, setCardFieldValue } from "@/app/actions/custom-fields";
 import { displayValue } from "@/lib/custom-fields";
+import { commentSource } from "@/lib/comment-source";
 import { addCardLink, getCardLinks, removeCardLink } from "@/app/actions/card-links";
 import { getCardHistory, listWatchers, setWatching } from "@/app/actions/cards";
 import { LINK_CHOICES } from "@/lib/card-links";
@@ -160,7 +161,7 @@ export async function loadCard(ref: string) {
       due: s.dueDate ? s.dueDate.slice(0, 10) : null,
       assignees: s.assigneeIds.map((id) => member.get(id)),
     })),
-    comments: d.comments.map((c) => ({ id: c.id, author: c.importedAuthor ? `${c.importedAuthor} (${c.automation ? "automation" : "from Jira"})` : (c.author.name ?? c.author.email), at: c.createdAt, body: toMarkdown(c.body) })),
+    comments: d.comments.map((c) => ({ id: c.id, author: c.importedAuthor ? `${commentSource(c.importedAuthor, c.automation).name} (${commentSource(c.importedAuthor, c.automation).label})` : (c.author.name ?? c.author.email), at: c.createdAt, body: toMarkdown(c.body) })),
     attachments: d.attachments.map((a) => ({ id: a.id, fileName: a.fileName, mimeType: a.mimeType, sizeBytes: a.sizeBytes })),
     whiteboards: d.whiteboards.map((w) => ({ ...w, url: link(`/whiteboards/${w.id}`) })),
     reviewFeedback: d.reviewFeedback,
