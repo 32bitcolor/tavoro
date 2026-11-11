@@ -276,7 +276,7 @@ export function ProjectView({
         onBlur={() => updateProjectDescription(project.id, description)}
         placeholder="Add a project description…"
         rows={Math.min(10, Math.max(2, description.split("\n").length))}
-        className="mt-4 resize-none"
+        className="mt-4 resize-y"
       />
 
       <section id="phases" className="mt-8 scroll-mt-20">
