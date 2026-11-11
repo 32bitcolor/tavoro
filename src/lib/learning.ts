@@ -25,7 +25,7 @@ export interface LiveFacts {
 
 export function liveFacts(l: LiveSummary): LiveFacts {
   const r = l.results;
-  const finished = r ? r.completed + r.passed : 0;
+  const finished = r ? r.completed + r.passed + r.failed : 0;
   const graded = r ? r.passed + r.failed : 0;
   return {
     launches: l.launches,

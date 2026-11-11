@@ -10,10 +10,10 @@ describe("liveFacts", () => {
     expect(f).toMatchObject({ launches: 3, reported: 0, finished: 0, finishRate: null, passRate: null, avgScore: null });
   });
 
-  it("counts passed and completed as finished, and rates pass among graded only", () => {
+  it("counts completed, passed and failed as finished, and rates pass among graded only", () => {
     const f = liveFacts({ ...base, launches: 10, results: { sessions: 8, completed: 2, passed: 3, failed: 1, avgScore: 74, avgProgress: 0.7 } });
-    expect(f.finished).toBe(5);
-    expect(f.finishRate).toBeCloseTo(5 / 8);
+    expect(f.finished).toBe(6);
+    expect(f.finishRate).toBeCloseTo(6 / 8);
     expect(f.passRate).toBeCloseTo(3 / 4);
     expect(f.avgScore).toBe(74);
   });
@@ -26,7 +26,7 @@ describe("liveFacts", () => {
 describe("liveLine", () => {
   it("reads naturally", () => {
     expect(liveLine({ ...base, launches: 1 })).toBe("1 launch");
-    expect(liveLine({ ...base, launches: 10, results: { sessions: 8, completed: 2, passed: 3, failed: 1, avgScore: 74, avgProgress: 0.7 } })).toBe("10 launches · 5 of 8 finished · 75% passed · average score 74%");
+    expect(liveLine({ ...base, launches: 10, results: { sessions: 8, completed: 2, passed: 3, failed: 1, avgScore: 74, avgProgress: 0.7 } })).toBe("10 launches · 6 of 8 finished · 75% passed · average score 74%");
   });
 });
 

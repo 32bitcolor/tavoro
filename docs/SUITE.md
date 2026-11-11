@@ -197,7 +197,7 @@ Where Tavoro shows it:
   average score, and a table by course. A private card's course is left out; a course linked to two
   cards counts once. It is the current picture, so the time range doesn't apply.
 
-Finished means completed or passed. Pass rate is passed of passed + failed, and is blank for a
+Finished means the learner reached an end state: completed, passed or failed. Pass rate is passed of passed + failed, and is blank for a
 course without a graded result. Numbers are as fresh as the card's summary (10 minutes).
 
 Limits: results are advisory (the package token is public inside an LMS); the LMS stays the
