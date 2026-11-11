@@ -6,6 +6,7 @@ import { AlertTriangle, ExternalLink, GraduationCap, Link2, MessageSquare, Plus,
 import { createCourseForCardAction, findCoursesAction, getCardCourseAction, linkCourseAction, unlinkCourseAction } from "@/app/actions/card-course";
 import type { CourseSummary } from "@/lib/courseforge";
 import type { LinkedCourse } from "@/lib/card-courses";
+import { LiveResults } from "@/components/suite/live-results";
 import { cn } from "@/lib/utils";
 
 // "Course" in the card drawer (docs/SUITE.md, step 2): the card's CourseForge course,
@@ -170,6 +171,11 @@ export function CardCourseSection({ cardId, onLinkedChange }: { cardId: string; 
                 </div>
               ) : (
                 <p className="mt-1 text-xs text-muted-foreground">Not synced yet.</p>
+              )}
+              {!course.missing && s?.live && (
+                <div className="mt-2 border-t border-border pt-2">
+                  <LiveResults live={s.live} />
+                </div>
               )}
             </div>
           </div>

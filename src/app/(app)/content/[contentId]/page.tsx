@@ -6,12 +6,14 @@ import { getContentItemForUser } from "@/lib/authz";
 import { CONTENT_SELECT, attentionReason } from "@/lib/content-inventory";
 import { lifecycleOf } from "@/lib/content";
 import { ContentDetail } from "@/components/content/content-detail";
-import { PageContainer } from "@/components/shared/page";
+import { PageContainer, SectionHeader } from "@/components/shared/page";
 import { ContentAssets } from "@/components/assets/content-assets";
 import { ContentDependencies } from "@/components/content/content-dependencies";
 import { externalSources, impactOf } from "@/lib/content-impact";
 import { assetFileUrl } from "@/lib/assets";
 import { ASSET_TYPE_LABEL, formatBytes, type AssetType } from "@/lib/asset-types";
+import { LiveResults } from "@/components/suite/live-results";
+import type { CourseSummary } from "@/lib/courseforge";
 import { Role } from "@/generated/prisma/client";
 
 const ASSET_PICK = { id: true, name: true, assetType: true, mimeType: true, storageKey: true, sizeBytes: true, externalUrl: true } as const;
@@ -68,6 +70,16 @@ export default async function ContentItemPage({ params }: { params: Promise<{ co
       .filter(Boolean)
       .join(" · ");
   const lifecycle = lifecycleOf(item);
+  // In the LMS (docs/SUITE.md, step 5): the CourseForge course on the deliverable's card, when it has live packages.
+  // A private card's course stays out of the inventory.
+  const lmsCard = item.deliverable
+    ? await prisma.deliverable.findUnique({
+        where: { id: item.deliverable.id },
+        select: { card: { select: { private: true, course: { select: { courseId: true, title: true, missing: true, summary: true, app: { select: { name: true, url: true } } } } } } },
+      })
+    : null;
+  const lmsCourse = lmsCard?.card && !lmsCard.card.private && lmsCard.card.course && !lmsCard.card.course.missing ? lmsCard.card.course : null;
+  const lms = lmsCourse ? (lmsCourse.summary as unknown as CourseSummary | null) : null;
 
   return (
     <PageContainer>
@@ -98,6 +110,20 @@ export default async function ContentItemPage({ params }: { params: Promise<{ co
         labels={labels}
         canDelete={membership.role === Role.ADMIN || membership.role === Role.MANAGER}
       >
+        {lmsCourse && lms?.live && (
+          <section>
+            <SectionHeader>In the LMS</SectionHeader>
+            <div className="rounded-md border border-border p-3">
+              <a href={lms.url ?? `${lmsCourse.app.url}/courses/${lmsCourse.courseId}`} target="_blank" rel="noreferrer" className="font-medium hover:underline">
+                {lmsCourse.title}
+                <span className="sr-only"> (opens {lmsCourse.app.name})</span>
+              </a>
+              <div className="mt-1.5">
+                <LiveResults live={lms.live} />
+              </div>
+            </div>
+          </section>
+        )}
         <ContentAssets
           contentId={item.id}
           assets={attached.map(({ asset: a }) => ({

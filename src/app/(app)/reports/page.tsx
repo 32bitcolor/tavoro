@@ -16,12 +16,21 @@ import {
   type ReportRange,
 } from "@/lib/reports";
 import { cn } from "@/lib/utils";
-import { PageContainer, PageHeader, SectionHeader } from "@/components/shared/page";
+import {
+  PageContainer,
+  PageHeader,
+  SectionHeader,
+} from "@/components/shared/page";
 import { EmptyState } from "@/components/shared/empty-state";
-import { ColumnChart, type ChartBucket } from "@/components/reports/column-chart";
+import {
+  ColumnChart,
+  type ChartBucket,
+} from "@/components/reports/column-chart";
 import { VelocityChart } from "@/components/reports/velocity-chart";
 import { loadVelocity } from "@/lib/sprint-report";
 import { prisma } from "@/lib/db";
+import { loadLearningReport } from "@/lib/learning-report";
+import { pct, STANDARD_LABEL } from "@/lib/learning";
 
 export const metadata = { title: "Reports · Tavoro" };
 
@@ -31,10 +40,16 @@ const TABS = [
   { key: "reviews", label: "Reviews" },
   { key: "time", label: "Time" },
   { key: "sprints", label: "Sprints" },
+  { key: "learning", label: "Learning" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
-const RANGE_LABEL: Record<ReportRange, string> = { 30: "30 days", 90: "90 days", 180: "6 months", 365: "12 months" };
+const RANGE_LABEL: Record<ReportRange, string> = {
+  30: "30 days",
+  90: "90 days",
+  180: "6 months",
+  365: "12 months",
+};
 
 // Kept out of the component body (react-hooks/purity flags Date.now() there).
 function reportWindow(range: ReportRange) {
@@ -42,16 +57,36 @@ function reportWindow(range: ReportRange) {
   return { now, since: new Date(now.getTime() - range * 86_400_000) };
 }
 
-const dateFmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+const dateFmt = (d: Date) =>
+  d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 
 /** `estimatedBefore`: buckets reaching back before this date hold backfilled
  *  (estimated) values, and the chart draws them muted. */
-function chartBuckets(buckets: Bucket[], now: Date, estimatedBefore?: Date | null): ChartBucket[] {
+function chartBuckets(
+  buckets: Bucket[],
+  now: Date,
+  estimatedBefore?: Date | null,
+): ChartBucket[] {
   return buckets.map((b) => {
     // Label the bucket by its last day, or today for the bucket still in progress.
-    const last = new Date(Math.min(b.end.getTime() - 86_400_000, now.getTime()));
-    const range = b.start.getTime() >= last.getTime() ? dateFmt(b.start) : `${dateFmt(b.start)} – ${dateFmt(last)}`;
-    return { label: b.label, range, value: Math.round(b.value * 10) / 10, estimated: !!estimatedBefore && b.start < estimatedBefore };
+    const last = new Date(
+      Math.min(b.end.getTime() - 86_400_000, now.getTime()),
+    );
+    const range =
+      b.start.getTime() >= last.getTime()
+        ? dateFmt(b.start)
+        : `${dateFmt(b.start)} – ${dateFmt(last)}`;
+    return {
+      label: b.label,
+      range,
+      value: Math.round(b.value * 10) / 10,
+      estimated: !!estimatedBefore && b.start < estimatedBefore,
+    };
   });
 }
 
@@ -61,16 +96,25 @@ function fmtDays(n: number | null) {
   const v = n < 10 ? Math.round(n * 10) / 10 : Math.round(n);
   return `${v} ${v === 1 ? "day" : "days"}`;
 }
-const fmtHours = (h: number) => `${h < 10 ? Math.round(h * 10) / 10 : Math.round(h)} h`;
-const fmtPct = (r: number | null) => (r === null ? "—" : `${Math.round(r * 100)}%`);
+const fmtHours = (h: number) =>
+  `${h < 10 ? Math.round(h * 10) / 10 : Math.round(h)} h`;
+const fmtPct = (r: number | null) =>
+  r === null ? "—" : `${Math.round(r * 100)}%`;
 
-export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ tab?: string; range?: string }> }) {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; range?: string }>;
+}) {
   const membership = await getActiveMembership();
   if (!membership) redirect("/login");
-  if (membership.role !== Role.ADMIN && membership.role !== Role.MANAGER) redirect("/dashboard");
+  if (membership.role !== Role.ADMIN && membership.role !== Role.MANAGER)
+    redirect("/dashboard");
 
   const params = await searchParams;
-  const tab: Tab = TABS.some((t) => t.key === params.tab) ? (params.tab as Tab) : "intake";
+  const tab: Tab = TABS.some((t) => t.key === params.tab)
+    ? (params.tab as Tab)
+    : "intake";
   const range = parseRange(params.range);
   const { now, since } = reportWindow(range);
   const ws = membership.workspaceId;
@@ -78,7 +122,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
   return (
     <PageContainer>
-      <PageHeader title="Reports" description="How work is flowing through the team. Visible to admins and managers." />
+      <PageHeader
+        title="Reports"
+        description="How work is flowing through the team. Visible to admins and managers."
+      />
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <nav aria-label="Report" className="flex rounded-md bg-muted p-0.5">
@@ -89,36 +136,58 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               aria-current={tab === t.key ? "page" : undefined}
               className={cn(
                 "inline-flex h-7 items-center rounded px-3 text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-                tab === t.key ? "bg-surface text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
+                tab === t.key
+                  ? "bg-surface text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {t.label}
             </Link>
           ))}
         </nav>
-        <nav aria-label="Time range" className="flex rounded-md bg-muted p-0.5">
-          {REPORT_RANGES.map((r) => (
-            <Link
-              key={r}
-              href={href(tab, r)}
-              aria-current={range === r ? "page" : undefined}
-              className={cn(
-                "inline-flex h-7 items-center rounded px-2.5 text-xs font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-                range === r ? "bg-surface text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {RANGE_LABEL[r]}
-            </Link>
-          ))}
-        </nav>
+        {tab !== "learning" && (
+          <nav
+            aria-label="Time range"
+            className="flex rounded-md bg-muted p-0.5"
+          >
+            {REPORT_RANGES.map((r) => (
+              <Link
+                key={r}
+                href={href(tab, r)}
+                aria-current={range === r ? "page" : undefined}
+                className={cn(
+                  "inline-flex h-7 items-center rounded px-2.5 text-xs font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                  range === r
+                    ? "bg-surface text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {RANGE_LABEL[r]}
+              </Link>
+            ))}
+          </nav>
+        )}
       </div>
 
       <div className="mt-6">
-        {tab === "intake" && <IntakeTab ws={ws} since={since} now={now} range={range} />}
-        {tab === "delivery" && <DeliveryTab ws={ws} since={since} now={now} range={range} />}
-        {tab === "reviews" && <ReviewsTab ws={ws} since={since} now={now} range={range} />}
-        {tab === "time" && <TimeTab ws={ws} since={since} now={now} range={range} />}
-        {tab === "sprints" && <SprintsTab ws={ws} since={since} now={now} range={range} />}
+        {tab === "intake" && (
+          <IntakeTab ws={ws} since={since} now={now} range={range} />
+        )}
+        {tab === "delivery" && (
+          <DeliveryTab ws={ws} since={since} now={now} range={range} />
+        )}
+        {tab === "reviews" && (
+          <ReviewsTab ws={ws} since={since} now={now} range={range} />
+        )}
+        {tab === "time" && (
+          <TimeTab ws={ws} since={since} now={now} range={range} />
+        )}
+        {tab === "sprints" && (
+          <SprintsTab ws={ws} since={since} now={now} range={range} />
+        )}
+        {tab === "learning" && (
+          <LearningTab ws={ws} since={since} now={now} range={range} />
+        )}
       </div>
     </PageContainer>
   );
@@ -127,11 +196,110 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 type TabProps = { ws: string; since: Date; now: Date; range: ReportRange };
 
 /** Velocity over the last completed sprints. The time range doesn't apply: it's per sprint. */
+async function LearningTab({ ws }: TabProps) {
+  const r = await loadLearningReport(ws);
+  const t = r.totals;
+  return (
+    <div className="flex flex-col gap-6">
+      <Stats
+        items={[
+          {
+            label: "Live courses",
+            value: String(t.courses),
+            hint: t.courses
+              ? `${t.withResults} with learner results`
+              : "none yet",
+          },
+          {
+            label: "Launches",
+            value: String(t.launches),
+            hint: "starts of a live package",
+          },
+          {
+            label: "Finished",
+            value: pct(t.finishRate),
+            hint: t.reported
+              ? `${t.finished} of ${t.reported} launches that reported`
+              : "no results yet",
+          },
+          {
+            label: "Passed",
+            value: pct(t.passRate),
+            hint:
+              t.passed + t.failed
+                ? `${t.passed} of ${t.passed + t.failed} graded`
+                : "no graded results",
+          },
+          {
+            label: "Average score",
+            value: t.avgScore === null ? "—" : `${t.avgScore}%`,
+            hint: "across courses with a quiz",
+          },
+        ]}
+      />
+      <section>
+        <SectionHeader>By course</SectionHeader>
+        <Table
+          head={[
+            { label: "Course" },
+            { label: "Package" },
+            { label: "Launches", num: true },
+            { label: "Finished", num: true },
+            { label: "Passed", num: true },
+            { label: "Avg score", num: true },
+            { label: "Last launch", num: true },
+          ]}
+          empty="No course is live in an LMS yet. Create a live package in CourseForge and link its course to a card."
+          rows={r.rows.map((c) => [
+            <a
+              key="c"
+              href={c.url}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:underline"
+            >
+              {c.title}
+              <span className="sr-only"> (opens CourseForge)</span>
+            </a>,
+            <span key="p" className="text-muted-foreground">
+              {c.standards.map((s) => STANDARD_LABEL[s] ?? s).join(", ")} · v
+              {c.version}
+            </span>,
+            c.launches,
+            c.reported
+              ? `${pct(c.finishRate)} (${c.finished}/${c.reported})`
+              : "—",
+            c.passRate === null ? "—" : pct(c.passRate),
+            c.avgScore === null ? "—" : `${c.avgScore}%`,
+            c.lastLaunchAt ? dateFmt(c.lastLaunchAt) : "—",
+          ])}
+        />
+        <p className="mt-2 text-xs text-muted-foreground">
+          Results are reported by the course player in each learner&rsquo;s
+          browser, anonymously: no names, and nothing from your LMS&rsquo;s own
+          records. A launch that is closed before its first save isn&rsquo;t
+          counted in Finished. Numbers refresh from CourseForge every 10
+          minutes.
+        </p>
+      </section>
+    </div>
+  );
+}
+
 async function SprintsTab({ ws }: TabProps) {
   const v = await loadVelocity(ws);
   const [active, recent] = await Promise.all([
-    prisma.sprint.findMany({ where: { workspaceId: ws, status: "active" }, orderBy: { startDate: "asc" }, select: { id: true, name: true } }),
-    prisma.sprint.findMany({ where: { workspaceId: ws, status: "completed" }, orderBy: { completedAt: "desc" }, take: 8, select: { id: true, name: true, completedAt: true } }),
+    prisma.sprint.findMany({
+      where: { workspaceId: ws, status: "active" },
+      orderBy: { startDate: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.sprint.findMany({
+      where: { workspaceId: ws, status: "completed" },
+      orderBy: { completedAt: "desc" },
+      take: 8,
+      select: { id: true, name: true, completedAt: true },
+    }),
   ]);
   const label = v.unit === "points" ? "pts" : "cards";
   const last = v.rows[v.rows.length - 1];
@@ -139,9 +307,26 @@ async function SprintsTab({ ws }: TabProps) {
     <div className="flex flex-col gap-6">
       <Stats
         items={[
-          { label: "Average velocity", value: v.average != null ? `${v.average} ${label}` : "—", hint: v.rows.length === 1 ? "The one completed sprint" : v.rows.length ? `Last ${Math.min(3, v.rows.length)} completed sprints` : undefined },
-          { label: "Last sprint", value: last ? `${last.completed} of ${last.committed}` : "—", hint: last?.name },
-          { label: "Completed sprints", value: String(v.rows.length), hint: "Shown below, up to 8" },
+          {
+            label: "Average velocity",
+            value: v.average != null ? `${v.average} ${label}` : "—",
+            hint:
+              v.rows.length === 1
+                ? "The one completed sprint"
+                : v.rows.length
+                  ? `Last ${Math.min(3, v.rows.length)} completed sprints`
+                  : undefined,
+          },
+          {
+            label: "Last sprint",
+            value: last ? `${last.completed} of ${last.committed}` : "—",
+            hint: last?.name,
+          },
+          {
+            label: "Completed sprints",
+            value: String(v.rows.length),
+            hint: "Shown below, up to 8",
+          },
           { label: "Active now", value: String(active.length) },
         ]}
       />
@@ -149,35 +334,67 @@ async function SprintsTab({ ws }: TabProps) {
         <VelocityChart rows={v.rows} unit={v.unit} average={v.average} />
       ) : (
         <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-          Velocity appears once a sprint is completed. Complete one from the Backlog or the Sprints page.
+          Velocity appears once a sprint is completed. Complete one from the
+          Backlog or the Sprints page.
         </p>
       )}
       <section>
         <h2 className="mb-2 text-sm font-semibold">Sprint reports</h2>
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border text-sm">
-          {[...active.map((sp) => ({ ...sp, completedAt: null as Date | null })), ...recent].map((sp) => (
+          {[
+            ...active.map((sp) => ({
+              ...sp,
+              completedAt: null as Date | null,
+            })),
+            ...recent,
+          ].map((sp) => (
             <li key={sp.id}>
-              <Link href={`/sprints/${sp.id}/report`} className="flex items-center justify-between gap-2 px-4 py-2 hover:bg-hover">
+              <Link
+                href={`/sprints/${sp.id}/report`}
+                className="flex items-center justify-between gap-2 px-4 py-2 hover:bg-hover"
+              >
                 <span className="font-medium">{sp.name}</span>
-                <span className="text-xs text-muted-foreground">{sp.completedAt ? `Completed ${sp.completedAt.toLocaleDateString()}` : "Active"}</span>
+                <span className="text-xs text-muted-foreground">
+                  {sp.completedAt
+                    ? `Completed ${sp.completedAt.toLocaleDateString()}`
+                    : "Active"}
+                </span>
               </Link>
             </li>
           ))}
-          {active.length + recent.length === 0 && <li className="px-4 py-3 text-muted-foreground">No sprints have started yet.</li>}
+          {active.length + recent.length === 0 && (
+            <li className="px-4 py-3 text-muted-foreground">
+              No sprints have started yet.
+            </li>
+          )}
         </ul>
       </section>
     </div>
   );
 }
 
-function Stats({ items }: { items: { label: string; value: string; hint?: string }[] }) {
+function Stats({
+  items,
+}: {
+  items: { label: string; value: string; hint?: string }[];
+}) {
   return (
-    <dl className="grid grid-cols-2 gap-3 md:grid-cols-4 [&>*]:min-w-0">
+    <dl
+      className={cn(
+        "grid grid-cols-2 gap-3 [&>*]:min-w-0",
+        items.length === 5 ? "md:grid-cols-5" : "md:grid-cols-4",
+      )}
+    >
       {items.map((s) => (
-        <div key={s.label} className="rounded-lg border border-border bg-surface p-4">
+        <div
+          key={s.label}
+          className="rounded-lg border border-border bg-surface p-4"
+        >
           <dt className="text-xs text-muted-foreground">{s.label}</dt>
           <dd className="mt-1 text-2xl font-semibold">{s.value}</dd>
-          {s.hint ? <dd className="mt-0.5 text-xs text-muted-foreground">{s.hint}</dd> : null}
+          {s.hint ? (
+            <dd className="mt-0.5 text-xs text-muted-foreground">{s.hint}</dd>
+          ) : null}
         </div>
       ))}
     </dl>
@@ -185,15 +402,34 @@ function Stats({ items }: { items: { label: string; value: string; hint?: string
 }
 
 /** A plain bordered table that scrolls sideways on narrow screens instead of the page. */
-function Table({ head, rows, empty }: { head: { label: string; num?: boolean }[]; rows: React.ReactNode[][]; empty: string }) {
-  if (rows.length === 0) return <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">{empty}</p>;
+function Table({
+  head,
+  rows,
+  empty,
+}: {
+  head: { label: string; num?: boolean }[];
+  rows: React.ReactNode[][];
+  empty: string;
+}) {
+  if (rows.length === 0)
+    return (
+      <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+        {empty}
+      </p>
+    );
   return (
     <div className="relative overflow-x-auto rounded-lg border border-border bg-surface">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-xs text-muted-foreground">
             {head.map((h) => (
-              <th key={h.label} className={cn("whitespace-nowrap px-3 py-2 font-medium", h.num ? "text-right" : "text-left")}>
+              <th
+                key={h.label}
+                className={cn(
+                  "whitespace-nowrap px-3 py-2 font-medium",
+                  h.num ? "text-right" : "text-left",
+                )}
+              >
                 {h.label}
               </th>
             ))}
@@ -203,7 +439,15 @@ function Table({ head, rows, empty }: { head: { label: string; num?: boolean }[]
           {rows.map((r, i) => (
             <tr key={i}>
               {r.map((c, j) => (
-                <td key={j} className={cn("px-3 py-2", head[j]?.num ? "text-right tabular-nums whitespace-nowrap" : "")}>
+                <td
+                  key={j}
+                  className={cn(
+                    "px-3 py-2",
+                    head[j]?.num
+                      ? "text-right tabular-nums whitespace-nowrap"
+                      : "",
+                  )}
+                >
                   {c}
                 </td>
               ))}
@@ -221,24 +465,52 @@ async function IntakeTab({ ws, since, now, range }: TabProps) {
     <div className="flex flex-col gap-6">
       <Stats
         items={[
-          { label: "Requests submitted", value: String(r.submittedCount), hint: `last ${RANGE_LABEL[range]}` },
-          { label: "Time to decision", value: fmtDays(r.medianDaysToDecision), hint: `median of ${r.decidedCount} decided` },
-          { label: "Approval rate", value: fmtPct(r.approvalRate), hint: "approved ÷ decided" },
-          { label: "Waiting now", value: String(r.openCount), hint: "submitted, triaging or needs info" },
+          {
+            label: "Requests submitted",
+            value: String(r.submittedCount),
+            hint: `last ${RANGE_LABEL[range]}`,
+          },
+          {
+            label: "Time to decision",
+            value: fmtDays(r.medianDaysToDecision),
+            hint: `median of ${r.decidedCount} decided`,
+          },
+          {
+            label: "Approval rate",
+            value: fmtPct(r.approvalRate),
+            hint: "approved ÷ decided",
+          },
+          {
+            label: "Waiting now",
+            value: String(r.openCount),
+            hint: "submitted, triaging or needs info",
+          },
         ]}
       />
-      <ColumnChart title="Requests submitted" buckets={chartBuckets(r.perBucket, now)} unit="requests" />
+      <ColumnChart
+        title="Requests submitted"
+        buckets={chartBuckets(r.perBucket, now)}
+        unit="requests"
+      />
       <section>
         <SectionHeader>Waiting for a decision</SectionHeader>
         <Table
-          head={[{ label: "Request" }, { label: "Status" }, { label: "Assigned to" }, { label: "Waiting", num: true }]}
+          head={[
+            { label: "Request" },
+            { label: "Status" },
+            { label: "Assigned to" },
+            { label: "Waiting", num: true },
+          ]}
           empty="Nothing is waiting — every request has a decision."
           rows={r.waiting.map((w) => [
             <Link key="t" href={`/intake/${w.id}`} className="hover:underline">
-              <span className="text-muted-foreground">REQ-{w.number}</span> {w.title}
+              <span className="text-muted-foreground">REQ-{w.number}</span>{" "}
+              {w.title}
             </Link>,
             INTAKE_STATUS_LABEL[w.status as IntakeStatus] ?? w.status,
-            w.assignee ?? <span className="text-muted-foreground">Unassigned</span>,
+            w.assignee ?? (
+              <span className="text-muted-foreground">Unassigned</span>
+            ),
             fmtDays(w.ageDays),
           ])}
         />
@@ -246,9 +518,19 @@ async function IntakeTab({ ws, since, now, range }: TabProps) {
       <section>
         <SectionHeader>Decisions by person</SectionHeader>
         <Table
-          head={[{ label: "Person" }, { label: "Approved", num: true }, { label: "Rejected", num: true }, { label: "Median time to decision", num: true }]}
+          head={[
+            { label: "Person" },
+            { label: "Approved", num: true },
+            { label: "Rejected", num: true },
+            { label: "Median time to decision", num: true },
+          ]}
           empty={`No requests were decided in the last ${RANGE_LABEL[range]}.`}
-          rows={r.deciders.map((d) => [d.name, d.approved, d.rejected, fmtDays(d.medianDays)])}
+          rows={r.deciders.map((d) => [
+            d.name,
+            d.approved,
+            d.rejected,
+            fmtDays(d.medianDays),
+          ])}
         />
       </section>
     </div>
@@ -262,28 +544,78 @@ async function ReviewsTab({ ws, since, now, range }: TabProps) {
     <div className="flex flex-col gap-6">
       <Stats
         items={[
-          { label: "SME turnaround", value: fmtDays(r.medianTurnaroundDays), hint: `median of ${r.decidedCount} decision${r.decidedCount === 1 ? "" : "s"}` },
-          { label: "Decided on time", value: fmtPct(r.onTimeRate), hint: r.withDueCount ? `of ${r.withDueCount} with a due date` : "no due dates set" },
-          { label: "Rounds to approval", value: rounds === null ? "—" : String(Math.round(rounds * 10) / 10), hint: `median of ${r.passedCount} passed` },
-          { label: "Waiting on reviewers", value: String(r.waitingCount), hint: r.overdueCount ? `${r.overdueCount} overdue` : "none overdue" },
+          {
+            label: "SME turnaround",
+            value: fmtDays(r.medianTurnaroundDays),
+            hint: `median of ${r.decidedCount} decision${r.decidedCount === 1 ? "" : "s"}`,
+          },
+          {
+            label: "Decided on time",
+            value: fmtPct(r.onTimeRate),
+            hint: r.withDueCount
+              ? `of ${r.withDueCount} with a due date`
+              : "no due dates set",
+          },
+          {
+            label: "Rounds to approval",
+            value: rounds === null ? "—" : String(Math.round(rounds * 10) / 10),
+            hint: `median of ${r.passedCount} passed`,
+          },
+          {
+            label: "Waiting on reviewers",
+            value: String(r.waitingCount),
+            hint: r.overdueCount ? `${r.overdueCount} overdue` : "none overdue",
+          },
         ]}
       />
-      <ColumnChart title="Review decisions" buckets={chartBuckets(r.perBucket, now)} unit="decisions" />
+      <ColumnChart
+        title="Review decisions"
+        buckets={chartBuckets(r.perBucket, now)}
+        unit="decisions"
+      />
       <section>
         <SectionHeader>Waiting on reviewers</SectionHeader>
         <Table
-          head={[{ label: "Reviewer" }, { label: "Deliverable" }, { label: "Round", num: true }, { label: "Due", num: true }, { label: "Waiting", num: true }]}
+          head={[
+            { label: "Reviewer" },
+            { label: "Deliverable" },
+            { label: "Round", num: true },
+            { label: "Due", num: true },
+            { label: "Waiting", num: true },
+          ]}
           empty="No one has a review waiting."
           rows={r.waiting.map((w) => [
             <span key="r">
               {w.reviewer.name}
-              {w.reviewer.guest ? <span className="text-muted-foreground"> (guest)</span> : null}
+              {w.reviewer.guest ? (
+                <span className="text-muted-foreground"> (guest)</span>
+              ) : null}
             </span>,
-            <Link key="d" href={`/projects/${w.deliverable.project.id}`} className="hover:underline">
-              {w.deliverable.name} <span className="text-muted-foreground">· {w.deliverable.project.name}</span>
+            <Link
+              key="d"
+              href={`/projects/${w.deliverable.project.id}`}
+              className="hover:underline"
+            >
+              {w.deliverable.name}{" "}
+              <span className="text-muted-foreground">
+                · {w.deliverable.project.name}
+              </span>
             </Link>,
             w.round,
-            w.dueDate ? <span key="due" className={w.overdue ? "font-medium text-destructive-ink" : undefined}>{dateFmt(w.dueDate)}</span> : <span key="due" className="text-muted-foreground">—</span>,
+            w.dueDate ? (
+              <span
+                key="due"
+                className={
+                  w.overdue ? "font-medium text-destructive-ink" : undefined
+                }
+              >
+                {dateFmt(w.dueDate)}
+              </span>
+            ) : (
+              <span key="due" className="text-muted-foreground">
+                —
+              </span>
+            ),
             fmtDays(w.ageDays),
           ])}
         />
@@ -303,7 +635,9 @@ async function ReviewsTab({ ws, since, now, range }: TabProps) {
           rows={r.reviewers.map((p) => [
             <span key="n">
               {p.name}
-              {p.guest ? <span className="text-muted-foreground"> (guest)</span> : null}
+              {p.guest ? (
+                <span className="text-muted-foreground"> (guest)</span>
+              ) : null}
             </span>,
             p.decided,
             fmtDays(p.medianDays),
@@ -313,8 +647,10 @@ async function ReviewsTab({ ws, since, now, range }: TabProps) {
           ])}
         />
         <p className="mt-2 text-xs text-muted-foreground">
-          Turnaround runs from when a reviewer was asked to their decision. On time means decided by the end of the due day (the
-          reviewer&apos;s own due date, or the round&apos;s). A reviewer who changes their decision counts once.
+          Turnaround runs from when a reviewer was asked to their decision. On
+          time means decided by the end of the due day (the reviewer&apos;s own
+          due date, or the round&apos;s). A reviewer who changes their decision
+          counts once.
         </p>
       </section>
     </div>
@@ -327,16 +663,40 @@ async function DeliveryTab({ ws, since, now, range }: TabProps) {
     <div className="flex flex-col gap-6">
       <Stats
         items={[
-          { label: "Cards completed", value: String(r.completedCount), hint: `last ${RANGE_LABEL[range]}` },
-          { label: "Cycle time", value: fmtDays(r.medianCycleDays), hint: "median, created → done" },
-          { label: "Milestones on time", value: r.milestonesDue ? fmtPct(r.milestonesOnTime / r.milestonesDue) : "—", hint: `${r.milestonesOnTime} of ${r.milestonesDue} due` },
-          { label: "Overdue cards", value: String(r.overdueCount), hint: `${r.inProgressCount} in progress now` },
+          {
+            label: "Cards completed",
+            value: String(r.completedCount),
+            hint: `last ${RANGE_LABEL[range]}`,
+          },
+          {
+            label: "Cycle time",
+            value: fmtDays(r.medianCycleDays),
+            hint: "median, created → done",
+          },
+          {
+            label: "Milestones on time",
+            value: r.milestonesDue
+              ? fmtPct(r.milestonesOnTime / r.milestonesDue)
+              : "—",
+            hint: `${r.milestonesOnTime} of ${r.milestonesDue} due`,
+          },
+          {
+            label: "Overdue cards",
+            value: String(r.overdueCount),
+            hint: `${r.inProgressCount} in progress now`,
+          },
         ]}
       />
-      <ColumnChart title="Cards completed" buckets={chartBuckets(r.perBucket, now, r.estimatedBefore)} unit="cards" />
+      <ColumnChart
+        title="Cards completed"
+        buckets={chartBuckets(r.perBucket, now, r.estimatedBefore)}
+        unit="cards"
+      />
       {r.estimatedBefore ? (
         <p className="-mt-3 text-xs text-muted-foreground">
-          Faded bars include completion dates estimated from each card&apos;s last edit — Tavoro started recording them on {dateFmt(r.estimatedBefore)}.
+          Faded bars include completion dates estimated from each card&apos;s
+          last edit — Tavoro started recording them on{" "}
+          {dateFmt(r.estimatedBefore)}.
         </p>
       ) : null}
       <section>
@@ -351,33 +711,71 @@ async function DeliveryTab({ ws, since, now, range }: TabProps) {
             { label: "Overdue", num: true },
           ]}
           empty="No assigned cards yet."
-          rows={r.people.map((p) => [p.name, p.done, fmtDays(p.medianCycleDays), p.inProgress, p.open, p.overdue])}
+          rows={r.people.map((p) => [
+            p.name,
+            p.done,
+            fmtDays(p.medianCycleDays),
+            p.inProgress,
+            p.open,
+            p.overdue,
+          ])}
         />
         <p className="mt-2 text-xs text-muted-foreground">
-          Cards with several assignees count for each of them. For each person&apos;s open cards, see{" "}
-          <Link href="/team" className="text-link">Team</Link>.
+          Cards with several assignees count for each of them. For each
+          person&apos;s open cards, see{" "}
+          <Link href="/team" className="text-link">
+            Team
+          </Link>
+          .
         </p>
       </section>
       <section>
         <SectionHeader>Milestones that slipped</SectionHeader>
         <Table
-          head={[{ label: "Milestone" }, { label: "Project" }, { label: "Due", num: true }, { label: "Outcome", num: true }]}
-          empty={r.milestonesDue ? "Every milestone due in this period was met on time." : `No milestones were due in the last ${RANGE_LABEL[range]}.`}
+          head={[
+            { label: "Milestone" },
+            { label: "Project" },
+            { label: "Due", num: true },
+            { label: "Outcome", num: true },
+          ]}
+          empty={
+            r.milestonesDue
+              ? "Every milestone due in this period was met on time."
+              : `No milestones were due in the last ${RANGE_LABEL[range]}.`
+          }
           rows={r.slipped.map((m) => [
             m.name,
-            <Link key="p" href={`/projects/${m.project.id}`} className="hover:underline">{m.project.name}</Link>,
+            <Link
+              key="p"
+              href={`/projects/${m.project.id}`}
+              className="hover:underline"
+            >
+              {m.project.name}
+            </Link>,
             dateFmt(m.dueDate),
-            m.completedAt ? `Done ${fmtDays(m.daysLate)} late` : `Not done · ${fmtDays(m.daysLate)} overdue`,
+            m.completedAt
+              ? `Done ${fmtDays(m.daysLate)} late`
+              : `Not done · ${fmtDays(m.daysLate)} overdue`,
           ])}
         />
       </section>
       <section>
         <SectionHeader>Projects completed</SectionHeader>
         <Table
-          head={[{ label: "Project" }, { label: "Completed", num: true }, { label: "Duration", num: true }]}
+          head={[
+            { label: "Project" },
+            { label: "Completed", num: true },
+            { label: "Duration", num: true },
+          ]}
           empty={`No projects were completed in the last ${RANGE_LABEL[range]}.`}
           rows={r.projectsCompleted.map((p) => [
-            <Link key="p" href={`/projects/${p.id}`} className="hover:underline">{p.name}</Link>,
+            <Link
+              key="p"
+              href={`/projects/${p.id}`}
+              className="hover:underline"
+            >
+              {p.name}
+            </Link>,
             dateFmt(p.completedAt),
             fmtDays(p.durationDays),
           ])}
@@ -402,13 +800,22 @@ async function TimeTab({ ws, since, now, range }: TabProps) {
     <div className="flex flex-col gap-6">
       <Stats
         items={[
-          { label: "Hours logged", value: fmtHours(r.totalHours), hint: `last ${RANGE_LABEL[range]}` },
+          {
+            label: "Hours logged",
+            value: fmtHours(r.totalHours),
+            hint: `last ${RANGE_LABEL[range]}`,
+          },
           { label: "Projects with time", value: String(r.projects.length) },
           { label: "People logging", value: String(r.people.length) },
           { label: "Entries", value: String(r.entryCount) },
         ]}
       />
-      <ColumnChart title="Hours logged" buckets={chartBuckets(r.perBucket, now)} unit="hours" decimals={1} />
+      <ColumnChart
+        title="Hours logged"
+        buckets={chartBuckets(r.perBucket, now)}
+        unit="hours"
+        decimals={1}
+      />
       <div className="grid gap-6 md:grid-cols-2 [&>*]:min-w-0">
         <section>
           <SectionHeader>By project</SectionHeader>
@@ -416,25 +823,46 @@ async function TimeTab({ ws, since, now, range }: TabProps) {
             head={[{ label: "Project" }, { label: "Hours", num: true }]}
             empty="No time logged in this period."
             rows={r.projects.map((p) => [
-              <Link key="p" href={`/projects/${p.id}`} className="hover:underline">{p.name}</Link>,
+              <Link
+                key="p"
+                href={`/projects/${p.id}`}
+                className="hover:underline"
+              >
+                {p.name}
+              </Link>,
               fmtHours(p.hours),
             ])}
           />
         </section>
         <section>
           <SectionHeader>By person</SectionHeader>
-          <Table head={[{ label: "Person" }, { label: "Hours", num: true }]} empty="No time logged in this period." rows={r.people.map((p) => [p.name, fmtHours(p.hours)])} />
+          <Table
+            head={[{ label: "Person" }, { label: "Hours", num: true }]}
+            empty="No time logged in this period."
+            rows={r.people.map((p) => [p.name, fmtHours(p.hours)])}
+          />
         </section>
       </div>
       <section>
         <SectionHeader>Typical effort by deliverable type</SectionHeader>
         <Table
-          head={[{ label: "Type" }, { label: "Finished", num: true }, { label: "Median", num: true }, { label: "Average", num: true }]}
+          head={[
+            { label: "Type" },
+            { label: "Finished", num: true },
+            { label: "Median", num: true },
+            { label: "Average", num: true },
+          ]}
           empty="No finished deliverables have time logged against them yet."
-          rows={r.deliverableTypes.map((d) => [d.label, d.count, fmtHours(d.medianHours), fmtHours(d.avgHours)])}
+          rows={r.deliverableTypes.map((d) => [
+            d.label,
+            d.count,
+            fmtHours(d.medianHours),
+            fmtHours(d.avgHours),
+          ])}
         />
         <p className="mt-2 text-xs text-muted-foreground">
-          All finished deliverables with time logged against them, not just this period — use it when estimating new work.
+          All finished deliverables with time logged against them, not just this
+          period — use it when estimating new work.
         </p>
       </section>
     </div>

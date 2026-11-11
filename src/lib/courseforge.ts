@@ -20,6 +20,19 @@ export interface CourseSummary {
   owner: string;
   updatedAt: string;
   deleted: boolean;
+  /** Live LMS packages (docs/SUITE.md, step 5); null/absent when there are none. Older CourseForge versions don't send it. */
+  live?: LiveSummary | null;
+}
+
+/** What CourseForge knows about a course's live packages. `results` come from the players, anonymously. */
+export interface LiveSummary {
+  packages: number;
+  standards: string[];
+  version: number;
+  publishedAt: string;
+  launches: number;
+  lastLaunchAt: string | null;
+  results: { sessions: number; completed: number; passed: number; failed: number; avgScore: number | null; avgProgress: number | null } | null;
 }
 
 export interface AppRef {

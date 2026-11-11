@@ -23,8 +23,9 @@ Each step below is useful on its own, and a later merge stays possible.
    linked to that course); each reviewer's comments become subtasks under that card, and resolving
    a comment completes its subtask. SME turnaround reporting then covers built courses without
    flooding boards with a card for every comment.
-5. **Pillar 5 (LMS).** CourseForge publishes to the LMS; Tavoro's content inventory points at the
-   live package; completion data flows back into Tavoro's reports.
+5. **Pillar 5 (LMS)** ✅ (below). CourseForge publishes to the LMS; Tavoro's content inventory points at the
+   live package; learners' results flow back into Tavoro's reports. *CourseForge never sees the
+   LMS's own records, so the results are what the course player reports, anonymously.*
 
 ## Step 1: sign in with Tavoro
 
@@ -179,3 +180,26 @@ before CourseForge was connected, and the studio's own (non-review) comments, ar
 
 Test: CourseForge `apps/studio/tests/tavoro-reviews.e2e.mjs` (29 checks).
 
+
+## Step 5: live packages and learner results
+
+CourseForge's course summary (the same one cards use) has a `live` object: packages, standards,
+latest version, launches, last launch, and `results` (sessions, completed, passed, failed, average
+score and progress) when the players have reported. See CourseForge `docs/TAVORO.md` for how the
+player reports (anonymous, per launch, no identity).
+
+Where Tavoro shows it:
+
+- **Card drawer → Course:** a line under the course with the package, version and results.
+- **Content item → In the LMS:** for an item whose deliverable's card has a course with live
+  packages. Not shown when the card is private.
+- **Reports → Learning** (admins and managers): live courses, launches, finished and pass rates,
+  average score, and a table by course. A private card's course is left out; a course linked to two
+  cards counts once. It is the current picture, so the time range doesn't apply.
+
+Finished means completed or passed. Pass rate is passed of passed + failed, and is blank for a
+course without a graded result. Numbers are as fresh as the card's summary (10 minutes).
+
+Limits: results are advisory (the package token is public inside an LMS); the LMS stays the
+record of who completed what; packages uploaded before this feature report launches only until
+re-uploaded.
